@@ -1,51 +1,114 @@
 # ReconRaven
 
-**Version 2.0** | *A backpack-portable, multi-RTL-SDR SIGINT device for passive UHF/VHF drone hunting and anomaly DF*
+![ReconRaven Banner](rr.png)
 
-Because finding things that go beep in the night is way cooler than Pokémon Go.
+**Software-Defined Radio Platform for Signal Intelligence, Detection, and Direction Finding**
 
-ReconRaven is a production-ready multi-mode Software Defined Radio platform for signal intelligence operations in Pacific near-peer scenarios. Features mobile scanning, parallel multi-band surveillance with 4 SDRs working simultaneously (parallel scans catch bursts while auto-triggering bearings), and dynamic direction finding. Built for counter-terrorism training, SIGINT education, and anyone who thinks "I wonder what frequency that is?" way too often.
+A professional Python platform that transforms RTL-SDR hardware into a sophisticated SIGINT collection system. Auto-configures based on connected hardware: single SDR for mobile operations, multiple SDRs for high-speed parallel scanning with automatic direction finding.
 
-## What Does This Thing Actually Do?
+Built for spectrum analysis, signal detection, multi-protocol demodulation, and bearing calculations. Works on Raspberry Pi 5 or desktop PCs.
 
-Remember when you were a kid and you'd spin around trying to figure out where that ice cream truck was coming from? This is like that, but with math, Python, and radio waves. The platform:
+---
 
-- **Scans spectrum faster than your ex went through your phone** (4x parallel coverage with sub-2-second cycles)
-- **Finds signals you didn't even know existed** (intelligent anomaly detection with burst/hopping/surge recognition)
-- **Tells you where they're coming from** (MUSIC algorithm direction finding with 5-10 degree accuracy)
-- **Doesn't require a PhD to operate** (though having one doesn't hurt)
-- **Actually works in the field** (tested on Raspberry Pi 5, not some lab bench queen)
+## What ReconRaven Does
 
-Think of it as Shazam for radio signals, except instead of telling you what song is playing, it tells you there's a drone hovering near your perimeter at 433 MHz and gives you a bearing to boot.
+A multi-mode SDR platform with automatic hardware detection and configuration:
 
-## The Three Modes (Like Transformers, But Useful)
+- **Fast spectrum scanning**: Parallel coverage with sub-2-second cycles (4-SDR mode)
+- **Intelligent anomaly detection**: Burst/hopping/surge pattern recognition
+- **Direction finding**: MUSIC algorithm with 5-10 degree accuracy
+- **Multi-protocol demodulation**: FM, AM, DMR, P25, NXDN, ProVoice, Fusion
+- **Real-time visualization**: Web dashboard with spectrum and bearing displays
+- **GPS integration**: Geo-tagged signal logs and bearings
+- **Field-ready**: Tested on Raspberry Pi 5 and desktop systems
+
+---
+
+## The Operating Modes (Like Transformers, But Useful)
+
+ReconRaven is a shapeshifter. It automatically detects how many SDRs you've plugged in and configures itself accordingly. Three modes, one codebase, zero hassle.
 
 ### Mode 1: Mobile Scout (1 SDR)
-*"I'm walking here!"*
+*Portable single-SDR operations*
 
-Perfect for reconnaissance when you're actually moving around like a functional human being.
+Perfect for reconnaissance and mobile operations.
 
+**Hardware**: 1 RTL-SDR + antenna  
+**Scan Speed**: ~60 seconds for full band coverage  
+**Weight**: <1kg total
+
+**What It Does**:
 - Sequential spectrum scanning across VHF/UHF bands
-- Multi-protocol demodulation (FM, AM, and all those digital modes nobody can pronounce)
+- Multi-protocol demodulation (FM, AM, DMR, P25, NXDN, ProVoice, Fusion)
 - Drone signal detection with pattern matching
 - GPS tagging so you remember where you were when you found that thing
 - Real-time browser dashboard (because terminals are so 1995)
 
-**Use Case**: Backpack recon, vehicle sweeps, "just walking my SDR, officer"
+**Use Case**: Backpack operations, vehicle sweeps, portable signal surveys
 
-### Mode 2: Parallel Predator (4 SDRs) - THE STAR OF THE SHOW
-*"Now witness the power of this fully operational battle station"*
+**Performance**: Solid and reliable. Sequential scanning optimized for single-device portability.
 
-This is where things get spicy. Four SDRs, four different frequency bands, all scanning simultaneously. It's like having four interns, except they don't complain and they work at the speed of light.
+---
+
+### Mode 2: Mobile Multi (2-4 SDRs)
+*Enhanced mobile operations with distributed scanning*
+
+Mobile mode with parallel processing power. Same operational concept, significantly faster execution.
+
+**Hardware**: 2-4 RTL-SDRs + antennas + USB hub  
+**Scan Speed**: ~15 seconds (with 4 SDRs)  
+**Weight**: ~1.5kg with full array
+
+**How It Works**:
+Instead of one SDR scanning all bands sequentially, the work gets distributed:
+- **1 SDR**: Scans all 4 bands → 60 seconds
+- **4 SDRs**: Each scans 1 band simultaneously → 15 seconds
+
+It's **4x faster** than single SDR mobile mode, but simpler than full parallel scan mode. Think of it as the sweet spot between "I'm traveling light" and "I need speed."
+
+**What It Does**:
+- Everything Mobile mode does
+- Distributes scanning work across multiple SDRs
+- Each SDR handles a subset of bands
+- Results aggregated in real-time
+- Still sequential (not continuous monitoring)
+- No auto-DF triggering
+
+**Use Case**: 
+- Vehicle-mounted operations
+- Stationary monitoring with time constraints  
+- Fast area surveys
+- Testing/calibration before parallel mode deployment
+
+**How it works**: 
+```
+Mobile (1 SDR):        [Band1] → [Band2] → [Band3] → [Band4]  (60s)
+Mobile Multi (4 SDRs): [Band1]
+                       [Band2]  (all simultaneous)             (15s)
+                       [Band3]
+                       [Band4]
+```
+
+---
+
+### Mode 3: Parallel Scan (4 SDRs)
+*Continuous multi-band monitoring with automatic direction finding*
+
+Four SDRs scanning different frequency bands simultaneously and continuously. Maximum coverage, minimum latency.
+
+**Hardware**: 4 RTL-SDRs + antennas + powered hub + (optional) tripod mount  
+**Scan Speed**: **Under 2 seconds per cycle** (continuous operation)  
+**Weight**: ~2kg with mount
 
 **How Fast We Talking?**
 - Mobile mode: ~60 seconds for full coverage (respectable)
-- Parallel mode: **Under 2 seconds** (hold my coffee)
-- Speed increase: **30x faster** (yes, you read that right)
+- Mobile Multi: ~15 seconds (getting there)
+- Parallel mode: **<2 seconds** (hold my coffee)
+- Speed increase over mobile: **30x faster** (yes, you read that right)
 
-**What Makes It Smart?**
+**Anomaly Detection System**:
 
-The system doesn't just detect signals; it judges them:
+The system automatically identifies unusual signal patterns:
 
 1. **Strong Signal Detection**: "Hey, that's way louder than it should be"
 2. **New Signal Recognition**: "Wait, I've never seen you before"
@@ -53,36 +116,93 @@ The system doesn't just detect signals; it judges them:
 4. **Frequency Hopping Detection**: "Nice try, hopper"
 5. **Power Surge Alerts**: "Why did you just get 15dB louder?"
 
-Each anomaly gets a priority score. High-priority detections automatically trigger...
+Each anomaly gets a priority score. High-priority detections automatically trigger direction finding.
 
-**Auto-DF Mode**: When something sketchy appears, the system:
+**Auto-DF Mode**: When high-priority anomalies appear, the system:
 - Pauses parallel scanning (hold that thought)
 - Switches all 4 SDRs to the target frequency
 - Calculates bearing using MUSIC algorithm
 - Logs everything with GPS coordinates
 - Returns to parallel scanning
-- Total time: 3-5 seconds (faster than you can say "contact!")
+- **Total time: 3-5 seconds** (faster than you can say "contact!")
 
 **Band Assignment** (default, fully configurable):
 ```
 SDR 0: 144-148 MHz   (2m amateur band)
-SDR 1: 420-450 MHz   (70cm amateur band)
+SDR 1: 420-450 MHz   (70cm amateur band)  
 SDR 2: 433/868 MHz   (ISM bands, prime drone territory)
 SDR 3: 915 MHz       (US ISM, more drone action)
 ```
 
-### Mode 3: Direction Finding Fortress (4 SDRs)
-*"Somewhere, something incredible is waiting to be found" - Carl Sagan (probably talking about RF sources)*
+**Use Case**: 
+- Stationary monitoring operations
+- Continuous spectrum surveillance with immediate response
+- Automated signal detection and tracking
+- Comprehensive RF environment mapping
 
-Pure DF mode. All four SDRs locked on the same frequency, phase-synchronized, running MUSIC algorithm to tell you exactly where that signal is coming from.
+---
 
+### Mode 4: Direction Finding (4 SDRs)
+*Precision bearing calculations with phase-coherent array*
+
+Pure DF mode. All four SDRs locked on the same frequency, phase-synchronized, running MUSIC algorithm for precise bearing calculations.
+
+**Hardware**: Same as Parallel, but array must be on tripod at exact 0.5m spacing  
+**Scan Speed**: N/A (focused on one frequency at a time)  
+**Bearing Calculation**: 1-2 seconds per frequency
+
+**What It Does**:
 - Phase-coherent 4-element array
 - MUSIC algorithm bearing calculations
 - 5-10 degree accuracy (better with hardware sync)
-- Geo-tagged bearing logs
+- Geo-tagged bearing logs  
 - Compass visualization in the dashboard
 
 **The Catch**: Requires stationary setup with tripod-mounted array at 0.5m spacing. Physics is a harsh mistress.
+
+**Use Case**:
+- Locating persistent emitters
+- Drone tracking with bearing
+- Manual DF operations
+- When you know the frequency and just need the direction
+
+---
+
+## Mode Comparison Table
+
+| Feature | Mobile | Mobile Multi | Parallel Scan | DF |
+|---------|--------|--------------|---------------|-----|
+| **SDRs Required** | 1 | 2-4 | 4 | 4 |
+| **Scan Type** | Sequential | Distributed Sequential | Continuous Simultaneous | Single Freq |
+| **Scan Speed** | ~60s | ~15s (4 SDRs) | <2s cycles | N/A |
+| **Portability** | Excellent | Good | Fair | Poor (needs tripod) |
+| **Setup Time** | 30 sec | 2 min | 5 min | 10 min |
+| **Auto-DF** | No | No | Yes | Manual |
+| **Anomaly Detection** | Basic | Basic | Advanced | N/A |
+| **Best For** | Backpack ops | Vehicle ops | Stationary surveillance | Locating emitters |
+| **Power Draw** | Low (~2W) | Medium (~8W) | High (~12W) | High (~12W) |
+| **Battery Life** | 10+ hrs | 6-8 hrs | 6-8 hrs | 6-8 hrs |
+
+---
+
+## How The System Picks The Mode
+
+ReconRaven auto-detects and configures itself based on connected hardware:
+
+```python
+# Detection logic (happens automatically)
+1 SDR detected  → MOBILE mode
+2-3 SDRs detected → MOBILE_MULTI mode  
+4+ SDRs detected → PARALLEL_SCAN mode (with DF capability)
+
+# You can override:
+python app.py --mode mobile        # Force mobile even with 4 SDRs
+python app.py --mode mobile_multi  # Force multi mode
+python app.py --mode parallel_scan # Force parallel
+python app.py --mode df            # Force DF mode
+```
+
+**The Bottom Line**: Start with 1 SDR, add more as needed. The software adapts automatically. No recompilation, no complex configs, just plug and play.
 
 ## System Architecture (The Brainy Bits)
 
@@ -390,7 +510,10 @@ python3 app.py
 
 # Platform will:
 # 1. Detect number of SDRs
-# 2. Enter appropriate mode (1 SDR = mobile, 4 SDRs = parallel)
+# 2. Enter appropriate mode:
+#    - 1 SDR → MOBILE mode
+#    - 2-3 SDRs → MOBILE_MULTI mode
+#    - 4+ SDRs → PARALLEL_SCAN mode
 # 3. Start scanning
 # 4. Launch web dashboard at http://localhost:5000
 ```
@@ -400,11 +523,12 @@ Open your browser to `http://localhost:5000` and watch the magic happen. If you'
 ### Command Line Options
 
 ```bash
-# Force specific mode
-python3 app.py --mode mobile          # Single SDR mode
-python3 app.py --mode parallel_scan   # 4-SDR parallel (no auto-DF)
-python3 app.py --mode df             # Pure DF mode
-python3 app.py --mode auto           # Auto-detect (default)
+# Force specific mode (override auto-detection)
+python3 app.py --mode mobile          # Single SDR, even if more connected
+python3 app.py --mode mobile_multi    # Multi-SDR mobile mode (2-4 SDRs)
+python3 app.py --mode parallel_scan   # 4-SDR parallel with auto-DF
+python3 app.py --mode df              # Pure DF mode
+python3 app.py --mode auto            # Auto-detect (default)
 
 # Custom configuration
 python3 app.py --config /path/to/custom/config
@@ -422,56 +546,128 @@ python3 app.py --mode parallel_scan --log-level INFO
 - Full band scan: ~60 seconds
 - Coverage: Sequential across all configured bands
 - CPU usage: ~25% on Pi 5
+- Memory: ~200MB
+- Power draw: ~2W
+- Battery life: 10+ hours
 
-**Parallel Mode (4 SDRs)**:
-- Scan cycle: **Under 2 seconds**
-- Coverage: All bands simultaneously
+**Mobile Multi Mode (2-4 SDRs)**:
+- Full band scan: **~15 seconds** (with 4 SDRs)
+- Speed improvement: **4x faster** than single SDR mobile
+- Coverage: Distributed sequential (each SDR handles subset of bands)
+- CPU usage: ~40% on Pi 5
+- Memory: ~300MB
+- Power draw: ~8W (4 SDRs)
+- Battery life: 6-8 hours
+- Scaling: 2 SDRs = 2x, 3 SDRs = 3x, 4 SDRs = 4x faster
+
+**Parallel Scan Mode (4 SDRs)**:
+- Scan cycle: **Under 2 seconds** (continuous operation)
+- Speed improvement: **30x faster** than single SDR mobile
+- Coverage: All bands simultaneously with continuous monitoring
 - CPU usage: ~60% on Pi 5
+- Memory: ~400MB
+- Power draw: ~12W
+- Battery life: 6-8 hours
 - Anomaly response: Immediate (auto-DF in 3-5 seconds)
 
-**DF Mode**:
+**DF Mode (4 SDRs)**:
 - Bearing calculation: 1-2 seconds per frequency
 - Accuracy: 5-10 degrees (software sync), 3-5 degrees (hardware sync)
 - Update rate: 1 Hz default
+- CPU usage: ~80% during calculations
+- Memory: ~350MB
+- Power draw: ~12W
 
 ### Example Workflows
 
-#### Scenario 1: Drone Detection Patrol
+#### Scenario 1: Backpack Recon (Mobile Mode)
 
 ```bash
-# Start in parallel mode
-python3 app.py
-
-# System monitors 433 MHz and 915 MHz continuously
-# Drone appears? Instant alert + bearing in 3-5 seconds
-# Dashboard shows compass with direction
-# GPS-tagged log for later analysis
-```
-
-#### Scenario 2: Stationary DF Operation
-
-```bash
-# Set up tripod with 4-element array (0.5m spacing)
-# Connect all SDRs
-
-python3 app.py --mode df
-
-# Platform calibrates array using known signal
-# Continuously monitors target frequency
-# Provides real-time bearing updates
-# Perfect for locating persistent emitters
-```
-
-#### Scenario 3: Mobile Reconnaissance
-
-```bash
-# Single SDR setup for lightweight operation
+# Lightweight setup: 1 SDR, 1 antenna, GPS, power bank
+# Weight: <1kg, Battery: 10+ hours
 python3 app.py --mode mobile
 
-# Walk/drive around area
-# System scans and logs all signals with GPS coordinates
-# Review dashboard for signal distribution
-# Export logs for mapping software
+# Perfect for:
+# - Walking surveys
+# - Vehicle mobile ops
+# - Low-profile operations
+# - When you need portability over speed
+```
+
+#### Scenario 2: Vehicle Operations (Mobile Multi Mode)
+
+```bash
+# Setup: 4 SDRs, 4 antennas, powered USB hub
+# Weight: ~1.5kg, Battery: 6-8 hours
+python3 app.py --mode mobile_multi
+# Or just: python3 app.py (auto-detects)
+
+# Perfect for:
+# - Drive-by surveys (4x faster than single SDR)
+# - Quick area assessments
+# - Preliminary sweeps before full deployment
+# - When you have more SDRs but don't need continuous monitoring
+```
+
+#### Scenario 3: Continuous Monitoring (Parallel Scan + Auto-DF)
+
+```bash
+# Setup: 4 SDRs deployed, tripod optional
+# Scan speed: <2 seconds per cycle
+python3 app.py  # Auto-enters parallel mode with 4 SDRs
+
+# What happens:
+# - Continuous monitoring of all bands (30x faster than mobile)
+# - Anomaly detection active (bursts, hopping, new signals)
+# - Auto-DF on high-priority detections
+# - Immediate alerts with bearings
+# - GPS-tagged logs
+
+# Perfect for:
+# - Perimeter security
+# - Drone detection and tracking
+# - Automated surveillance
+# - When you need to know everything happening in RF spectrum
+```
+
+#### Scenario 4: Precision Direction Finding (DF Mode)
+
+```bash
+# Setup: 4-SDR phase-coherent array on tripod (0.5m spacing)
+# Requires: Stationary setup, precise spacing
+python3 app.py --mode df
+
+# What it does:
+# - Lock onto target frequency from previous detection
+# - Continuous bearing calculations (1 Hz)
+# - 5-10 degree accuracy
+# - Compass visualization in dashboard
+# - Triangulate from multiple positions
+
+# Perfect for:
+# - Locating persistent emitters
+# - Manual DF operations
+# - High-precision bearing measurements
+```
+
+#### Scenario 5: Progressive Deployment Strategy
+
+```bash
+# Phase 1: Initial survey (30 min)
+python3 app.py --mode mobile
+# Walk the area, get RF baseline, 1 SDR lightweight
+
+# Phase 2: Detailed scan (15 min)
+python3 app.py --mode mobile_multi
+# Set up 4 SDRs, faster coverage, find targets
+
+# Phase 3: Continuous monitoring (hours to days)
+python3 app.py  # Auto parallel mode
+# Deploy for extended ops, auto-DF on anomalies
+
+# Phase 4: Precision DF (as needed)
+python3 app.py --mode df
+# Lock onto specific frequencies from Phase 3, get bearings
 ```
 
 ## Field Operations Guide

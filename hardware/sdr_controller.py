@@ -176,16 +176,37 @@ class SDRController:
         try:
             sdr = RtlSdr(device_index=0)
             
-            # Configure SDR
-            sdr.sample_rate = self.sample_rate
-            sdr.center_freq = self.center_freq
-            sdr.freq_correction = self.ppm_error
+            # Configure SDR with error handling for Windows
+            try:
+                sdr.sample_rate = self.sample_rate
+            except Exception as e:
+                logger.warning(f"Could not set sample_rate (trying default): {e}")
+                sdr.sample_rate = 2.048e6  # Default
+                
+            try:
+                sdr.center_freq = self.center_freq
+            except Exception as e:
+                logger.warning(f"Could not set center_freq (trying default): {e}")
+                sdr.center_freq = 100e6  # Default to 100 MHz
             
-            # Set gain
-            if self.gain == 'auto':
-                sdr.gain = 'auto'
-            else:
-                sdr.gain = float(self.gain)
+            # Try to set frequency correction (may fail on some Windows setups)
+            try:
+                sdr.freq_correction = self.ppm_error
+            except Exception as e:
+                logger.warning(f"Could not set freq_correction (non-critical): {e}")
+            
+            # Set gain with error handling
+            try:
+                if self.gain == 'auto':
+                    sdr.gain = 'auto'
+                else:
+                    sdr.gain = float(self.gain)
+            except Exception as e:
+                logger.warning(f"Could not set gain (using auto): {e}")
+                try:
+                    sdr.gain = 'auto'
+                except:
+                    pass  # Some drivers don't support auto either
             
             self.sdrs = [sdr]
             logger.info(f"Initialized single SDR: {sdr.sample_rate} Hz, {sdr.center_freq} Hz")
