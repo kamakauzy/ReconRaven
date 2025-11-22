@@ -5,6 +5,7 @@ Manages RTL-SDR devices, auto-detects mode, and provides hardware abstraction.
 
 import logging
 import time
+import numpy as np
 from typing import List, Optional, Tuple
 from enum import Enum
 import subprocess
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 class OperatingMode(Enum):
     """Operating modes for the SDR platform."""
     MOBILE = "mobile"              # Single SDR for mobile scanning
+    MOBILE_MULTI = "mobile_multi"  # Multiple SDRs for faster mobile scanning (sequential but distributed)
     PARALLEL_SCAN = "parallel_scan"  # 4 SDRs scanning different bands simultaneously
     DF = "df"                      # Multiple SDRs for direction finding (switched from parallel)
     UNKNOWN = "unknown"            # Mode not yet determined

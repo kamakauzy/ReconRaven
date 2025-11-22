@@ -86,6 +86,9 @@ class SDRPlatform:
             if self.sdr.mode == OperatingMode.MOBILE:
                 logger.info("Initializing MOBILE mode components")
                 self._init_mobile_mode()
+            elif self.sdr.mode == OperatingMode.MOBILE_MULTI:
+                logger.info("Initializing MOBILE_MULTI mode components")
+                self._init_mobile_multi_mode()
             elif self.sdr.mode == OperatingMode.PARALLEL_SCAN:
                 logger.info("Initializing PARALLEL_SCAN mode components")
                 self._init_parallel_scan_mode()
@@ -127,6 +130,21 @@ class SDRPlatform:
         
         # Drone detector
         self.drone_detector = DroneDetector(self.config.bands)
+    
+    def _init_mobile_multi_mode(self):
+        """Initialize mobile multi mode (2-4 SDRs for faster sequential scanning)."""
+        # Same components as mobile but scanner knows about multiple SDRs
+        scan_config = self.config.hardware_config.get('scanning', {})
+        self.scanner = SpectrumScanner(self.sdr, scan_config)
+        
+        # Calibrate first SDR only (faster)
+        logger.info("Calibrating noise floor on SDR 0...")
+        self.scanner.calibrate_noise_floor()
+        
+        # Drone detector
+        self.drone_detector = DroneDetector(self.config.bands)
+        
+        logger.info(f"Mobile Multi mode: {len(self.sdr.sdrs)} SDRs will divide scanning work")
     
     def _init_parallel_scan_mode(self):
         """Initialize parallel scan mode (4-SDR simultaneous scanning with DF capability)."""
@@ -193,7 +211,7 @@ class SDRPlatform:
         logger.info("Starting main loop...")
         
         # Start background threads based on mode
-        if self.sdr.mode == OperatingMode.MOBILE:
+        if self.sdr.mode in [OperatingMode.MOBILE, OperatingMode.MOBILE_MULTI]:
             scan_thread = threading.Thread(target=self._scan_loop, daemon=True)
             scan_thread.start()
         elif self.sdr.mode == OperatingMode.PARALLEL_SCAN:
@@ -487,7 +505,7 @@ def main():
     )
     parser.add_argument(
         '--mode',
-        choices=['mobile', 'df', 'auto'],
+        choices=['mobile', 'mobile_multi', 'parallel_scan', 'df', 'auto'],
         default='auto',
         help='Force operating mode (default: auto-detect)'
     )

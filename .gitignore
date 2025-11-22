@@ -123,3 +123,8 @@ logs/
 *.tmp
 *.bak
 
+# Testing and simulation files (keep local only)
+test_*.py
+simulation.py
+WINDOWS_TESTING.md
+

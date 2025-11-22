@@ -47,6 +47,7 @@ class SpectrumScanner:
         """
         self.sdr = sdr_controller
         self.config = config or {}
+        self.num_sdrs = len(self.sdr.sdrs) if hasattr(self.sdr, 'sdrs') else 1
         
         # Scanning parameters
         self.fft_size = self.config.get('fft_size', 1024)
@@ -58,6 +59,8 @@ class SpectrumScanner:
         # Noise floor estimation
         self.noise_floor_dbm = -100.0
         self.noise_floor_calibrated = False
+        
+        logger.info(f"SpectrumScanner initialized with {self.num_sdrs} SDR(s)")
         
     def calibrate_noise_floor(self, num_samples: int = 100) -> float:
         """Calibrate noise floor by measuring ambient noise.
@@ -299,6 +302,8 @@ class SpectrumScanner:
     def scan_band_list(self, bands: List[Dict[str, Any]]) -> Dict[str, List[SignalHit]]:
         """Scan multiple frequency bands.
         
+        If multiple SDRs available (mobile_multi mode), distributes bands across SDRs.
+        
         Args:
             bands: List of band dictionaries with 'start_hz' and 'end_hz'
             
@@ -307,6 +312,12 @@ class SpectrumScanner:
         """
         results = {}
         
+        # If multiple SDRs available, distribute the work
+        if self.num_sdrs > 1:
+            logger.info(f"Mobile Multi: Distributing {len(bands)} bands across {self.num_sdrs} SDRs")
+            return self._scan_band_list_multi(bands)
+        
+        # Single SDR - sequential scanning
         for band in bands:
             band_name = band.get('name', 'Unknown')
             start_hz = band.get('start_hz')
@@ -321,6 +332,131 @@ class SpectrumScanner:
             results[band_name] = hits
         
         return results
+    
+    def _scan_band_list_multi(self, bands: List[Dict[str, Any]]) -> Dict[str, List[SignalHit]]:
+        """Scan bands using multiple SDRs in mobile_multi mode.
+        
+        Each SDR scans a subset of bands sequentially, but all SDRs work simultaneously.
+        This is faster than single SDR but simpler than parallel mode.
+        
+        Args:
+            bands: List of band dictionaries
+            
+        Returns:
+            Dictionary mapping band names to lists of detected signals
+        """
+        import threading
+        from queue import Queue
+        
+        results = {}
+        result_queue = Queue()
+        
+        # Distribute bands across SDRs
+        bands_per_sdr = [[] for _ in range(self.num_sdrs)]
+        for i, band in enumerate(bands):
+            sdr_idx = i % self.num_sdrs
+            bands_per_sdr[sdr_idx].append(band)
+        
+        def scan_worker(sdr_idx, assigned_bands):
+            """Worker thread for one SDR."""
+            for band in assigned_bands:
+                band_name = band.get('name', 'Unknown')
+                start_hz = band.get('start_hz')
+                end_hz = band.get('end_hz')
+                
+                if start_hz is None or end_hz is None:
+                    continue
+                
+                logger.info(f"SDR{sdr_idx}: Scanning {band_name}")
+                
+                # Temporarily tune this SDR
+                original_freq = self.sdr.sdrs[sdr_idx].center_freq if sdr_idx < len(self.sdr.sdrs) else None
+                
+                try:
+                    # Scan the band using this specific SDR
+                    hits = self._scan_with_specific_sdr(sdr_idx, start_hz, end_hz)
+                    result_queue.put((band_name, hits))
+                except Exception as e:
+                    logger.error(f"SDR{sdr_idx} error scanning {band_name}: {e}")
+                finally:
+                    # Restore original frequency if needed
+                    if original_freq and sdr_idx < len(self.sdr.sdrs):
+                        try:
+                            self.sdr.sdrs[sdr_idx].center_freq = original_freq
+                        except:
+                            pass
+        
+        # Start worker threads
+        threads = []
+        for sdr_idx, assigned_bands in enumerate(bands_per_sdr):
+            if assigned_bands:  # Only start thread if SDR has bands to scan
+                t = threading.Thread(target=scan_worker, args=(sdr_idx, assigned_bands))
+                t.start()
+                threads.append(t)
+        
+        # Wait for all threads
+        for t in threads:
+            t.join()
+        
+        # Collect results
+        while not result_queue.empty():
+            band_name, hits = result_queue.get()
+            results[band_name] = hits
+        
+        return results
+    
+    def _scan_with_specific_sdr(self, sdr_idx: int, start_hz: float, end_hz: float) -> List[SignalHit]:
+        """Scan using a specific SDR from the array.
+        
+        Args:
+            sdr_idx: SDR index to use
+            start_hz: Start frequency
+            end_hz: End frequency
+            
+        Returns:
+            List of detected signals
+        """
+        detected_signals = []
+        
+        try:
+            if sdr_idx >= len(self.sdr.sdrs):
+                return detected_signals
+            
+            sdr = self.sdr.sdrs[sdr_idx]
+            bandwidth = sdr.sample_rate
+            num_steps = int((end_hz - start_hz) / self.fft_step_hz) + 1
+            
+            for step in range(num_steps):
+                center_freq = start_hz + (step * self.fft_step_hz) + (bandwidth / 2)
+                
+                if center_freq - bandwidth/2 > end_hz:
+                    break
+                
+                # Tune this specific SDR
+                sdr.center_freq = int(center_freq)
+                time.sleep(0.01)
+                
+                # Collect and average samples
+                psd_avg = np.zeros(self.fft_size)
+                
+                for _ in range(self.num_averages):
+                    samples = sdr.read_samples(self.fft_size)
+                    if len(samples) == 0:
+                        continue
+                    
+                    psd = self._compute_psd(samples)
+                    psd_avg += psd
+                
+                psd_avg /= self.num_averages
+                
+                # Detect peaks
+                hits = self._detect_peaks(psd_avg, center_freq)
+                detected_signals.extend(hits)
+        
+        except Exception as e:
+            logger.error(f"Error scanning with SDR{sdr_idx}: {e}")
+        
+        return detected_signals
     
     def quick_scan(self, frequencies: List[float], bandwidth: float = 100000) -> List[SignalHit]:
         """Quickly scan specific frequencies.
