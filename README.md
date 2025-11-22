@@ -4,7 +4,7 @@
 
 Because finding things that go beep in the night is way cooler than Pokémon Go.
 
-ReconRaven is a production-ready multi-mode Software Defined Radio platform for signal intelligence operations in Pacific near-peer scenarios. Features mobile scanning, parallel multi-band surveillance with 4 SDRs working simultaneously (parallel scans catch bursts while auto-triggering bearings), and dynamic direction finding. Built for counter-terrorism training, SIGINT education, and anyone who thinks "I wonder what frequency that is?" way too often.
+ReconRaven is a production-ready multi-mode Software Defined Radio platform for signal intelligence operations. Features mobile scanning, parallel multi-band surveillance with 4 SDRs working simultaneously (parallel scans catch bursts while auto-triggering bearings), and dynamic direction finding.
 
 ## What Does This Thing Actually Do?
 
