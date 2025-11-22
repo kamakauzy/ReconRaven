@@ -1,0 +1,117 @@
+# Demodulation Configuration for Different Signal Types
+
+# Analog demodulation parameters
+FM:
+  sample_rate: 240000  # 240 kHz
+  deviation: 5000      # 5 kHz deviation for narrowband
+  audio_rate: 48000    # 48 kHz audio output
+  squelch: 0           # Squelch level (0 = off)
+  deemphasis: 50       # De-emphasis in microseconds (50 or 75)
+  tool: "rtl_fm"
+  args: ["-M", "fm", "-s", "240k", "-A", "fast"]
+  
+FM_WIDE:
+  sample_rate: 240000
+  deviation: 75000     # 75 kHz deviation for wideband
+  audio_rate: 48000
+  squelch: 0
+  deemphasis: 75
+  tool: "rtl_fm"
+  args: ["-M", "wbfm", "-s", "240k"]
+
+AM:
+  sample_rate: 240000
+  audio_rate: 48000
+  squelch: 0
+  tool: "rtl_fm"
+  args: ["-M", "am", "-s", "240k", "-A", "fast"]
+
+USB:
+  sample_rate: 240000
+  audio_rate: 48000
+  squelch: 0
+  tool: "rtl_fm"
+  args: ["-M", "usb", "-s", "240k"]
+
+LSB:
+  sample_rate: 240000
+  audio_rate: 48000
+  squelch: 0
+  tool: "rtl_fm"
+  args: ["-M", "lsb", "-s", "240k"]
+
+# Digital demodulation parameters
+DMR:
+  sample_rate: 240000
+  symbol_rate: 4800
+  tool: "dsd"
+  args: ["-fd", "-i", "-", "-fa"]
+  description: "Digital Mobile Radio"
+  auto_detect: true
+
+P25:
+  sample_rate: 240000
+  symbol_rate: 4800
+  tool: "dsd"
+  args: ["-fp", "-i", "-", "-fa"]
+  description: "APCO Project 25"
+  auto_detect: true
+
+NXDN:
+  sample_rate: 240000
+  symbol_rate: 2400
+  tool: "dsd"
+  args: ["-fn", "-i", "-", "-fa"]
+  description: "NXDN digital mode"
+  auto_detect: true
+
+ProVoice:
+  sample_rate: 240000
+  symbol_rate: 9600
+  tool: "dsd"
+  args: ["-i", "-", "-fa"]
+  description: "ProVoice (EDACS)"
+  auto_detect: true
+
+Fusion:
+  sample_rate: 240000
+  symbol_rate: 4800
+  tool: "dsd"
+  args: ["-i", "-", "-fa"]
+  description: "Yaesu System Fusion (C4FM)"
+  auto_detect: true
+
+# Digital mode auto-detection
+AUTO_DIGITAL:
+  sample_rate: 240000
+  tool: "dsd"
+  args: ["-i", "-", "-fa"]  # -fa enables auto frame type detection
+  description: "Auto-detect digital mode"
+  modes: ["DMR", "P25", "NXDN", "ProVoice", "Fusion"]
+
+# Modulation detection thresholds
+detection_thresholds:
+  fm_threshold: 0.6        # Frequency modulation index threshold
+  am_threshold: 0.3        # Amplitude modulation index threshold
+  digital_threshold: 0.8   # Digital signal confidence threshold
+  
+# Signal classification parameters
+classification:
+  fft_size: 1024
+  min_signal_bw_hz: 5000   # Minimum signal bandwidth
+  max_signal_bw_hz: 200000 # Maximum signal bandwidth
+  
+# Audio recording settings
+audio_recording:
+  format: "wav"
+  sample_rate: 48000
+  channels: 1
+  bit_depth: 16
+  
+# Advanced features
+features:
+  auto_mode_detect: true      # Automatically detect modulation type
+  adaptive_squelch: true      # Adjust squelch based on noise floor
+  afc: true                   # Automatic frequency control
+  agc: true                   # Automatic gain control
+

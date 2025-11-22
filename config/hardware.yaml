@@ -1,0 +1,146 @@
+# Hardware Configuration for SDR SIGINT Platform
+
+# RTL-SDR configuration
+sdr:
+  sample_rate_hz: 2400000        # 2.4 MHz (optimal for RTL-SDR V4)
+  center_freq_hz: 434000000      # Default center frequency
+  gain: "auto"                   # "auto" or specific value (0-49.6 dB)
+  ppm_error: 0                   # Frequency correction in PPM
+  bias_tee: false                # Enable bias-T for active antennas
+  
+# Spectrum scanning parameters
+scanning:
+  fft_step_hz: 25000             # 25 kHz step size for scanning
+  fft_size: 1024                 # FFT bin count
+  integration_time_ms: 100       # Integration time per frequency
+  detection_threshold_dbm: -60   # Signal detection threshold
+  noise_floor_samples: 100       # Samples for noise floor calibration
+  
+# Direction Finding (DF) array configuration
+df_array:
+  enabled: false                 # Enable when 4 SDRs detected
+  num_elements: 4                # 4-element array
+  geometry: "square"             # Array layout: "square", "circular", "linear"
+  spacing_m: 0.5                 # Element spacing (0.5m for UHF)
+  reference_element: 0           # Reference SDR index
+  
+  # Phase calibration
+  calibration:
+    use_noise_cal: true          # Use noise for initial phase calibration
+    cal_frequency_hz: 434000000  # Calibration frequency
+    cal_samples: 10000           # Samples for calibration
+    
+  # MUSIC algorithm parameters
+  music:
+    num_sources: 1               # Expected number of sources
+    snapshots: 100               # Number of snapshots for covariance
+    smoothing: true              # Enable spatial smoothing
+    
+  # Element positions (relative to reference in meters)
+  # Square array with 0.5m spacing
+  element_positions:
+    - [0.0, 0.0]                 # Reference element at origin
+    - [0.5, 0.0]                 # Element 1
+    - [0.5, 0.5]                 # Element 2
+    - [0.0, 0.5]                 # Element 3
+
+# GPS configuration
+gps:
+  enabled: true
+  device: "/dev/ttyUSB0"         # GPS device (Linux)
+  device_win: "COM3"             # GPS device (Windows)
+  baud_rate: 9600
+  timeout_s: 1
+  fix_timeout_s: 30              # Time to wait for initial fix
+  min_satellites: 4              # Minimum satellites for valid fix
+  update_rate_hz: 1              # GPS update rate
+
+# Recording configuration
+recording:
+  enabled: true
+  output_dir: "./recordings"     # Output directory for recordings
+  
+  # IQ recording
+  iq_recording:
+    enabled: false               # Disabled by default (large files)
+    format: "complex64"          # NumPy complex64 format
+    max_duration_s: 60           # Maximum recording duration
+    
+  # Audio recording
+  audio_recording:
+    enabled: true
+    format: "wav"
+    sample_rate: 48000
+    max_duration_s: 300          # 5 minutes max
+    
+  # Metadata logging
+  metadata:
+    format: "json"
+    include_gps: true
+    include_spectrum: true
+    include_bearing: true        # When in DF mode
+
+# Power management
+power:
+  battery_monitor: true
+  low_battery_threshold_v: 3.3   # Voltage threshold for warnings
+  critical_battery_v: 3.0        # Critical shutdown voltage
+  power_save_mode: false         # Reduce sample rate when enabled
+  
+# Performance tuning
+performance:
+  num_threads: 4                 # Worker threads for processing
+  buffer_size: 262144            # SDR buffer size (256K samples)
+  max_queue_size: 10             # Maximum queued processing tasks
+  
+# Logging configuration
+logging:
+  level: "INFO"                  # DEBUG, INFO, WARNING, ERROR
+  log_file: "./sdr_platform.log"
+  console_output: true
+  max_log_size_mb: 100
+  backup_count: 5
+
+# Web dashboard
+dashboard:
+  enabled: true
+  host: "0.0.0.0"                # Listen on all interfaces
+  port: 5000
+  debug: false
+  update_rate_hz: 2              # Dashboard update rate
+  
+# Alert thresholds
+alerts:
+  strong_signal_dbm: -40         # Threshold for strong signal alert
+  drone_detection_confidence: 0.8 # Confidence threshold for drone alerts
+  proximity_alert_distance_m: 100 # Alert if bearing triangulation within this distance
+
+# Operational modes
+modes:
+  mobile:
+    max_scan_time_s: 300         # Maximum time for single scan in mobile mode
+    quick_scan: true             # Use quick scan presets
+    record_hits_only: true       # Only record detected signals
+    
+  parallel_scan:
+    cycle_time_s: 2              # Target time for full parallel scan cycle
+    enable_df_on_anomaly: true   # Auto-switch to DF on anomalies
+    df_dwell_time_s: 3           # Time to spend in DF mode per anomaly
+    max_df_per_cycle: 3          # Max DF operations per scan cycle
+    
+  df:
+    continuous_bearing: true     # Continuously calculate bearings
+    bearing_update_rate_hz: 1    # Bearing calculation rate
+    auto_triangulate: false      # Auto triangulation (requires movement/multiple measurements)
+    min_signal_strength_dbm: -50 # Minimum signal strength for DF
+
+# Anomaly detection thresholds
+anomaly_detection:
+  enabled: true
+  strong_signal_threshold_dbm: -40    # Signals above this trigger immediate investigation
+  new_signal_threshold_dbm: -50       # Power threshold for new signal alerts
+  burst_detection: true               # Enable burst pattern detection
+  hopping_detection: true             # Enable frequency hopping detection
+  power_surge_threshold_db: 15        # dB increase to trigger surge alert
+  tracking_duration_s: 300            # How long to track signal history
+

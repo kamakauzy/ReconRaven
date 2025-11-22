@@ -1,0 +1,141 @@
+# Frequency Band Definitions for SDR SIGINT Platform
+
+# Standard scanning bands
+scan_bands:
+  - name: "2m Amateur Band"
+    start_hz: 144000000
+    end_hz: 148000000
+    description: "VHF 2-meter amateur radio band"
+    priority: 2
+    
+  - name: "70cm Amateur Band"
+    start_hz: 420000000
+    end_hz: 450000000
+    description: "UHF 70-centimeter amateur radio band"
+    priority: 2
+    
+  - name: "ISM 433 MHz"
+    start_hz: 433050000
+    end_hz: 434790000
+    description: "ISM band used for remote controls, telemetry"
+    priority: 3
+    
+  - name: "ISM 868 MHz (EU)"
+    start_hz: 863000000
+    end_hz: 870000000
+    description: "European ISM band"
+    priority: 3
+    
+  - name: "ISM 915 MHz (US)"
+    start_hz: 902000000
+    end_hz: 928000000
+    description: "US ISM band, drone telemetry"
+    priority: 3
+
+# Known drone frequency bands
+drone_bands:
+  - name: "DJI 2.4 GHz Control"
+    start_hz: 2400000000
+    end_hz: 2483500000
+    description: "DJI control link (beyond RTL-SDR range)"
+    detectable: false
+    note: "Requires different hardware"
+    
+  - name: "DJI 5.8 GHz Video"
+    start_hz: 5725000000
+    end_hz: 5850000000
+    description: "DJI video downlink (beyond RTL-SDR range)"
+    detectable: false
+    note: "Requires different hardware"
+    
+  - name: "Generic 433 MHz Telemetry"
+    start_hz: 433050000
+    end_hz: 434790000
+    description: "Common drone telemetry band (detectable)"
+    detectable: true
+    patterns:
+      - type: "burst"
+        min_duration_ms: 10
+        max_duration_ms: 500
+        
+  - name: "Generic 915 MHz Telemetry"
+    start_hz: 902000000
+    end_hz: 928000000
+    description: "US drone telemetry band (detectable)"
+    detectable: true
+    patterns:
+      - type: "burst"
+        min_duration_ms: 10
+        max_duration_ms: 500
+        
+  - name: "LoRa Drone Links"
+    start_hz: 868000000
+    end_hz: 868600000
+    description: "LoRa modulation used for long-range drone control"
+    detectable: true
+    modulation: "LoRa"
+    patterns:
+      - type: "chirp"
+        bandwidth_hz: 125000
+
+# Bands of interest for tactical monitoring
+tactical_bands:
+  - name: "PMR446 (EU)"
+    start_hz: 446000000
+    end_hz: 446200000
+    description: "Personal Mobile Radio"
+    priority: 4
+    
+  - name: "FRS/GMRS (US)"
+    start_hz: 462000000
+    end_hz: 467000000
+    description: "Family Radio Service / General Mobile Radio Service"
+    priority: 4
+    
+  - name: "Marine VHF"
+    start_hz: 156000000
+    end_hz: 162000000
+    description: "Marine communication band"
+    priority: 3
+
+# Quick scan presets
+scan_presets:
+  quick:
+    description: "Quick scan of high-priority bands"
+    bands: ["ISM 433 MHz", "ISM 915 MHz (US)", "70cm Amateur Band"]
+    
+  full:
+    description: "Complete spectrum scan"
+    bands: ["2m Amateur Band", "70cm Amateur Band", "ISM 433 MHz", 
+            "ISM 868 MHz (EU)", "ISM 915 MHz (US)"]
+    
+  drone_hunt:
+    description: "Focus on detectable drone bands"
+    bands: ["ISM 433 MHz", "ISM 915 MHz (US)", "LoRa Drone Links"]
+    
+  tactical:
+    description: "Tactical communication monitoring"
+    bands: ["2m Amateur Band", "70cm Amateur Band", "PMR446 (EU)", "FRS/GMRS (US)"]
+
+# Parallel scan band assignments (4-SDR configuration)
+parallel_scan_assignments:
+  sdr0:
+    bands: ["2m Amateur Band"]
+    priority: 3
+    description: "VHF amateur band monitoring"
+    
+  sdr1:
+    bands: ["70cm Amateur Band"]
+    priority: 3
+    description: "UHF amateur band monitoring"
+    
+  sdr2:
+    bands: ["ISM 433 MHz", "ISM 868 MHz (EU)"]
+    priority: 4
+    description: "ISM band telemetry and drone detection"
+    
+  sdr3:
+    bands: ["ISM 915 MHz (US)"]
+    priority: 4
+    description: "US ISM band drone telemetry"
+

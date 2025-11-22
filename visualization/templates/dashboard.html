@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDR SIGINT Platform Dashboard</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        
+        .header h1 {
+            color: white;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .status-bar {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .status-item {
+            background: rgba(255,255,255,0.1);
+            padding: 10px 15px;
+            border-radius: 5px;
+        }
+        
+        .status-label {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+        
+        .status-value {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .panel {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .panel h2 {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+        
+        .signal-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .signal-item {
+            background: #333;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .signal-freq {
+            font-size: 16px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .signal-details {
+            font-size: 12px;
+            margin-top: 5px;
+            opacity: 0.8;
+        }
+        
+        .bearing-display {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .bearing-value {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .bearing-label {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-top: 10px;
+        }
+        
+        .compass {
+            width: 300px;
+            height: 300px;
+            margin: 20px auto;
+            position: relative;
+            border: 3px solid #667eea;
+            border-radius: 50%;
+            background: radial-gradient(circle, #2a2a2a 0%, #1a1a1a 100%);
+        }
+        
+        .compass-marker {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-bottom: 100px solid #ff4444;
+            transform-origin: bottom center;
+            transform: translate(-50%, -100%);
+        }
+        
+        .gps-info {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        .gps-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #333;
+        }
+        
+        .button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        
+        .button:hover {
+            background: #764ba2;
+        }
+        
+        .mode-indicator {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .mode-mobile {
+            background: #4CAF50;
+        }
+        
+        .mode-df {
+            background: #FF9800;
+        }
+        
+        .mode-unknown {
+            background: #9E9E9E;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛰️ SDR SIGINT Platform Dashboard</h1>
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-label">Mode</div>
+                <div class="status-value">
+                    <span id="mode-indicator" class="mode-indicator mode-unknown">UNKNOWN</span>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">Status</div>
+                <div class="status-value" id="status">Idle</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">Signals Detected</div>
+                <div class="status-value" id="signal-count">0</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">GPS Fix</div>
+                <div class="status-value" id="gps-status">No Fix</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="dashboard-grid">
+        <div class="panel">
+            <h2>Detected Signals</h2>
+            <div id="signal-list" class="signal-list">
+                <p style="opacity: 0.5;">Waiting for signals...</p>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h2>Direction Finding</h2>
+            <div class="bearing-display">
+                <div id="compass" class="compass">
+                    <div id="bearing-marker" class="compass-marker" style="display: none;"></div>
+                </div>
+                <div class="bearing-value" id="bearing-value">--°</div>
+                <div class="bearing-label">Last Bearing</div>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h2>GPS Position</h2>
+            <div id="gps-info" class="gps-info">
+                <div class="gps-row">
+                    <span>Latitude:</span>
+                    <span id="gps-lat">--</span>
+                </div>
+                <div class="gps-row">
+                    <span>Longitude:</span>
+                    <span id="gps-lon">--</span>
+                </div>
+                <div class="gps-row">
+                    <span>Altitude:</span>
+                    <span id="gps-alt">--</span>
+                </div>
+                <div class="gps-row">
+                    <span>Satellites:</span>
+                    <span id="gps-sats">--</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h2>Controls</h2>
+            <button class="button" onclick="requestUpdate()">Refresh Data</button>
+            <button class="button" onclick="clearSignals()">Clear Signals</button>
+        </div>
+    </div>
+    
+    <script>
+        const socket = io();
+        
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            socket.emit('request_update');
+        });
+        
+        socket.on('status_update', (data) => {
+            updateDashboard(data);
+        });
+        
+        socket.on('new_signal', (signal) => {
+            addSignalToList(signal);
+        });
+        
+        socket.on('new_bearing', (bearing) => {
+            updateBearing(bearing);
+        });
+        
+        socket.on('gps_update', (gps) => {
+            updateGPS(gps);
+        });
+        
+        function updateDashboard(data) {
+            // Update mode
+            const modeIndicator = document.getElementById('mode-indicator');
+            modeIndicator.textContent = data.mode.toUpperCase();
+            modeIndicator.className = 'mode-indicator mode-' + data.mode;
+            
+            // Update status
+            document.getElementById('status').textContent = data.status;
+            
+            // Update signal count
+            document.getElementById('signal-count').textContent = data.signals.length;
+            
+            // Update GPS status
+            if (data.gps && data.gps.mode >= 2) {
+                document.getElementById('gps-status').textContent = 'Fixed';
+                updateGPS(data.gps);
+            }
+            
+            // Update signal list
+            if (data.signals.length > 0) {
+                const signalList = document.getElementById('signal-list');
+                signalList.innerHTML = '';
+                data.signals.slice(-10).reverse().forEach(signal => addSignalToList(signal));
+            }
+            
+            // Update bearings
+            if (data.bearings.length > 0) {
+                updateBearing(data.bearings[data.bearings.length - 1]);
+            }
+        }
+        
+        function addSignalToList(signal) {
+            const signalList = document.getElementById('signal-list');
+            const signalItem = document.createElement('div');
+            signalItem.className = 'signal-item';
+            
+            const freqMHz = (signal.frequency_hz / 1e6).toFixed(3);
+            const power = signal.power_dbm ? signal.power_dbm.toFixed(1) : '--';
+            const bw = signal.bandwidth_hz ? (signal.bandwidth_hz / 1e3).toFixed(1) : '--';
+            
+            signalItem.innerHTML = `
+                <div class="signal-freq">${freqMHz} MHz</div>
+                <div class="signal-details">
+                    Power: ${power} dBm | BW: ${bw} kHz
+                </div>
+            `;
+            
+            signalList.insertBefore(signalItem, signalList.firstChild);
+            
+            // Keep only last 10
+            while (signalList.children.length > 10) {
+                signalList.removeChild(signalList.lastChild);
+            }
+        }
+        
+        function updateBearing(bearing) {
+            const bearingValue = document.getElementById('bearing-value');
+            const bearingMarker = document.getElementById('bearing-marker');
+            
+            bearingValue.textContent = bearing.bearing_degrees.toFixed(0) + '°';
+            bearingMarker.style.display = 'block';
+            bearingMarker.style.transform = `translate(-50%, -100%) rotate(${bearing.bearing_degrees}deg)`;
+        }
+        
+        function updateGPS(gps) {
+            document.getElementById('gps-lat').textContent = gps.latitude.toFixed(6);
+            document.getElementById('gps-lon').textContent = gps.longitude.toFixed(6);
+            document.getElementById('gps-alt').textContent = gps.altitude_m.toFixed(1) + ' m';
+            document.getElementById('gps-sats').textContent = gps.satellites;
+        }
+        
+        function requestUpdate() {
+            socket.emit('request_update');
+        }
+        
+        function clearSignals() {
+            document.getElementById('signal-list').innerHTML = '<p style="opacity: 0.5;">Waiting for signals...</p>';
+        }
+    </script>
+</body>
+</html>
+
