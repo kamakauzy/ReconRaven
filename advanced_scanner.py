@@ -200,6 +200,8 @@ class AdvancedScanner:
             
             with open(log_file, 'a') as f:
                 f.write(f"{timestamp},{freq},{band},{signal_type},iq_complete,{size:.1f}MB\n")
+            
+            return os.path.basename(iq_file)  # Return filename
                 
         except Exception as e:
             print(f"RECORDING ERROR: {e}")
@@ -207,6 +209,7 @@ class AdvancedScanner:
             traceback.print_exc()
             with open(log_file, 'a') as f:
                 f.write(f"{timestamp},{freq},{band},{signal_type},error,{str(e)}\n")
+            return None  # Return None on error
     
     def monitor_with_recording(self):
         """Monitor for anomalies and record strong signals"""
@@ -253,16 +256,20 @@ class AdvancedScanner:
                     for sig in strong_signals:
                         print(f"  [{sig['band']}] {sig['freq']/1e6:.3f} MHz: {sig['power']:.1f} dBm (+{sig['delta']:.1f} dB)")
                         
-                        # Add to database as anomaly
+                        # Record this signal FIRST
+                        recording_file = self.record_signal(sig['freq'], duration=10)
+                        
+                        # Add to database as anomaly AFTER recording
                         signal_id = self.db.add_signal(
                             freq=sig['freq'],
                             band=sig['band'],
                             power=sig['power'],
                             baseline_power=sig['baseline'],
-                            is_anomaly=True
+                            is_anomaly=True,
+                            recording_file=recording_file
                         )
                         
-                        # Notify dashboard of new signal
+                        # Notify dashboard of new signal with filename
                         if self.dashboard:
                             self.dashboard.add_signal({
                                 'frequency_hz': sig['freq'],
@@ -270,11 +277,9 @@ class AdvancedScanner:
                                 'power_dbm': sig['power'],
                                 'baseline_power_dbm': sig['baseline'],
                                 'delta_db': sig['delta'],
-                                'detected_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                'detected_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                'filename': recording_file
                             })
-                        
-                        # Record this signal
-                        self.record_signal(sig['freq'], duration=10)
                     
                     # Update dashboard stats
                     if self.dashboard:
