@@ -398,8 +398,15 @@ def main():
     
     # Start dashboard in background
     print("\nStarting dashboard...")
-    from kill_dashboard import kill_dashboard_processes
-    kill_dashboard_processes()
+    # Kill any existing dashboard processes
+    import psutil
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+        try:
+            cmdline = proc.info.get('cmdline', [])
+            if cmdline and any('server.py' in str(c) or 'dashboard' in str(c).lower() for c in cmdline):
+                proc.kill()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
     time.sleep(1)
     
     dashboard = SDRDashboardServer({'host': '0.0.0.0', 'port': 5000})
