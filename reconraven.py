@@ -14,7 +14,16 @@ from database import get_db
 def cmd_scan(args):
     """Run scanner with optional dashboard"""
     from advanced_scanner import AdvancedScanner
-    from kill_dashboard import kill_dashboard_processes
+    
+    # Kill any existing dashboard processes
+    import psutil
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+        try:
+            cmdline = proc.info.get('cmdline', [])
+            if cmdline and any('server.py' in str(c) or 'dashboard' in str(c).lower() for c in cmdline):
+                proc.kill()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
     
     scanner = AdvancedScanner()
     
@@ -44,7 +53,7 @@ def cmd_scan(args):
     if args.dashboard:
         from web.server import SDRDashboardServer
         print("Starting dashboard...")
-        kill_dashboard_processes()
+        # Dashboard cleanup already done above
         time.sleep(1)
         dashboard = SDRDashboardServer({'host': '0.0.0.0', 'port': 5000})
         dashboard.run_threaded()
@@ -112,10 +121,18 @@ def cmd_analyze(args):
 def cmd_dashboard(args):
     """Start web dashboard"""
     from web.server import SDRDashboardServer
-    from kill_dashboard import kill_dashboard_processes
+    
+    # Kill any existing dashboard processes
+    import psutil
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+        try:
+            cmdline = proc.info.get('cmdline', [])
+            if cmdline and any('server.py' in str(c) or 'dashboard' in str(c).lower() for c in cmdline):
+                proc.kill()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
     
     print("Starting ReconRaven Dashboard...")
-    kill_dashboard_processes()
     time.sleep(1)
     
     # Load database data
@@ -194,10 +211,8 @@ def cmd_db(args):
         print(f"Done! {len(devices)} devices promoted to baseline.")
     
     elif args.action == 'import':
-        print("Importing recordings from recordings/audio/...")
-        from import_data import import_recordings
-        count = import_recordings()
-        print(f"Imported {count} recordings")
+        print("ERROR: Import functionality removed. Recordings auto-import on scan.")
+        return 1
     
     elif args.action == 'export':
         import json
@@ -210,30 +225,16 @@ def cmd_db(args):
 
 def cmd_setup(args):
     """Setup location-specific frequencies"""
-    from setup_location import setup_location
-    
-    if args.auto:
-        print("Auto-detecting location...")
-        setup_location(auto=True)
-    elif args.state:
-        setup_location(state=args.state, city=args.city, 
-                      lat=args.lat, lon=args.lon)
-    else:
-        print("ERROR: Specify --auto or --state <STATE>")
-        return 1
-    
-    return 0
+    print("ERROR: Setup functionality being redesigned.")
+    print("For now, baseline frequencies are auto-built during first scan.")
+    return 1
 
 def cmd_play(args):
     """Play/convert IQ recording"""
-    from play_iq import play_iq
-    
-    if not os.path.exists(args.file):
-        print(f"ERROR: File not found: {args.file}")
-        return 1
-    
-    play_iq(args.file, mode=args.mode, plot=not args.no_plot)
-    return 0
+    print("ERROR: Play functionality removed.")
+    print("Use external tools like inspectrum or URH to view .npy IQ files.")
+    print("Voice recordings are auto-converted to .wav files.")
+    return 1
 
 def cmd_cleanup(args):
     """Cleanup recordings to save disk space"""
