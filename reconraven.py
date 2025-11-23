@@ -235,6 +235,102 @@ def cmd_play(args):
     play_iq(args.file, mode=args.mode, plot=not args.no_plot)
     return 0
 
+def cmd_cleanup(args):
+    """Cleanup recordings to save disk space"""
+    db = get_db()
+    
+    # Show current status
+    recordings = db.get_recordings()
+    audio_dir = "recordings/audio"
+    total_mb = 0
+    file_count = 0
+    
+    if os.path.exists(audio_dir):
+        for filename in os.listdir(audio_dir):
+            filepath = os.path.join(audio_dir, filename)
+            if os.path.isfile(filepath):
+                total_mb += os.path.getsize(filepath) / (1024 * 1024)
+                file_count += 1
+    
+    print("\nReconRaven Disk Usage")
+    print("="*50)
+    print(f"Total Files:     {file_count}")
+    print(f"Disk Usage:      {total_mb:.1f} MB ({total_mb/1024:.2f} GB)")
+    print(f"Recordings (DB): {len(recordings)}")
+    print(f"Analyzed:        {sum(1 for r in recordings if r['analyzed'])}")
+    
+    if args.type == 'ism':
+        print("\nDeleting ISM band recordings (433/915 MHz)...")
+        deleted = 0
+        saved_mb = 0
+        
+        for rec in recordings:
+            band = rec.get('band', '')
+            if 'ISM' in band:
+                filename = rec['filename']
+                filepath = os.path.join(audio_dir, filename)
+                if os.path.exists(filepath) and filename.endswith('.npy'):
+                    size_mb = os.path.getsize(filepath) / (1024 * 1024)
+                    os.remove(filepath)
+                    saved_mb += size_mb
+                    deleted += 1
+                    if deleted % 10 == 0:
+                        print(f"  Deleted {deleted} files, freed {saved_mb:.1f} MB...")
+        
+        print(f"\n[SUCCESS] Deleted {deleted} ISM recordings, freed {saved_mb:.1f} MB ({saved_mb/1024:.2f} GB)")
+    
+    elif args.type == 'old':
+        from datetime import datetime, timedelta
+        cutoff = datetime.now() - timedelta(days=args.days or 7)
+        
+        deleted = 0
+        saved_mb = 0
+        
+        for rec in recordings:
+            if not rec['analyzed']:
+                captured = datetime.fromisoformat(rec['captured_at'])
+                if captured < cutoff:
+                    filename = rec['filename']
+                    filepath = os.path.join(audio_dir, filename)
+                    if os.path.exists(filepath):
+                        size_mb = os.path.getsize(filepath) / (1024 * 1024)
+                        os.remove(filepath)
+                        saved_mb += size_mb
+                        deleted += 1
+        
+        print(f"\n[SUCCESS] Deleted {deleted} old recordings, freed {saved_mb:.1f} MB")
+    
+    elif args.type == 'voice':
+        from recording_manager import RecordingManager
+        manager = RecordingManager(db)
+        
+        print("\nConverting voice recordings to WAV...")
+        converted = 0
+        saved_mb = 0
+        
+        for rec in recordings:
+            band = rec.get('band', '')
+            if band in ['2m', '70cm']:
+                filename = rec['filename']
+                if filename.endswith('.npy'):
+                    filepath = os.path.join(audio_dir, filename)
+                    if os.path.exists(filepath):
+                        print(f"  Converting: {filename}")
+                        wav_file = manager.demodulate_to_wav(filepath)
+                        if wav_file:
+                            npy_size = os.path.getsize(filepath) / (1024 * 1024)
+                            os.remove(filepath)
+                            saved_mb += npy_size
+                            converted += 1
+                            db.update_recording_audio(rec['id'], os.path.basename(wav_file))
+        
+        print(f"\n[SUCCESS] Converted {converted} voice recordings, freed {saved_mb:.1f} MB")
+    
+    else:
+        print("\nNo cleanup type specified. Use --type ism|old|voice")
+    
+    return 0
+
 def main():
     """Main CLI entry point"""
     parser = argparse.ArgumentParser(
@@ -306,6 +402,12 @@ Examples:
     play_parser.add_argument('--mode', default='fm', choices=['fm', 'am'], help='Demodulation mode')
     play_parser.add_argument('--no-plot', action='store_true', help='Skip plotting')
     
+    # Cleanup command
+    cleanup_parser = subparsers.add_parser('cleanup', help='Cleanup recordings to save disk space')
+    cleanup_parser.add_argument('--type', choices=['ism', 'old', 'voice'], 
+                                help='Cleanup type: ism=delete ISM recordings, old=delete old unanalyzed, voice=convert to WAV')
+    cleanup_parser.add_argument('--days', type=int, default=7, help='Days for old cleanup (default: 7)')
+    
     args = parser.parse_args()
     
     if not args.command:
@@ -319,7 +421,8 @@ Examples:
         'dashboard': cmd_dashboard,
         'db': cmd_db,
         'setup': cmd_setup,
-        'play': cmd_play
+        'play': cmd_play,
+        'cleanup': cmd_cleanup
     }
     
     return commands[args.command](args)
