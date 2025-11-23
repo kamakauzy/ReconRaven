@@ -404,6 +404,9 @@
             <div id="anomaly-list" class="signal-list">
                 <p style="opacity: 0.5;">No anomalies detected...</p>
             </div>
+            <div style="margin-top: 10px;">
+                <button class="button" style="background: #4CAF50;" onclick="moveAllToBaseline()">Move All to Baseline</button>
+            </div>
             <div class="info-message">
                 Signals significantly above baseline. Click to select for DF.
             </div>
@@ -524,24 +527,15 @@
             sdrCount = data.sdr_count || 1;
             updateDFWarning();
             
-            // Update active transmissions (identified devices that have actually transmitted)
-            const activeList = document.getElementById('active-list');
-            if (data.identified_devices && data.identified_devices.length > 0) {
-                // Only show devices that are actually identified (not "Unknown Device")
-                const knownDevices = data.identified_devices.filter(d => d.name && d.name !== 'Unknown Device');
-                if (knownDevices.length > 0) {
-                    activeList.innerHTML = '';
-                    knownDevices.forEach(device => addSignalToActiveList(device));
-                } else {
-                    activeList.innerHTML = '<p style="opacity: 0.5;">No active transmissions...</p>';
-                }
-            }
+            // DO NOT auto-populate active transmissions from refresh
+            // Active transmissions should only be added manually or when properly identified
+            // This prevents anomalies from jumping to the left side
             
             // Update anomalies
             const anomalyList = document.getElementById('anomaly-list');
             if (data.signals && data.signals.length > 0) {
-                anomalyList.innerHTML = '';
-                data.signals.slice(-20).reverse().forEach(signal => addAnomalyToList(signal));
+                // Don't clear existing - just update counts
+                // New signals come via 'new_signal' event
             }
             
             // Update active count
@@ -583,6 +577,38 @@
         
         function addAnomalyToList(signal) {
             const anomalyList = document.getElementById('anomaly-list');
+            
+            // Check if this frequency already exists
+            const existingItems = anomalyList.querySelectorAll('.signal-item');
+            for (let item of existingItems) {
+                const existingData = JSON.parse(item.dataset.signal);
+                if (Math.abs(existingData.frequency_hz - signal.frequency_hz) < 1000) {
+                    // Same frequency - update existing entry instead of adding new one
+                    const freqMHz = (signal.frequency_hz / 1e6).toFixed(3);
+                    const power = signal.power_dbm ? signal.power_dbm.toFixed(1) : '--';
+                    const delta = signal.delta_db ? '+' + signal.delta_db.toFixed(1) : '';
+                    const band = signal.band || 'Unknown';
+                    const time = signal.detected_at || 'Now';
+                    
+                    // Update the content
+                    const freqDiv = item.querySelector('.signal-freq');
+                    const detailsDiv = item.querySelector('.signal-details');
+                    const timeDiv = item.querySelector('.signal-time');
+                    
+                    if (freqDiv) freqDiv.textContent = `${freqMHz} MHz (${band})`;
+                    if (detailsDiv) detailsDiv.innerHTML = `Power: ${power} dBm ${delta} dB | ${signal.filename ? 'Recorded' : 'Not recorded'}`;
+                    if (timeDiv) timeDiv.textContent = time;
+                    
+                    // Update dataset
+                    item.dataset.signal = JSON.stringify(signal);
+                    
+                    // Move to top
+                    anomalyList.insertBefore(item, anomalyList.firstChild);
+                    return;
+                }
+            }
+            
+            // New frequency - add it
             const signalItem = document.createElement('div');
             signalItem.className = 'signal-item anomaly';
             signalItem.onclick = () => selectSignal(signal, signalItem);
@@ -607,7 +633,12 @@
             `;
             
             signalItem.dataset.signal = JSON.stringify(signal);
-            anomalyList.appendChild(signalItem);
+            anomalyList.insertBefore(signalItem, anomalyList.firstChild);
+            
+            // Keep only last 20
+            while (anomalyList.children.length > 20) {
+                anomalyList.removeChild(anomalyList.lastChild);
+            }
         }
         
         function selectSignal(signal, element) {
@@ -741,6 +772,45 @@
                     setTimeout(() => item.remove(), 300);
                 }
             }
+        }
+        
+        function moveAllToBaseline() {
+            const anomalyList = document.getElementById('anomaly-list');
+            const signals = anomalyList.querySelectorAll('.signal-item');
+            
+            if (signals.length === 0) {
+                alert('No anomalies to move');
+                return;
+            }
+            
+            if (!confirm(`Move all ${signals.length} anomalies to baseline?\n\nThis will mark them as known/expected frequencies.`)) {
+                return;
+            }
+            
+            // Extract all frequencies
+            const frequencies = [];
+            signals.forEach(item => {
+                const signalData = JSON.parse(item.dataset.signal);
+                frequencies.push({
+                    frequency: signalData.frequency_hz,
+                    band: signalData.band || 'Unknown'
+                });
+            });
+            
+            // Send to server
+            frequencies.forEach(freq => {
+                socket.emit('promote_frequency', freq);
+            });
+            
+            // Clear the list visually
+            signals.forEach(item => {
+                item.style.opacity = '0.5';
+                item.style.pointerEvents = 'none';
+            });
+            
+            setTimeout(() => {
+                anomalyList.innerHTML = '<p style="opacity: 0.5;">No anomalies detected...</p>';
+            }, 500);
         }
         
         function viewBaseline() {
