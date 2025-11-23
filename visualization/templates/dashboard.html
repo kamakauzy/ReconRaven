@@ -701,7 +701,7 @@
             
             // Smart device type guess based on frequency (same as anomalies)
             let deviceType = device.device_type || 'Unknown Type';
-            if (!device.device_type || device.device_type === 'Unknown Type') {
+            if (!device.device_type || device.device_type === 'Unknown Type' || device.device_type === null) {
                 if (device.frequency_hz >= 433e6 && device.frequency_hz <= 435e6) {
                     deviceType = 'Remote/Sensor';
                 } else if (device.frequency_hz >= 902e6 && device.frequency_hz <= 928e6) {
