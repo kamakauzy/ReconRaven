@@ -99,6 +99,17 @@ class SDRDashboardServer:
         @self.socketio.on('request_update')
         def handle_update_request():
             """Handle update request from client."""
+            from database import get_db
+            db = get_db()
+            
+            # Refresh data from database
+            stats = db.get_statistics()
+            self.platform_state['baseline_count'] = stats['baseline_frequencies']
+            self.platform_state['anomaly_count'] = stats['anomalies']
+            self.platform_state['device_count'] = stats['identified_devices']
+            self.platform_state['recording_count'] = stats['total_recordings']
+            self.platform_state['identified_devices'] = db.get_devices()
+            
             emit('status_update', self.platform_state)
         
         @self.socketio.on('promote_to_baseline')

@@ -83,8 +83,9 @@ sudo apt install rtl-sdr librtlsdr-dev python3-pip
 # Install Python dependencies
 pip install -r requirements.txt
 
-# On Windows, you'll also need Zadig for driver installation
-# See WINDOWS_SETUP.md for details
+# On Windows, you'll also need Zadig to install WinUSB drivers for RTL-SDR
+# Download from: https://zadig.akeo.ie/
+# Plug in SDR, run Zadig, select "Bulk-In Interface", install WinUSB driver
 ```
 
 ### First Run Setup
@@ -104,12 +105,9 @@ This pulls ham repeaters, public safety frequencies, and NOAA weather stations f
 ### Basic Usage
 
 ```bash
-# Start scanning with web dashboard
-python reconraven.py scan --dashboard
+# Start scanning with web dashboard (auto-starts dashboard)
+python advanced_scanner.py
 # Dashboard: http://localhost:5000
-
-# Quick baseline scan (no monitoring)
-python reconraven.py scan --quick
 
 # Analyze captured signals
 python reconraven.py analyze --all
@@ -120,6 +118,8 @@ python reconraven.py db stats
 # List identified devices
 python reconraven.py db devices
 ```
+
+**Note:** The main scanner (`advanced_scanner.py`) automatically starts the web dashboard. The unified CLI (`reconraven.py`) is available for database management and analysis tasks.
 
 ### The Dashboard
 
@@ -452,9 +452,10 @@ Run setup once, works forever offline. Re-run if you move or want to update the 
 
 **1. Initial Recon**
 ```bash
-python reconraven.py scan --dashboard
+python advanced_scanner.py
 ```
 - Let it build baseline (first run, ~10 minutes)
+- Dashboard auto-starts at http://localhost:5000
 - Check dashboard for identified devices
 - Note any unexpected signals
 

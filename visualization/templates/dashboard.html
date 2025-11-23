@@ -294,6 +294,12 @@
             socket.emit('request_update');
         });
         
+        // Auto-refresh every 10 seconds
+        setInterval(() => {
+            socket.emit('request_update');
+            console.log('Auto-refresh: requesting update');
+        }, 10000);
+        
         socket.on('status_update', (data) => {
             updateDashboard(data);
         });
