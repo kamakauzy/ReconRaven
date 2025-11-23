@@ -118,6 +118,8 @@ recordings/
 *.iq
 logs/
 *.log
+*.db
+*.db-journal
 
 # Temporary files
 *.tmp

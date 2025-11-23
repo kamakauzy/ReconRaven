@@ -21,6 +21,76 @@
 
 ---
 
+## Data Management
+
+### SQLite Database (`reconraven.db`)
+
+**All data is stored in a single SQLite database:**
+
+**What's Stored:**
+- Baseline frequencies (what's "normal")
+- Detected signals and anomalies
+- Identified devices
+- Recording metadata
+- Analysis results
+- Scan sessions
+
+**Tables:**
+- `baseline` - Normal frequencies in your environment
+- `signals` - All detected signals with anomaly flags
+- `devices` - Identified devices with confidence scores
+- `recordings` - Recording files with metadata
+- `analysis_results` - Complete analysis data
+- `scan_sessions` - Scanning history
+
+**Import Existing Data:**
+```bash
+python import_data.py
+```
+
+**Query Database:**
+```bash
+# View all identified devices
+sqlite3 reconraven.db "SELECT * FROM devices"
+
+# View recent anomalies
+sqlite3 reconraven.db "SELECT * FROM signals WHERE is_anomaly=1 ORDER BY detected_at DESC LIMIT 10"
+
+# Get statistics
+sqlite3 reconraven.db "SELECT COUNT(*) as recordings FROM recordings"
+```
+
+**Backup:**
+```bash
+# Backup database
+copy reconraven.db reconraven_backup.db
+
+# Export to JSON
+python -c "from database import ReconRavenDB; import json; db=ReconRavenDB(); print(json.dumps(db.get_dashboard_data(), indent=2))"
+```
+
+### File Organization
+
+```
+reconraven.db          # Main database (all metadata)
+recordings/
+  audio/
+    *.npy              # IQ recordings (raw data)
+    *.wav              # Demodulated audio
+    *.png              # Analysis plots
+config/
+  bands.yaml           # Frequency definitions
+  hardware.yaml        # Hardware settings
+device_signatures.json # Device database (offline)
+```
+
+**Storage:**
+- Database: ~1-10 MB (metadata only)
+- IQ files: ~366 MB per 10-second recording
+- Analysis files: ~1-5 MB per recording
+
+---
+
 ## Quick Start
 
 ### 1. Basic Scanning

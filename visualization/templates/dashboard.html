@@ -204,21 +204,36 @@
                 <div class="status-value" id="status">Idle</div>
             </div>
             <div class="status-item">
-                <div class="status-label">Signals Detected</div>
-                <div class="status-value" id="signal-count">0</div>
+                <div class="status-label">Baseline Freqs</div>
+                <div class="status-value" id="baseline-count">0</div>
             </div>
             <div class="status-item">
-                <div class="status-label">GPS Fix</div>
-                <div class="status-value" id="gps-status">No Fix</div>
+                <div class="status-label">Anomalies</div>
+                <div class="status-value" id="anomaly-count">0</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">Identified Devices</div>
+                <div class="status-value" id="device-count">0</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">Recordings</div>
+                <div class="status-value" id="recording-count">0</div>
             </div>
         </div>
     </div>
     
     <div class="dashboard-grid">
         <div class="panel">
-            <h2>Detected Signals</h2>
-            <div id="signal-list" class="signal-list">
-                <p style="opacity: 0.5;">Waiting for signals...</p>
+            <h2>Identified Devices</h2>
+            <div id="device-list" class="signal-list">
+                <p style="opacity: 0.5;">No devices identified yet...</p>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h2>Anomalies Detected</h2>
+            <div id="anomaly-list" class="signal-list">
+                <p style="opacity: 0.5;">Waiting for anomalies...</p>
             </div>
         </div>
         
