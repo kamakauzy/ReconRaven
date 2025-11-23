@@ -300,15 +300,36 @@ class ReconRavenDB:
     def get_frequency_range_info(self, freq: float) -> Optional[Dict]:
         """Get frequency range information for a given frequency"""
         cursor = self.conn.cursor()
+        
+        # First check if frequency_ranges table exists and has data
         cursor.execute('''
-            SELECT name, type, band, mode, description 
-            FROM frequency_ranges 
-            WHERE start_hz <= ? AND end_hz >= ?
-            ORDER BY (end_hz - start_hz) ASC
-            LIMIT 1
-        ''', (freq, freq))
-        row = cursor.fetchone()
-        return dict(row) if row else None
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name='frequency_ranges'
+        ''')
+        
+        if cursor.fetchone():
+            cursor.execute('''
+                SELECT name, type, band, mode, description 
+                FROM frequency_ranges 
+                WHERE start_hz <= ? AND end_hz >= ?
+                ORDER BY (end_hz - start_hz) ASC
+                LIMIT 1
+            ''', (freq, freq))
+            row = cursor.fetchone()
+            if row:
+                return dict(row)
+        
+        # Fallback to basic band detection
+        if 144e6 <= freq <= 148e6:
+            return {'name': '2m', 'type': 'Ham', 'band': '2m', 'mode': 'FM', 'description': '2m Amateur Band'}
+        elif 420e6 <= freq <= 450e6:
+            return {'name': '70cm', 'type': 'Ham', 'band': '70cm', 'mode': 'FM', 'description': '70cm Amateur Band'}
+        elif 433e6 <= freq <= 435e6:
+            return {'name': 'ISM433', 'type': 'ISM', 'band': '433MHz', 'mode': 'ASK/OOK', 'description': '433MHz ISM Band'}
+        elif 902e6 <= freq <= 928e6:
+            return {'name': 'ISM915', 'type': 'ISM', 'band': '915MHz', 'mode': 'FSK', 'description': '915MHz ISM Band'}
+        
+        return None
     
     def get_statistics(self) -> Dict:
         """Get overall statistics"""

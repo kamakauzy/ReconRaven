@@ -217,6 +217,11 @@ class AdvancedScanner:
         print("  - Press Ctrl+C to stop")
         print("="*70)
         
+        # Ensure baseline exists
+        if not self.baseline:
+            print("\nERROR: No baseline available. Run build_baseline() first.")
+            return
+        
         scan_num = 0
         
         try:
@@ -228,7 +233,7 @@ class AdvancedScanner:
                 
                 for freq in self.scan_freqs:
                     power = self.scan_frequency(freq)
-                    if power:
+                    if power and freq in self.baseline:
                         baseline = self.baseline[freq]
                         delta = power - baseline['mean']
                         

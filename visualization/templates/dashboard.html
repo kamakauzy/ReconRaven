@@ -191,7 +191,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>🛰️ SDR SIGINT Platform Dashboard</h1>
+        <h1><img src="https://raw.githubusercontent.com/kamakauzy/ReconRaven/main/rr.png" alt="ReconRaven" style="height: 40px; vertical-align: middle; margin-right: 10px;">ReconRaven SIGINT Platform</h1>
         <div class="status-bar">
             <div class="status-item">
                 <div class="status-label">Mode</div>
@@ -228,12 +228,21 @@
             <div id="device-list" class="signal-list">
                 <p style="opacity: 0.5;">No devices identified yet...</p>
             </div>
+            <div style="margin-top: 10px;">
+                <button class="button" onclick="promoteAnomalies()">Promote All to Baseline</button>
+            </div>
+            <div style="margin-top: 5px; opacity: 0.7; font-size: 12px;">
+                Promotes identified devices to baseline (expected frequencies).
+            </div>
         </div>
         
         <div class="panel">
-            <h2>Anomalies Detected</h2>
+            <h2>Active Signals / Anomalies</h2>
             <div id="anomaly-list" class="signal-list">
-                <p style="opacity: 0.5;">Waiting for anomalies...</p>
+                <p style="opacity: 0.5;">Waiting for signals...</p>
+            </div>
+            <div style="margin-top: 10px; opacity: 0.7; font-size: 12px;">
+                Showing unidentified or unusual signals. Once identified, devices appear in "Identified Devices" panel.
             </div>
         </div>
         
@@ -404,7 +413,13 @@
         }
         
         function clearSignals() {
-            document.getElementById('anomaly-list').innerHTML = '<p style="opacity: 0.5;">Waiting for anomalies...</p>';
+            document.getElementById('anomaly-list').innerHTML = '<p style="opacity: 0.5;">Waiting for signals...</p>';
+        }
+        
+        function promoteAnomalies() {
+            if (confirm('Promote all identified devices to baseline? This marks them as expected/normal frequencies.')) {
+                socket.emit('promote_to_baseline');
+            }
         }
     </script>
 </body>

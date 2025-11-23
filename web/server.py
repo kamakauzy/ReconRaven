@@ -100,6 +100,39 @@ class SDRDashboardServer:
         def handle_update_request():
             """Handle update request from client."""
             emit('status_update', self.platform_state)
+        
+        @self.socketio.on('promote_to_baseline')
+        def handle_promote_to_baseline():
+            """Promote identified devices to baseline."""
+            from database import get_db
+            db = get_db()
+            
+            # Get all identified devices
+            devices = db.get_devices()
+            promoted_count = 0
+            
+            for device in devices:
+                # Get band info for this frequency
+                freq_info = db.get_frequency_range_info(device['frequency_hz'])
+                band_name = freq_info['name'] if freq_info else 'Unknown'
+                
+                # Add device frequency to baseline
+                db.add_baseline_frequency(
+                    freq=device['frequency_hz'],
+                    band=band_name,
+                    power=-60.0,  # Default expected power
+                    std=5.0       # Default standard deviation
+                )
+                promoted_count += 1
+            
+            logger.info(f"Promoted {promoted_count} devices to baseline")
+            emit('status_update', {
+                'message': f'Promoted {promoted_count} devices to baseline',
+                'success': True
+            })
+            
+            # Send updated state
+            emit('status_update', self.platform_state)
     
     def update_state(self, state_update: Dict[str, Any]):
         """Update platform state and broadcast to clients.

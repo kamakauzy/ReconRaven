@@ -23,6 +23,37 @@
 
 ## Data Management
 
+### Understanding the Data Model
+
+**Three Types of Data:**
+
+1. **Baseline Frequencies** - "What's Normal"
+   - Frequencies that are expected in your environment
+   - Built during initial scan (or loaded from database)
+   - Used as reference to detect anomalies
+   - Example: Local ham repeaters, NOAA weather, ISM devices you own
+
+2. **Signals/Anomalies** - "What's Unusual"  
+   - Active signals detected above baseline threshold
+   - Marked as "anomaly" if significantly stronger than baseline
+   - Temporary - shows current activity
+   - These are shown in the "Active Signals / Anomalies" panel
+
+3. **Identified Devices** - "What We Know"
+   - Signals that have been analyzed and matched to specific devices
+   - Includes: name, manufacturer, device type, confidence score
+   - Persistent - remembered across sessions
+   - These are shown in the "Identified Devices" panel
+
+**Workflow:**
+```
+Scan → Detect Anomaly → Record → Analyze → Identify Device → (Optional) Promote to Baseline
+```
+
+**Dashboard Actions:**
+- **"Promote All to Baseline"** - Moves identified devices to baseline (marks them as expected/normal)
+- Use this after you've identified all devices in your area and want to focus on new/unknown signals
+
 ### SQLite Database (`reconraven.db`)
 
 **All data is stored in a single SQLite database:**
@@ -93,19 +124,27 @@ device_signatures.json # Device database (offline)
 
 ## Quick Start
 
+### Main Command-Line Tool
+
+**All operations use the unified `reconraven.py` CLI:**
+
+```bash
+python reconraven.py --help
+```
+
 ### 1. Initial Setup (One-Time)
 
 **Download frequencies for your location:**
 
 ```bash
 # Automatic (detects from IP):
-python setup_location.py --auto
+python reconraven.py setup --auto
 
 # Manual (recommended):
-python setup_location.py --state AL --city Huntsville --lat 34.7304 --lon -86.5859
+python reconraven.py setup --state AL --city Huntsville --lat 34.7304 --lon -86.5859
 
 # Just state:
-python setup_location.py --state CA
+python reconraven.py setup --state CA
 ```
 
 **What it downloads:**
@@ -116,38 +155,81 @@ python setup_location.py --state CA
 
 **One command, works offline forever!**
 
-### 2. Basic Scanning
-```bash
-# Quick scanner (fast baseline + anomaly detection)
-python quick_scanner.py
+### 2. Scanning
 
-# Advanced scanner (with auto-recording)
-python advanced_scanner.py
+```bash
+# Start scanning with web dashboard
+python reconraven.py scan --dashboard
+
+# Quick scan (baseline only, no recording)
+python reconraven.py scan --quick
+
+# Rebuild baseline from scratch
+python reconraven.py scan --rebuild-baseline
 ```
 
-### 2. Analyze Captured Signals
-```bash
-# Run all analysis tools
-python analyze_all.py recordings/audio/yourfile.npy
+### 3. Analyze Captured Signals
 
-# Or individual tools:
+```bash
+# Analyze all recordings
+python reconraven.py analyze --all
+
+# Analyze specific file
+python reconraven.py analyze --file recordings/audio/capture.npy --type ism
+
+# Analysis types: all, ism, remote, protocol, fingerprint
+```
+
+**Individual analysis tools still available:**
+```bash
 python ism_analyzer.py yourfile.npy          # Device type identification
 python decode_remote.py yourfile.npy         # Binary code extraction
 python urh_analyze.py yourfile.npy           # Protocol analysis
 python fingerprint_signal.py yourfile.npy    # Brand/model ID
 ```
 
-### 3. View Recordings
+### 4. View Recordings
+
 ```bash
-# Analyze and convert to audio
+# Play and convert IQ recording
+python reconraven.py play recordings/audio/capture.npy --mode fm
+
+# Direct tool access
 python play_iq.py yourfile.npy --fm
-python play_iq.py yourfile.npy --am
 ```
 
-### 4. Web Dashboard
+### 5. Web Dashboard
+
 ```bash
-python run_dashboard.py
+# Start dashboard (loads all existing data)
+python reconraven.py dashboard
+
+# Custom port
+python reconraven.py dashboard --port 8080
+
 # Open browser to: http://localhost:5000
+```
+
+### 6. Database Management
+
+```bash
+# View statistics
+python reconraven.py db stats
+
+# List identified devices
+python reconraven.py db devices
+
+# Show recent anomalies
+python reconraven.py db anomalies --limit 50
+
+# Promote devices to baseline
+python reconraven.py db promote
+
+# Import recordings from disk
+python reconraven.py db import
+
+# Export database to JSON
+python reconraven.py db export --output backup.json
 ```
 
 ---

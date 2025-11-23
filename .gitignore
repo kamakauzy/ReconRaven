@@ -130,3 +130,6 @@ test_*.py
 simulation.py
 WINDOWS_TESTING.md
 
+
+# Archived/deprecated scripts
+_archived_scripts/
