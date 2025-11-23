@@ -19,6 +19,63 @@
             padding: 20px;
         }
         
+        /* Mobile styles */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 20px !important;
+            }
+            
+            .header h1 img {
+                height: 30px !important;
+            }
+            
+            .status-bar {
+                gap: 10px !important;
+            }
+            
+            .status-item {
+                padding: 8px 12px !important;
+            }
+            
+            .status-label {
+                font-size: 10px !important;
+            }
+            
+            .status-value {
+                font-size: 14px !important;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr !important;
+                gap: 15px !important;
+            }
+            
+            .panel {
+                padding: 15px !important;
+            }
+            
+            .panel h2 {
+                font-size: 16px !important;
+            }
+            
+            .compass {
+                width: 200px !important;
+                height: 200px !important;
+            }
+            
+            .df-panel {
+                flex-direction: column !important;
+            }
+            
+            .signal-list {
+                max-height: 300px !important;
+            }
+        }
+        
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             padding: 20px;
@@ -434,7 +491,8 @@
         });
         
         socket.on('new_signal', (signal) => {
-            addSignalToActiveList(signal);
+            // New signals from scanner are anomalies, not active transmissions
+            addAnomalyToList(signal);
         });
         
         socket.on('new_bearing', (bearing) => {
@@ -469,8 +527,14 @@
             // Update active transmissions (identified devices that have actually transmitted)
             const activeList = document.getElementById('active-list');
             if (data.identified_devices && data.identified_devices.length > 0) {
-                activeList.innerHTML = '';
-                data.identified_devices.forEach(device => addSignalToActiveList(device));
+                // Only show devices that are actually identified (not "Unknown Device")
+                const knownDevices = data.identified_devices.filter(d => d.name && d.name !== 'Unknown Device');
+                if (knownDevices.length > 0) {
+                    activeList.innerHTML = '';
+                    knownDevices.forEach(device => addSignalToActiveList(device));
+                } else {
+                    activeList.innerHTML = '<p style="opacity: 0.5;">No active transmissions...</p>';
+                }
             }
             
             // Update anomalies
