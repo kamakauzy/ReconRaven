@@ -211,6 +211,65 @@ class AdvancedScanner:
                 f.write(f"{timestamp},{freq},{band},{signal_type},error,{str(e)}\n")
             return None  # Return None on error
     
+    def analyze_recording(self, filepath):
+        """Quick auto-analysis of recording to identify device"""
+        try:
+            # Use field_analyzer for comprehensive analysis
+            import subprocess
+            result = subprocess.run(
+                [sys.executable, 'field_analyzer.py', filepath],
+                capture_output=True,
+                text=True,
+                timeout=30  # 30 second timeout
+            )
+            
+            if result.returncode == 0:
+                # Parse output for device identification
+                output = result.stdout
+                
+                # Look for identification patterns
+                device_name = "Unknown Device"
+                manufacturer = "Unknown"
+                device_type = "Unknown Type"
+                confidence = 0.5
+                
+                # Simple parsing - look for common patterns
+                if "Weather Station" in output:
+                    device_name = "Weather Station"
+                    device_type = "weather_sensor"
+                    confidence = 0.8
+                elif "Garage Door" in output or "Remote Control" in output:
+                    device_name = "Remote Control"
+                    device_type = "remote"
+                    confidence = 0.7
+                elif "TPMS" in output:
+                    device_name = "TPMS Sensor"
+                    device_type = "automotive"
+                    confidence = 0.75
+                elif "sensor" in output.lower():
+                    device_name = "Wireless Sensor"
+                    device_type = "sensor"
+                    confidence = 0.6
+                
+                print(f"[Analysis] Identified as: {device_name} (Confidence: {confidence*100:.0f}%)")
+                
+                return {
+                    'name': device_name,
+                    'manufacturer': manufacturer,
+                    'device_type': device_type,
+                    'confidence': confidence
+                }
+            else:
+                print(f"[Analysis] Failed: {result.stderr[:100]}")
+                return None
+                
+        except subprocess.TimeoutExpired:
+            print("[Analysis] Timeout - skipping")
+            return None
+        except Exception as e:
+            print(f"[Analysis] Error: {e}")
+            return None
+    
     def monitor_with_recording(self):
         """Monitor for anomalies and record strong signals"""
         print("\n" + "="*70)
@@ -259,6 +318,12 @@ class AdvancedScanner:
                         # Record this signal FIRST
                         recording_file = self.record_signal(sig['freq'], duration=10)
                         
+                        # Auto-analyze the recording
+                        device_info = None
+                        if recording_file:
+                            print(f"\n[Auto-Analysis] Analyzing {recording_file}...")
+                            device_info = self.analyze_recording(f"{self.output_dir}/audio/{recording_file}")
+                        
                         # Add to database as anomaly AFTER recording
                         signal_id = self.db.add_signal(
                             freq=sig['freq'],
@@ -271,7 +336,7 @@ class AdvancedScanner:
                         
                         # Notify dashboard of new signal with filename
                         if self.dashboard:
-                            self.dashboard.add_signal({
+                            signal_data = {
                                 'frequency_hz': sig['freq'],
                                 'band': sig['band'],
                                 'power_dbm': sig['power'],
@@ -279,14 +344,21 @@ class AdvancedScanner:
                                 'delta_db': sig['delta'],
                                 'detected_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                                 'filename': recording_file
-                            })
+                            }
+                            
+                            # If identified, add device info
+                            if device_info:
+                                signal_data.update(device_info)
+                            
+                            self.dashboard.add_signal(signal_data)
                     
                     # Update dashboard stats
                     if self.dashboard:
                         stats = self.db.get_statistics()
                         self.dashboard.update_state({
                             'anomaly_count': stats['anomalies'],
-                            'recording_count': stats['total_recordings']
+                            'recording_count': stats['total_recordings'],
+                            'device_count': stats['identified_devices']
                         })
                         
                 else:

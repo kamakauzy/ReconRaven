@@ -527,16 +527,12 @@
             sdrCount = data.sdr_count || 1;
             updateDFWarning();
             
-            // DO NOT auto-populate active transmissions from refresh
-            // Active transmissions should only be added manually or when properly identified
-            // This prevents anomalies from jumping to the left side
+            // COMPLETELY SKIP active transmissions update from auto-refresh
+            // Active Transmissions should ONLY be manually populated via specific events
+            // NOT from the periodic refresh which includes unidentified signals
             
-            // Update anomalies
-            const anomalyList = document.getElementById('anomaly-list');
-            if (data.signals && data.signals.length > 0) {
-                // Don't clear existing - just update counts
-                // New signals come via 'new_signal' event
-            }
+            // Update anomalies - also skip, they come via 'new_signal' event
+            // Only update counts, not the lists themselves
             
             // Update active count
             const activeCount = (data.identified_devices ? data.identified_devices.length : 0) + 
