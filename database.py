@@ -124,18 +124,19 @@ class ReconRavenDB:
     
     # ========== BASELINE MANAGEMENT ==========
     
-    def add_baseline_frequency(self, freq: float, band: str, power: float, std: float = None):
+    def add_baseline_frequency(self, freq: float, band: str, power: float, std: float = None, user_promoted: bool = False):
         """Add or update baseline frequency"""
         cursor = self.conn.cursor()
         cursor.execute('''
-            INSERT INTO baseline (frequency_hz, band, power_dbm, std_dbm)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO baseline (frequency_hz, band, power_dbm, std_dbm, user_promoted)
+            VALUES (?, ?, ?, ?, ?)
             ON CONFLICT(frequency_hz) DO UPDATE SET
                 power_dbm = ?,
                 std_dbm = ?,
+                user_promoted = ?,
                 sample_count = sample_count + 1,
                 last_updated = CURRENT_TIMESTAMP
-        ''', (freq, band, power, std, power, std))
+        ''', (freq, band, power, std, 1 if user_promoted else 0, power, std, 1 if user_promoted else 0))
         self.conn.commit()
     
     def get_baseline(self) -> List[Dict]:

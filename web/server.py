@@ -148,12 +148,13 @@ class SDRDashboardServer:
                 freq_info = db.get_frequency_range_info(device['frequency_hz'])
                 band_name = freq_info['name'] if freq_info else 'Unknown'
                 
-                # Add device frequency to baseline
+                # Add device frequency to baseline with user_promoted flag
                 db.add_baseline_frequency(
                     freq=device['frequency_hz'],
                     band=band_name,
                     power=-60.0,  # Default expected power
-                    std=5.0       # Default standard deviation
+                    std=5.0,      # Default standard deviation
+                    user_promoted=True  # User explicitly promoted this
                 )
                 promoted_count += 1
             
@@ -181,12 +182,13 @@ class SDRDashboardServer:
                 if freq_info:
                     band = freq_info['name']
                 
-                # Add to baseline
+                # Add to baseline with user_promoted flag
                 db.add_baseline_frequency(
                     freq=frequency,
                     band=band,
                     power=-60.0,
-                    std=5.0
+                    std=5.0,
+                    user_promoted=True  # User explicitly promoted this
                 )
                 
                 logger.info(f"Promoted {frequency/1e6:.3f} MHz to baseline")
