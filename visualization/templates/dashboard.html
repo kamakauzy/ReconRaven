@@ -727,6 +727,7 @@
                 </div>
                 <div class="signal-actions">
                     <button class="promote" onclick="promoteToBaseline(event, ${device.frequency_hz})">Move to Baseline</button>
+                    <button onclick="analyzeSignal(event, ${JSON.stringify(device).replace(/"/g, '&quot;')})">Analyze</button>
                     <button onclick="startDFOnSignal(event, ${device.frequency_hz})">DF This Signal</button>
                 </div>
             `;
