@@ -169,28 +169,35 @@ class ReconRavenDB:
         return cursor.lastrowid
     
     def get_anomalies(self, limit: int = 100) -> List[Dict]:
-        """Get recent anomalies with analysis data"""
+        """Get recent anomalies with analysis data (GROUPED by frequency, EXCLUDING baseline)"""
         cursor = self.conn.cursor()
         cursor.execute('''
             SELECT 
-                s.*,
-                r.filename as recording_filename,
-                r.analyzed as recording_analyzed,
-                a.modulation as analysis_modulation,
-                a.bit_rate as analysis_bit_rate,
-                a.preambles as analysis_preambles,
-                a.results_json as analysis_results,
-                a.confidence as analysis_confidence,
-                d.name as device_name,
-                d.manufacturer as device_manufacturer,
-                d.device_type as device_type
+                s.frequency_hz,
+                s.band,
+                MAX(s.power_dbm) as power_dbm,
+                MAX(s.delta_db) as delta_db,
+                MAX(s.detected_at) as detected_at,
+                COUNT(*) as detection_count,
+                MAX(s.recording_file) as recording_file,
+                MAX(r.filename) as recording_filename,
+                MAX(r.analyzed) as recording_analyzed,
+                MAX(a.modulation) as analysis_modulation,
+                MAX(a.bit_rate) as analysis_bit_rate,
+                MAX(a.preambles) as analysis_preambles,
+                MAX(a.results_json) as analysis_results,
+                MAX(a.confidence) as analysis_confidence,
+                MAX(d.name) as device_name,
+                MAX(d.manufacturer) as device_manufacturer,
+                MAX(d.device_type) as device_type
             FROM signals s
             LEFT JOIN recordings r ON s.recording_file = r.filename
             LEFT JOIN analysis_results a ON r.id = a.recording_id
             LEFT JOIN devices d ON s.frequency_hz = d.frequency_hz
             WHERE s.is_anomaly = 1 
-            GROUP BY s.id
-            ORDER BY s.detected_at DESC 
+                AND s.frequency_hz NOT IN (SELECT frequency_hz FROM baseline)
+            GROUP BY s.frequency_hz
+            ORDER BY MAX(s.detected_at) DESC 
             LIMIT ?
         ''', (limit,))
         return [dict(row) for row in cursor.fetchall()]

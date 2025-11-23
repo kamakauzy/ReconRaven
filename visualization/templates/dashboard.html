@@ -721,13 +721,14 @@
                     const delta = signal.delta_db ? '+' + signal.delta_db.toFixed(1) : '';
                     const band = signal.band || 'Unknown';
                     const time = signal.detected_at || 'Now';
+                    const count = signal.detection_count || 1;
                     
                     // Update the content
                     const freqDiv = item.querySelector('.signal-freq');
                     const detailsDiv = item.querySelector('.signal-details');
                     const timeDiv = item.querySelector('.signal-time');
                     
-                    if (freqDiv) freqDiv.textContent = `${freqMHz} MHz (${band})`;
+                    if (freqDiv) freqDiv.textContent = `${freqMHz} MHz (${band})${count > 1 ? ` × ${count}` : ''}`;
                     if (detailsDiv) detailsDiv.innerHTML = `Power: ${power} dBm ${delta} dB | ${signal.recording_file || signal.recording_filename || signal.filename ? 'Recorded' : 'Not recorded'}`;
                     if (timeDiv) timeDiv.textContent = time;
                     
@@ -750,12 +751,13 @@
             const delta = signal.delta_db ? '+' + signal.delta_db.toFixed(1) : '';
             const band = signal.band || 'Unknown';
             const time = signal.detected_at || 'Now';
+            const count = signal.detection_count || 1;
             
             // Check if recorded (any of these fields could have the filename)
             const isRecorded = signal.recording_file || signal.recording_filename || signal.filename;
             
             signalItem.innerHTML = `
-                <div class="signal-freq">${freqMHz} MHz (${band})</div>
+                <div class="signal-freq">${freqMHz} MHz (${band})${count > 1 ? ` × ${count}` : ''}</div>
                 <div class="signal-details">
                     Power: ${power} dBm ${delta} dB | ${isRecorded ? 'Recorded' : 'Not recorded'}
                 </div>
