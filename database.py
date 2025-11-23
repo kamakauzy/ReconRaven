@@ -32,6 +32,7 @@ class ReconRavenDB:
                 band TEXT NOT NULL,
                 power_dbm REAL NOT NULL,
                 std_dbm REAL,
+                user_promoted INTEGER DEFAULT 0,
                 sample_count INTEGER DEFAULT 1,
                 first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -169,7 +170,7 @@ class ReconRavenDB:
         return cursor.lastrowid
     
     def get_anomalies(self, limit: int = 100) -> List[Dict]:
-        """Get recent anomalies with analysis data (GROUPED by frequency, EXCLUDING baseline)"""
+        """Get recent anomalies with analysis data (GROUPED by frequency, EXCLUDING user-promoted baseline)"""
         cursor = self.conn.cursor()
         cursor.execute('''
             SELECT 
@@ -195,7 +196,7 @@ class ReconRavenDB:
             LEFT JOIN analysis_results a ON r.id = a.recording_id
             LEFT JOIN devices d ON s.frequency_hz = d.frequency_hz
             WHERE s.is_anomaly = 1 
-                AND s.frequency_hz NOT IN (SELECT frequency_hz FROM baseline)
+                AND s.frequency_hz NOT IN (SELECT frequency_hz FROM baseline WHERE user_promoted = 1)
             GROUP BY s.frequency_hz
             ORDER BY MAX(s.detected_at) DESC 
             LIMIT ?
