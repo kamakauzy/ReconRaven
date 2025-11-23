@@ -121,9 +121,15 @@ class SDRDashboardServer:
             anomalies = db.get_anomalies(limit=50)
             self.platform_state['anomalies'] = anomalies
             
-            # Load identified devices
+            # Load identified devices (NON-BASELINE only)
+            # These are devices we've identified that are NOT in baseline
             devices = db.get_devices()
-            self.platform_state['identified_devices'] = devices[:20]  # Top 20
+            baseline_freqs = db.get_baseline()
+            baseline_freq_set = {b['frequency_hz'] for b in baseline_freqs}
+            
+            # Filter out baseline frequencies
+            non_baseline_devices = [d for d in devices if d['frequency_hz'] not in baseline_freq_set]
+            self.platform_state['identified_devices'] = non_baseline_devices[:20]  # Top 20
             
             emit('status_update', self.platform_state)
         
