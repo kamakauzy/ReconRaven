@@ -696,13 +696,33 @@
             signalItem.onclick = () => selectSignal(device, signalItem);
             
             const freqMHz = (device.frequency_hz / 1e6).toFixed(3);
-            const confidence = device.confidence ? (device.confidence * 100).toFixed(0) : '100';
+            const confidence = device.confidence ? (device.confidence * 100).toFixed(0) : '0';
             const lastSeen = device.last_seen || 'Active';
             
+            // Smart device type guess based on frequency (same as anomalies)
+            let deviceType = device.device_type || 'Unknown Type';
+            if (!device.device_type || device.device_type === 'Unknown Type') {
+                if (device.frequency_hz >= 433e6 && device.frequency_hz <= 435e6) {
+                    deviceType = 'Remote/Sensor';
+                } else if (device.frequency_hz >= 902e6 && device.frequency_hz <= 928e6) {
+                    deviceType = 'ISM Device';
+                } else if (device.frequency_hz >= 144e6 && device.frequency_hz <= 148e6) {
+                    deviceType = '2m Ham Radio';
+                } else if (device.frequency_hz >= 420e6 && device.frequency_hz <= 450e6) {
+                    deviceType = '70cm Radio';
+                }
+            }
+            
+            // Use smart device name
+            let deviceName = device.name || `${freqMHz} MHz Signal`;
+            if (deviceName.includes('Signal') && deviceType !== 'Unknown Type') {
+                deviceName = `${freqMHz} MHz ${deviceType}`;
+            }
+            
             signalItem.innerHTML = `
-                <div class="signal-freq">${device.name || 'Unknown Device'}</div>
+                <div class="signal-freq">${deviceName}</div>
                 <div class="signal-details">
-                    ${freqMHz} MHz | ${device.manufacturer || 'Unknown'} | ${device.device_type || 'Unknown Type'}<br>
+                    ${freqMHz} MHz | ${device.manufacturer || 'Unknown'} | ${deviceType}<br>
                     Confidence: ${confidence}% | Last seen: ${lastSeen}
                 </div>
                 <div class="signal-actions">
