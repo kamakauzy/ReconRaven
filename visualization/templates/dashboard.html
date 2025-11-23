@@ -723,13 +723,25 @@
                     const time = signal.detected_at || 'Now';
                     const count = signal.detection_count || 1;
                     
+                    // Smart device type guess
+                    let deviceGuess = '';
+                    if (band === 'ISM433' || (signal.frequency_hz >= 433e6 && signal.frequency_hz <= 435e6)) {
+                        deviceGuess = '🚗 Remote/Sensor';
+                    } else if (band === 'ISM915' || (signal.frequency_hz >= 902e6 && signal.frequency_hz <= 928e6)) {
+                        deviceGuess = '📡 ISM Device';
+                    } else if (signal.frequency_hz >= 144e6 && signal.frequency_hz <= 148e6) {
+                        deviceGuess = '📻 2m Ham Radio';
+                    } else if (signal.frequency_hz >= 420e6 && signal.frequency_hz <= 450e6) {
+                        deviceGuess = '📻 70cm Radio';
+                    }
+                    
                     // Update the content
                     const freqDiv = item.querySelector('.signal-freq');
                     const detailsDiv = item.querySelector('.signal-details');
                     const timeDiv = item.querySelector('.signal-time');
                     
-                    if (freqDiv) freqDiv.textContent = `${freqMHz} MHz (${band})${count > 1 ? ` × ${count}` : ''}`;
-                    if (detailsDiv) detailsDiv.innerHTML = `Power: ${power} dBm ${delta} dB | ${signal.recording_file || signal.recording_filename || signal.filename ? 'Recorded' : 'Not recorded'}`;
+                    if (freqDiv) freqDiv.textContent = `${freqMHz} MHz ${deviceGuess}${count > 1 ? ` × ${count}` : ''}`;
+                    if (detailsDiv) detailsDiv.innerHTML = `${band} | Power: ${power} dBm ${delta} dB | ${signal.recording_file || signal.recording_filename || signal.filename ? 'Recorded' : 'Not recorded'}`;
                     if (timeDiv) timeDiv.textContent = time;
                     
                     // Update dataset
@@ -753,13 +765,25 @@
             const time = signal.detected_at || 'Now';
             const count = signal.detection_count || 1;
             
+            // Smart device type guess based on band and frequency
+            let deviceGuess = '';
+            if (band === 'ISM433' || (signal.frequency_hz >= 433e6 && signal.frequency_hz <= 435e6)) {
+                deviceGuess = '🚗 Remote/Sensor';
+            } else if (band === 'ISM915' || (signal.frequency_hz >= 902e6 && signal.frequency_hz <= 928e6)) {
+                deviceGuess = '📡 ISM Device';
+            } else if (signal.frequency_hz >= 144e6 && signal.frequency_hz <= 148e6) {
+                deviceGuess = '📻 2m Ham Radio';
+            } else if (signal.frequency_hz >= 420e6 && signal.frequency_hz <= 450e6) {
+                deviceGuess = '📻 70cm Radio';
+            }
+            
             // Check if recorded (any of these fields could have the filename)
             const isRecorded = signal.recording_file || signal.recording_filename || signal.filename;
             
             signalItem.innerHTML = `
-                <div class="signal-freq">${freqMHz} MHz (${band})${count > 1 ? ` × ${count}` : ''}</div>
+                <div class="signal-freq">${freqMHz} MHz ${deviceGuess}${count > 1 ? ` × ${count}` : ''}</div>
                 <div class="signal-details">
-                    Power: ${power} dBm ${delta} dB | ${isRecorded ? 'Recorded' : 'Not recorded'}
+                    ${band} | Power: ${power} dBm ${delta} dB | ${isRecorded ? 'Recorded' : 'Not recorded'}
                 </div>
                 <div class="signal-time">${time}</div>
                 <div class="signal-actions">
