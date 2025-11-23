@@ -28,25 +28,27 @@ class AdvancedScanner:
         os.makedirs(f"{self.output_dir}/audio", exist_ok=True)
         os.makedirs(f"{self.output_dir}/logs", exist_ok=True)
         
-        # Key frequencies to monitor
-        self.scan_freqs = [
-            # 2m Amateur repeaters
-            144.0e6, 145.0e6, 146.0e6, 147.0e6, 148.0e6,
-            # 70cm Amateur
-            420e6, 423e6, 426e6, 429e6, 432e6, 435e6, 438e6, 441e6, 444e6, 447e6, 450e6,
-            # ISM 433 MHz (remotes, sensors)
-            433.05e6, 433.92e6, 434.5e6,
-            # ISM 915 MHz
-            915e6, 920e6, 925e6,
-        ]
+        # Comprehensive frequency scanning - ALL bands
+        self.scan_freqs = []
         
-        self.band_names = {
-            144e6: '2m', 145e6: '2m', 146e6: '2m', 147e6: '2m', 148e6: '2m',
-            420e6: '70cm', 423e6: '70cm', 426e6: '70cm', 429e6: '70cm', 432e6: '70cm',
-            435e6: '70cm', 438e6: '70cm', 441e6: '70cm', 444e6: '70cm', 447e6: '70cm', 450e6: '70cm',
-            433.05e6: 'ISM433', 433.92e6: 'ISM433', 434.5e6: 'ISM433',
-            915e6: 'ISM915', 920e6: 'ISM915', 925e6: 'ISM915',
-        }
+        # 2m Amateur Band (144-148 MHz) - every 100 kHz
+        for freq in range(144000000, 148000000, 100000):
+            self.scan_freqs.append(freq)
+        
+        # 70cm Amateur Band (420-450 MHz) - every 100 kHz  
+        for freq in range(420000000, 450000000, 100000):
+            self.scan_freqs.append(freq)
+        
+        # 433 MHz ISM Band (433.05-434.79 MHz) - every 25 kHz for high resolution
+        for freq in range(433050000, 434790000, 25000):
+            self.scan_freqs.append(freq)
+        
+        # 915 MHz ISM Band (902-928 MHz) - every 100 kHz
+        for freq in range(902000000, 928000000, 100000):
+            self.scan_freqs.append(freq)
+        
+        # Dynamically determine band names
+        self.band_names = {}
         
         # Signal type detection
         self.signal_types = {
@@ -69,11 +71,24 @@ class AdvancedScanner:
             print(f" FAILED: {e}")
             return False
     
+    def get_band_name(self, freq):
+        """Determine band name from frequency"""
+        if 144e6 <= freq <= 148e6:
+            return '2m'
+        elif 420e6 <= freq <= 450e6:
+            return '70cm'
+        elif 433e6 <= freq <= 435e6:
+            return 'ISM433'
+        elif 902e6 <= freq <= 928e6:
+            return 'ISM915'
+        else:
+            return 'Unknown'
+    
     def scan_frequency(self, freq):
         """Scan single frequency, return power in dBm"""
         try:
             self.sdr.center_freq = freq
-            time.sleep(0.05)
+            time.sleep(0.03)  # Faster scanning
             samples = self.sdr.read_samples(128 * 1024)
             power = 10 * np.log10(np.mean(np.abs(samples)**2))
             return power
@@ -90,17 +105,16 @@ class AdvancedScanner:
         all_readings = defaultdict(list)
         
         for pass_num in range(3):
-            print(f"\nPass {pass_num + 1}/3:")
+            print(f"\nPass {pass_num + 1}/3:", end='', flush=True)
+            count = 0
             for freq in self.scan_freqs:
-                band = self.band_names.get(freq, '?')
-                print(f"  [{band:>7}] {freq/1e6:>8.3f} MHz", end='', flush=True)
                 power = self.scan_frequency(freq)
                 if power:
                     all_readings[freq].append(power)
-                    print(f" ... {power:>6.1f} dBm")
-                else:
-                    print(" ... FAIL")
-            print("  Pass complete")
+                count += 1
+                if count % 50 == 0:
+                    print('.', end='', flush=True)
+            print(f" done ({count} frequencies)")
         
         # Calculate baseline
         for freq, powers in all_readings.items():
@@ -108,7 +122,7 @@ class AdvancedScanner:
                 'mean': np.mean(powers),
                 'std': np.std(powers),
                 'max': np.max(powers),
-                'band': self.band_names.get(freq, '?')
+                'band': self.get_band_name(freq)
             }
         
         print(f"\nBaseline complete: {len(self.baseline)} frequencies")
@@ -117,7 +131,7 @@ class AdvancedScanner:
     def record_signal(self, freq, duration=10):
         """Record raw IQ samples"""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        band = self.baseline[freq]['band']
+        band = self.get_band_name(freq)
         signal_type = self.signal_types.get(band, 'FM')
         
         # Filenames

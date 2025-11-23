@@ -1,0 +1,231 @@
+{
+  "device_signatures": {
+    "honeywell_security": {
+      "name": "Honeywell Security Sensor",
+      "frequencies": [908.6e6, 914.1e6, 925.0e6],
+      "modulation": "FSK",
+      "bit_rate_min": 67000,
+      "bit_rate_max": 77000,
+      "preamble": "10101010",
+      "manufacturer": "Honeywell",
+      "device_type": "security_sensor",
+      "typical_devices": [
+        "5800 series wireless sensors",
+        "Door/window contacts",
+        "Motion detectors",
+        "Glass break sensors"
+      ],
+      "security": "rolling_code",
+      "oui_prefix": "000D6F",
+      "confidence_threshold": 0.85
+    },
+    "keeloq_garage": {
+      "name": "Keeloq Garage Door Opener",
+      "frequencies": [315e6, 390e6, 433.92e6],
+      "modulation": "OOK",
+      "bit_rate": 1000,
+      "preamble": "11110000",
+      "manufacturer": "Microchip (HCS301)",
+      "device_type": "remote_control",
+      "typical_devices": [
+        "Chamberlain garage doors",
+        "LiftMaster openers",
+        "Genie openers",
+        "Craftsman openers"
+      ],
+      "security": "keeloq_rolling",
+      "confidence_threshold": 0.80
+    },
+    "acurite_weather": {
+      "name": "Acurite Weather Station",
+      "frequencies": [433.92e6, 915e6],
+      "modulation": "OOK",
+      "bit_rate": 1000,
+      "preamble": "10101010",
+      "manufacturer": "Acurite",
+      "device_type": "weather_sensor",
+      "typical_devices": [
+        "Temperature sensors",
+        "Humidity sensors",
+        "Rain gauges",
+        "Wind sensors"
+      ],
+      "security": "none",
+      "confidence_threshold": 0.70
+    },
+    "tpms_sensors": {
+      "name": "Tire Pressure Monitoring System",
+      "frequencies": [315e6, 433.92e6],
+      "modulation": "FSK",
+      "bit_rate_min": 19200,
+      "bit_rate_max": 38400,
+      "manufacturer": "Various",
+      "device_type": "automotive",
+      "typical_devices": [
+        "Tire pressure sensors",
+        "TPMS modules"
+      ],
+      "security": "encrypted_id",
+      "confidence_threshold": 0.75
+    },
+    "smart_meter_itron": {
+      "name": "Itron Smart Meter",
+      "frequencies": [902e6, 928e6],
+      "modulation": "FSK",
+      "bit_rate_min": 100000,
+      "bit_rate_max": 300000,
+      "manufacturer": "Itron",
+      "device_type": "utility_telemetry",
+      "typical_devices": [
+        "Electric meters",
+        "Gas meters",
+        "Water meters"
+      ],
+      "behavior": "frequency_hopping",
+      "security": "encrypted",
+      "confidence_threshold": 0.85,
+      "notes": "Often frequency hops across 902-928 MHz band"
+    },
+    "zigbee_generic": {
+      "name": "Zigbee Device",
+      "frequencies": [2.4e9],
+      "modulation": "OQPSK",
+      "bit_rate": 250000,
+      "protocol": "802.15.4",
+      "manufacturer": "Various",
+      "device_type": "iot",
+      "typical_devices": [
+        "Smart lights",
+        "Smart plugs",
+        "Hue bulbs",
+        "Sensors"
+      ],
+      "security": "aes128",
+      "has_mac": true,
+      "confidence_threshold": 0.90
+    },
+    "dmr_radio": {
+      "name": "DMR Digital Radio",
+      "frequencies": [136e6, 174e6, 403e6, 470e6],
+      "modulation": "4FSK",
+      "bit_rate": 9600,
+      "protocol": "DMR_ETSI",
+      "manufacturer": "Various",
+      "device_type": "voice_radio",
+      "typical_devices": [
+        "Motorola",
+        "Hytera",
+        "Connect Systems",
+        "TYT"
+      ],
+      "security": "optional_encryption",
+      "has_id": true,
+      "confidence_threshold": 0.95
+    },
+    "wireless_doorbell": {
+      "name": "Wireless Doorbell",
+      "frequencies": [315e6, 433.92e6],
+      "modulation": "OOK",
+      "bit_rate_min": 1000,
+      "bit_rate_max": 4000,
+      "transmission": "burst",
+      "burst_duration_ms": 50,
+      "manufacturer": "Various",
+      "device_type": "remote_control",
+      "security": "fixed_code",
+      "confidence_threshold": 0.65
+    }
+  },
+  
+  "oui_database": {
+    "000D6F": "Honeywell International",
+    "00124B": "Texas Instruments",
+    "001EFF": "Silicon Labs",
+    "70B3D5": "Google (Nest)",
+    "18B430": "Amazon (Ring)",
+    "B47C9C": "Arlo Technologies",
+    "F4CFE2": "Chamberlain Group",
+    "001D0F": "Nortek Security",
+    "000423": "Linear (Nortek)",
+    "70EE50": "Honeywell Home",
+    "5CCF7F": "Honeywell",
+    "842E14": "Shenzhen (generic IoT)",
+    "A020A6": "Espressif (ESP32)",
+    "24:62:AB": "Espressif (ESP32)",
+    "DC:4F:22": "Espressif (ESP8266)"
+  },
+  
+  "preamble_patterns": {
+    "10101010": {
+      "name": "Standard Alternating Sync",
+      "common_in": ["Most FSK/OOK devices", "Security sensors", "Weather stations"],
+      "purpose": "Clock synchronization"
+    },
+    "01010101": {
+      "name": "Inverted Alternating Sync",
+      "common_in": ["Some FSK devices"],
+      "purpose": "Clock synchronization (inverted logic)"
+    },
+    "11110000": {
+      "name": "Keeloq Preamble",
+      "common_in": ["Keeloq garage doors", "Car remotes"],
+      "purpose": "Protocol identification"
+    },
+    "10011001": {
+      "name": "Manchester Marker",
+      "common_in": ["Manchester encoded signals"],
+      "purpose": "Encoding synchronization"
+    },
+    "11111111": {
+      "name": "All Ones Preamble",
+      "common_in": ["Some proprietary protocols"],
+      "purpose": "AGC settling"
+    },
+    "10110100": {
+      "name": "Nordic Semi Preamble",
+      "common_in": ["nRF24 devices", "Wireless mice/keyboards"],
+      "purpose": "Protocol sync"
+    }
+  },
+  
+  "frequency_bands": {
+    "315MHz": {
+      "name": "315 MHz ISM (North America)",
+      "range": [314.0e6, 316.0e6],
+      "common_devices": ["Car remotes", "Garage doors", "TPMS", "Security sensors"],
+      "region": "North America"
+    },
+    "433MHz": {
+      "name": "433 MHz ISM (Europe/Asia)",
+      "range": [433.05e6, 434.79e6],
+      "common_devices": ["Weather stations", "Doorbells", "Remote controls", "Sensors"],
+      "region": "Europe, Asia"
+    },
+    "868MHz": {
+      "name": "868 MHz ISM (Europe)",
+      "range": [863.0e6, 870.0e6],
+      "common_devices": ["LoRa", "Smart meters", "Sensors"],
+      "region": "Europe"
+    },
+    "915MHz": {
+      "name": "915 MHz ISM (North America)",
+      "range": [902.0e6, 928.0e6],
+      "common_devices": ["Security sensors", "Smart meters", "TPMS", "LoRa", "Industrial"],
+      "region": "North America"
+    },
+    "2400MHz": {
+      "name": "2.4 GHz ISM (Worldwide)",
+      "range": [2.4e9, 2.4835e9],
+      "common_devices": ["WiFi", "Bluetooth", "Zigbee", "Wireless keyboards/mice"],
+      "region": "Worldwide"
+    }
+  },
+  
+  "matching_rules": {
+    "frequency_tolerance_mhz": 1.0,
+    "bit_rate_tolerance_percent": 15,
+    "modulation_must_match": true,
+    "min_confidence_for_id": 0.60
+  }
+}
+
