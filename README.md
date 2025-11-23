@@ -1,692 +1,684 @@
-# ReconRaven - Complete SIGINT Analysis Platform 🦅
-
-**Advanced RF Signal Intelligence System for Training & Research**
+# ReconRaven
 
 ![Banner](rr.png)
 
-## What You've Built
+> Because sometimes you need to know what's broadcasting in your neighborhood. Or your enemy's.
 
-**ReconRaven** is a professional-grade SIGINT platform that automatically scans, detects, records, and identifies RF signals across multiple bands. Built for SIGINT training with real-world capabilities.
+A complete SIGINT platform built on RTL-SDR for signal intelligence training, research, and field operations. Scans, records, analyzes, and identifies RF signals across multiple bands with zero internet dependency.
 
-### ✅ **Current Capabilities:**
+**Built for:** SIGINT instructors, RF enthusiasts, security researchers, and anyone who thinks "I wonder what that signal is" way too often.
 
-1. **Auto-Scanning** - Monitors 2m, 70cm, 433MHz, 868MHz, 915MHz ISM bands
-2. **Anomaly Detection** - Identifies unusual signals automatically  
-3. **Auto-Recording** - Captures strong signals to IQ files (.npy format)
-4. **Signal Identification** - Multiple analysis engines
-5. **Protocol Decoding** - Extracts binary data from OOK/ASK/FSK
-6. **Device Fingerprinting** - Identifies brands/models/types
-7. **Web Dashboard** - Real-time browser monitoring
-8. **Rolling Code Detection** - Security analysis
+## What This Thing Does
+
+ReconRaven is a dual-mode SDR platform that works as both a mobile scanning rig and a stationary direction-finding array. It's designed to run on a Raspberry Pi 5 with 1-4 RTL-SDR V4 dongles, but also works great on a PC for development and testing.
+
+**Core Features:**
+- Multi-band scanning (2m, 70cm, 433MHz, 915MHz ISM)
+- Automatic anomaly detection and recording
+- Multi-protocol demodulation (FM/AM/DMR/P25/NXDN/ProVoice/Fusion)
+- Signal analysis and device fingerprinting
+- Binary protocol decoding (OOK/ASK/FSK)
+- Rolling code detection for security analysis
+- Direction finding with 4-SDR coherent array
+- Real-time web dashboard
+- SQLite database for all metadata
+- Fully offline capable (after initial setup)
+
+**What it's good at:**
+- Finding that mystery signal that's been driving you crazy
+- Identifying remote controls, sensors, and ISM devices
+- Building RF baselines for environments
+- Training scenarios for SIGINT operations
+- Direction finding for signal hunting
+
+**What it's terrible at:**
+- Making coffee
+- Decrypting anything (that's your job)
+- Working through walls thicker than your excuses
 
 ---
 
-## Data Management
+## Hardware Requirements
 
-### Understanding the Data Model
+You'll need one of these configurations:
 
-**Three Types of Data:**
+### Mobile Mode (Backpack Recon)
+- Raspberry Pi 5 (4GB+ recommended)
+- 1x RTL-SDR V4 
+- Dual-band antenna (Nagoya NA-771 or similar)
+- 20000mAh USB-C power bank
+- USB GPS module (optional but recommended)
+- Cost: ~$200
 
-1. **Baseline Frequencies** - "What's Normal"
-   - Frequencies that are expected in your environment
-   - Built during initial scan (or loaded from database)
-   - Used as reference to detect anomalies
-   - Example: Local ham repeaters, NOAA weather, ISM devices you own
+### Mobile Multi Mode (Faster Scanning)
+- Same as mobile but with 2-4 SDRs
+- Scans multiple bands in parallel
+- Cost: ~$300-400
 
-2. **Signals/Anomalies** - "What's Unusual"  
-   - Active signals detected above baseline threshold
-   - Marked as "anomaly" if significantly stronger than baseline
-   - Temporary - shows current activity
-   - These are shown in the "Active Signals / Anomalies" panel
+### Direction Finding Mode (Stationary)
+- Everything from mobile mode
+- 3 additional RTL-SDR V4 dongles (4 total)
+- 4x matched antennas
+- 28.8MHz clock sync kit
+- Tripod or mount for array
+- Cost: ~$670 all-in
 
-3. **Identified Devices** - "What We Know"
-   - Signals that have been analyzed and matched to specific devices
-   - Includes: name, manufacturer, device type, confidence score
-   - Persistent - remembered across sessions
-   - These are shown in the "Identified Devices" panel
-
-**Workflow:**
-```
-Scan → Detect Anomaly → Record → Analyze → Identify Device → (Optional) Promote to Baseline
-```
-
-**Dashboard Actions:**
-- **"Promote All to Baseline"** - Moves identified devices to baseline (marks them as expected/normal)
-- Use this after you've identified all devices in your area and want to focus on new/unknown signals
-
-### SQLite Database (`reconraven.db`)
-
-**All data is stored in a single SQLite database:**
-
-**What's Stored:**
-- Baseline frequencies (what's "normal")
-- Detected signals and anomalies
-- Identified devices
-- Recording metadata
-- Analysis results
-- Scan sessions
-
-**Tables:**
-- `baseline` - Normal frequencies in your environment
-- `signals` - All detected signals with anomaly flags
-- `devices` - Identified devices with confidence scores
-- `recordings` - Recording files with metadata
-- `analysis_results` - Complete analysis data
-- `scan_sessions` - Scanning history
-
-**Import Existing Data:**
-```bash
-python import_data.py
-```
-
-**Query Database:**
-```bash
-# View all identified devices
-sqlite3 reconraven.db "SELECT * FROM devices"
-
-# View recent anomalies
-sqlite3 reconraven.db "SELECT * FROM signals WHERE is_anomaly=1 ORDER BY detected_at DESC LIMIT 10"
-
-# Get statistics
-sqlite3 reconraven.db "SELECT COUNT(*) as recordings FROM recordings"
-```
-
-**Backup:**
-```bash
-# Backup database
-copy reconraven.db reconraven_backup.db
-
-# Export to JSON
-python -c "from database import ReconRavenDB; import json; db=ReconRavenDB(); print(json.dumps(db.get_dashboard_data(), indent=2))"
-```
-
-### File Organization
-
-```
-reconraven.db          # Main database (all metadata)
-recordings/
-  audio/
-    *.npy              # IQ recordings (raw data)
-    *.wav              # Demodulated audio
-    *.png              # Analysis plots
-config/
-  bands.yaml           # Frequency definitions
-  hardware.yaml        # Hardware settings
-device_signatures.json # Device database (offline)
-```
-
-**Storage:**
-- Database: ~1-10 MB (metadata only)
-- IQ files: ~366 MB per 10-second recording
-- Analysis files: ~1-5 MB per recording
+**Full parts list with links in the Hardware section below.**
 
 ---
 
 ## Quick Start
 
-### Main Command-Line Tool
-
-**All operations use the unified `reconraven.py` CLI:**
+### Installation
 
 ```bash
-python reconraven.py --help
+# Clone the repo
+git clone https://github.com/kamakauzy/ReconRaven.git
+cd ReconRaven
+
+# Install system dependencies (Raspberry Pi/Linux)
+sudo apt update
+sudo apt install rtl-sdr librtlsdr-dev python3-pip
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# On Windows, you'll also need Zadig for driver installation
+# See WINDOWS_SETUP.md for details
 ```
 
-### 1. Initial Setup (One-Time)
+### First Run Setup
 
-**Download frequencies for your location:**
+**Download frequencies for your area** (one-time, then works offline forever):
 
 ```bash
-# Automatic (detects from IP):
+# Auto-detect your location
 python reconraven.py setup --auto
 
-# Manual (recommended):
+# Or specify manually (recommended for accuracy)
 python reconraven.py setup --state AL --city Huntsville --lat 34.7304 --lon -86.5859
-
-# Just state:
-python reconraven.py setup --state CA
 ```
 
-**What it downloads:**
-- Ham repeaters for your state (from RepeaterBook)
-- State-level public safety frequencies
-- NOAA weather radio stations
-- Updates database with GPS-tagged frequencies
+This pulls ham repeaters, public safety frequencies, and NOAA weather stations for your state. You'll need internet for this step, but after that everything runs offline.
 
-**One command, works offline forever!**
-
-### 2. Scanning
+### Basic Usage
 
 ```bash
 # Start scanning with web dashboard
 python reconraven.py scan --dashboard
+# Dashboard: http://localhost:5000
 
-# Quick scan (baseline only, no recording)
+# Quick baseline scan (no monitoring)
 python reconraven.py scan --quick
 
-# Rebuild baseline from scratch
-python reconraven.py scan --rebuild-baseline
-```
-
-### 3. Analyze Captured Signals
-
-```bash
-# Analyze all recordings
+# Analyze captured signals
 python reconraven.py analyze --all
 
-# Analyze specific file
-python reconraven.py analyze --file recordings/audio/capture.npy --type ism
-
-# Analysis types: all, ism, remote, protocol, fingerprint
-```
-
-**Individual analysis tools still available:**
-```bash
-python ism_analyzer.py yourfile.npy          # Device type identification
-python decode_remote.py yourfile.npy         # Binary code extraction
-python urh_analyze.py yourfile.npy           # Protocol analysis
-python fingerprint_signal.py yourfile.npy    # Brand/model ID
-```
-
-### 4. View Recordings
-
-```bash
-# Play and convert IQ recording
-python reconraven.py play recordings/audio/capture.npy --mode fm
-
-# Direct tool access
-python play_iq.py yourfile.npy --fm
-```
-
-### 5. Web Dashboard
-
-```bash
-# Start dashboard (loads all existing data)
-python reconraven.py dashboard
-
-# Custom port
-python reconraven.py dashboard --port 8080
-
-# Open browser to: http://localhost:5000
-```
-
-### 6. Database Management
-
-```bash
-# View statistics
+# View database stats
 python reconraven.py db stats
 
+# List identified devices
+python reconraven.py db devices
+```
+
+### The Dashboard
+
+Open `http://localhost:5000` in your browser to see:
+- Real-time scanning status
+- Baseline frequency count
+- Active anomalies
+- Identified devices with confidence scores
+- Direction finding bearings (if in DF mode)
+- GPS position
+
+The dashboard updates in real-time as signals are detected and analyzed.
+
+---
+
+## How It Works
+
+### Data Model (Understanding What You're Looking At)
+
+ReconRaven tracks three types of data:
+
+**1. Baseline Frequencies**
+- What's "normal" in your RF environment
+- Built during initial 3-pass scan
+- Used as reference to detect anomalies
+- Examples: local ham repeaters, NOAA, your garage door opener
+
+**2. Anomalies / Active Signals**
+- Signals significantly above baseline
+- Temporary - shows what's currently transmitting
+- Triggers automatic recording if strong enough
+- These are the "something interesting is happening" alerts
+
+**3. Identified Devices**
+- Analyzed signals matched to known protocols/devices
+- Persistent across sessions
+- Includes manufacturer, device type, confidence score
+- Your growing RF signature database
+
+**Typical workflow:**
+```
+Initial scan → Build baseline → Monitor → Detect anomaly → Auto-record → 
+Analyze recording → Identify device → (optional) Promote to baseline
+```
+
+**Pro tip:** After you've identified all the devices in your area, use the "Promote to Baseline" button in the dashboard. This marks them as expected, so future scans only flag new/unknown signals.
+
+### Storage
+
+Everything lives in `reconraven.db` (SQLite):
+- Baseline frequencies
+- Signal detections
+- Device identifications  
+- Recording metadata
+- Analysis results
+
+IQ recordings go in `recordings/audio/` as `.npy` files (raw NumPy arrays). Each 10-second capture is ~366MB. The database just stores metadata - frequency, timestamp, power level, etc.
+
+To keep disk usage sane, the system can auto-cleanup recordings after analysis (implement this yourself or wait for the next update, we're lazy).
+
+### Operating Modes
+
+**Mobile Mode (1 SDR)**
+- Sequential scanning across all bands
+- Good for recon on foot or in vehicles
+- ~8 hour battery life
+
+**Mobile Multi Mode (2-4 SDRs)**
+- Parallel scanning of different bands
+- Much faster coverage
+- Still portable
+
+**Direction Finding Mode (4 SDRs)**
+- Phase-coherent array for bearing calculation
+- MUSIC algorithm for 5-10° accuracy
+- Stationary operation (needs stable mount)
+- Auto-switches from scanning on signal detection
+
+The system auto-detects which mode to use based on how many SDRs you plug in. No configuration needed.
+
+---
+
+## Analysis Tools
+
+When ReconRaven records a signal, you can throw it through multiple analyzers:
+
+### ISM Analyzer (`ism_analyzer.py`)
+Specialized for 433/915 MHz ISM bands. Detects:
+- Burst patterns (door remotes, car keys)
+- Sensor transmission timing
+- Device type classification
+
+### Binary Decoder (`decode_remote.py`)
+Extracts the actual bits from OOK/ASK/FSK signals:
+- Demodulates to binary stream
+- Finds preambles (10101010, 11110000, etc.)
+- Converts to hex for analysis
+- Detects rolling codes
+
+### Protocol Analyzer (`urh_analyze.py`)
+Uses Universal Radio Hacker's libraries to:
+- Auto-detect modulation type
+- Extract symbol rates
+- Find protocol structures
+- Compare against known protocol database
+
+### Device Fingerprinter (`fingerprint_signal.py`)
+Deep RF characteristics analysis:
+- Carrier frequency offset
+- Bandwidth and deviation measurements
+- Modulation depth analysis
+- Brand/model identification from RF quirks
+
+### Field Analyzer (`field_analyzer.py`)
+Master tool that combines everything:
+- RF analysis → Signature matching → Binary decoding → rtl_433 protocol decode
+- Multi-level confidence scoring
+- Fully offline capable
+- Generates comprehensive reports
+
+### Using the Analyzers
+
+```bash
+# Run all analysis tools on a recording
+python reconraven.py analyze --file recordings/audio/capture_915MHz.npy
+
+# Specific analysis type
+python reconraven.py analyze --file capture.npy --type ism
+python reconraven.py analyze --file capture.npy --type remote
+python reconraven.py analyze --file capture.npy --type protocol
+
+# Batch analyze everything
+python reconraven.py analyze --all
+```
+
+Or use the individual scripts directly for more control:
+
+```bash
+python ism_analyzer.py recording.npy
+python decode_remote.py recording.npy
+python fingerprint_signal.py recording.npy
+```
+
+---
+
+## Database Management
+
+### Quick Stats
+
+```bash
+python reconraven.py db stats
+```
+
+Shows:
+- Baseline frequency count
+- Total signals detected
+- Anomaly count
+- Identified devices
+- Storage usage
+
+### Viewing Data
+
+```bash
 # List identified devices
 python reconraven.py db devices
 
 # Show recent anomalies
 python reconraven.py db anomalies --limit 50
 
-# Promote devices to baseline
+# Direct SQLite queries
+sqlite3 reconraven.db "SELECT * FROM devices WHERE confidence > 0.8"
+```
+
+### Promoting Devices to Baseline
+
+After you've identified all the RF sources in your area, promote them to baseline so future scans only alert on new signals:
+
+```bash
 python reconraven.py db promote
+```
+
+Or use the button in the web dashboard.
+
+### Backup and Export
+
+```bash
+# Backup database
+cp reconraven.db reconraven_backup_$(date +%Y%m%d).db
+
+# Export to JSON
+python reconraven.py db export --output backup.json
 
 # Import recordings from disk
 python reconraven.py db import
-
-# Export database to JSON
-python reconraven.py db export --output backup.json
 ```
 
 ---
 
-## Analysis Tools
+## Hardware Details
 
-### Complete Field-Capable Analysis System
+### Recommended Build (Full Capability)
 
-**Multi-Method Device Identification (No Internet Required):**
+| Part | Qty | Price | Notes |
+|------|-----|-------|-------|
+| Raspberry Pi 5 (4GB) with case & cooler | 1 | $85 | iRasptek kit recommended |
+| RTL-SDR Blog V4 | 4 | $39 ea | $156 total for 4 |
+| Nagoya NA-771 antenna | 4 | $21 ea | $84 total, get authentic |
+| Anker 7-port USB 3.0 hub (powered) | 1 | $40 | Prevents power issues |
+| GPS Module (NEO-6M) | 1 | $11 | For geo-tagging |
+| SanDisk 64GB microSD | 1 | $15 | Fast card recommended |
+| Anker PowerCore 20000 PD | 1 | $45 | 8+ hour runtime |
+| 28.8MHz clock sync kit | 1 | $25 | For DF mode (optional) |
+| **Total** | | **~$670** | Full DF-capable system |
 
-1. **Binary Decoder** - Extracts actual bits from signals
-2. **rtl_433 Integration** - 200+ device protocols  
-3. **Device Signature Database** - Offline matching
-4. **Manufacturer OUI Lookup** - Brand identification
+### Budget Build (Mobile Only)
 
-### Individual Analysis Tools
+| Part | Qty | Price |
+|------|-----|-------|
+| Raspberry Pi 5 kit | 1 | $85 |
+| RTL-SDR Blog V4 | 1 | $39 |
+| Nagoya NA-771 | 1 | $21 |
+| USB hub | 1 | $20 |
+| GPS module | 1 | $11 |
+| MicroSD card | 1 | $15 |
+| Power bank | 1 | $30 |
+| **Total** | | **~$220** |
 
-**ISM Band Analyzer** (`ism_analyzer.py`)
-- Detects burst patterns
-- Classifies device types (remotes, sensors, TPMS)
-- Timing analysis
-```bash
-python ism_analyzer.py <file.npy>
-```
+### Assembly Notes
 
-**Binary Decoder** (`binary_decoder.py`)
-- Extracts 0s and 1s from IQ samples
-- Detects modulation (OOK/ASK/FSK)
-- Finds preambles (10101010, 11110000, etc.)
-- Converts to hex
-```bash
-python binary_decoder.py <file.npy>
-```
-
-**rtl_433 Integration** (`rtl433_integration.py`)
-- Automatic device identification
-- 200+ protocols (weather stations, remotes, TPMS, etc.)
-- Extracts device IDs and sensor data
-```bash
-python rtl433_integration.py <file.npy>
-```
-
-**Complete Field Analyzer** (`field_analyzer.py`)
-- Combines all methods
-- Multi-level confidence scoring
-- Fully offline capable
-```bash
-python field_analyzer.py <file.npy>
-```
-
-**Remote Decoder** (`decode_remote.py`)
-- Extracts binary codes from remotes
-- Detects fixed vs rolling codes
-- Security assessment
-```bash
-python decode_remote.py <file.npy>
-```
-
-**URH-Style Analyzer** (`urh_analyze.py`)
-- Auto-detects modulation
-- Extracts symbol rates
-- Protocol database comparison
-```bash
-python urh_analyze.py <file.npy>
-```
-
-**Signal Fingerprinter** (`fingerprint_signal.py`)
-- Brand/model identification
-- RF characteristics analysis
-- Device database matching
-```bash
-python fingerprint_signal.py <file.npy>
-```
-
-**IQ Player** (`play_iq.py`)
-- Visualize recordings
-- Time/frequency/spectrogram plots
-- FM/AM demodulation
-```bash
-python play_iq.py <file.npy> [--fm|--am]
-```
-
-**Master Analyzer** (`analyze_all.py`)
-- Runs all tools automatically
-```bash
-python analyze_all.py <file.npy>
-python analyze_all.py --all
-```
+- **Mobile build:** 30 minutes. Plug stuff in, install software, done.
+- **DF array:** Add 1 hour for clock sync soldering and array mounting.
+- **Clock sync:** Requires basic soldering. Tutorials available online (KerberosSDR method works).
+- **Array geometry:** 0.5m spacing in circular or linear array. Calibrate with known source.
 
 ---
 
-## How Device Identification Works
+## Configuration
 
-### Level 1: RF Characteristics (Always Works)
-```
-Signal -> FFT -> Modulation Type + Bit Rate + Bandwidth
-Confidence: 30-50%
-```
+All configs are in `config/`:
 
-### Level 2: Signature Matching (Offline Database)
-```
-Frequency + Modulation + Bit Rate -> Device Family
-Example: 925 MHz + FSK + 77k baud = "Honeywell Security"
-Confidence: 60-80%
-```
-
-### Level 3: Binary Decoding
-```
-IQ -> Demodulate -> Binary -> Find Preambles -> Extract Headers
-Example: "11110000" preamble = Keeloq garage door
-Confidence: 70-90%
+### `bands.yaml`
+Frequency band definitions and scan assignments:
+```yaml
+bands:
+  2m:
+    name: "2 Meter Ham Band"
+    start_hz: 144000000
+    end_hz: 148000000
+    step_hz: 25000
+    priority: medium
 ```
 
-### Level 4: rtl_433 Protocol Match
+### `hardware.yaml`
+SDR calibration and thresholds:
+```yaml
+sdr:
+  sample_rate: 2400000
+  gain: auto
+  ppm_error: 0
+
+anomaly_detection:
+  threshold_db: 15  # How much above baseline = anomaly
+  min_duration_ms: 100
 ```
-Recording -> rtl_433 -> Known Protocol Decoder
-Example: "Acurite 592TXR Temperature Sensor, ID: 1234"
-Confidence: 90-95%
+
+### `demod_config.yaml`
+Protocol-specific demodulation settings:
+```yaml
+protocols:
+  FM:
+    mode: "fm"
+    deviation: 5000
+    squelch: -40
 ```
+
+Tweak these based on your RF environment and hardware quirks.
 
 ---
 
-## Example Analysis Results
+## Location-Aware Frequency Database
 
-### Your Local RF Environment (Actual Captures)
+ReconRaven includes a slick feature: it knows where you are (if you tell it) and only flags frequencies relevant to your location.
 
-**9 Active Frequencies Identified | 4 Device Types | All FSK Modulation**
+### How It Works
 
-#### Device A: Industrial High-Speed Data Link
-- **Frequencies:** 902.1, 905.9, 911.7 MHz (frequency hopping)
-- **Bit Rate:** 240,000 baud (very fast)
-- **Modulation:** FSK
-- **Behavior:** Continuous transmission, frequency hopping
-- **Confidence:** 80%
-- **Likely Identity:** Smart meter (electric/gas/water) or industrial SCADA telemetry
-- **Notes:** Professional-grade equipment, NOT consumer IoT
+During setup, you download frequency data for your state:
+- Ham repeaters with GPS coordinates and range
+- Public safety (police/fire/EMS)
+- NOAA weather stations
+- Marine channels (if coastal)
 
-#### Device B: Honeywell Security Sensors  
-- **Frequencies:** 908.6, 914.1, 925.0 MHz
-- **Bit Rate:** 67,000 - 77,000 baud
-- **Modulation:** FSK
-- **Behavior:** Continuous monitoring
-- **Confidence:** 85% (Honeywell confirmed at 925 MHz)
-- **Identified As:** Honeywell 5800 Series wireless sensors
-- **Typical Devices:** Door/window contacts, motion detectors, glass break sensors
-- **Security:** Rolling code (secure)
+When scanning, ReconRaven checks: "Am I near a registered repeater on this frequency?" If yes, it auto-identifies it. If no, it flags as unknown.
 
-#### Device C: Battery-Powered Sensors
-- **Frequencies:** 909.5, 913.1 MHz  
-- **Bit Rate:** 38,000 - 60,000 baud
-- **Modulation:** FSK
-- **Behavior:** Burst transmissions (~35ms)
-- **Confidence:** 60%
-- **Likely Identity:** Weather station or temperature sensors
-- **Notes:** Event-driven, power-efficient design
-
-#### Device D: High-Speed Link #2
-- **Frequency:** 920.0 MHz
-- **Bit Rate:** 218,000 baud
-- **Modulation:** FSK
-- **Confidence:** 50%
-- **Likely Related To:** Device A (possibly different channel)
-
-### Environment Assessment
-
-**Type:** Suburban/Light Urban  
-**Device Density:** HIGH (9 active frequencies)
-**Primary Band:** 915 MHz ISM (North America)
-**Notable:** Industrial/utility infrastructure present (smart meter likely)
-
-### Key Findings
-
-1. **Frequency Hopping Detected** - Device A hops across 902-912 MHz
-2. **Professional Security System** - Honeywell 5800 series identified
-3. **No Consumer Remotes** - All devices are continuous monitoring type (no OOK/ASK)
-4. **Dense IoT Environment** - Multiple sensor networks active
-
-### Meshtastic/LoRa Assessment
-
-**NOT Meshtastic/LoRa detected**
-- Bit rates too high (38-240k baud vs LoRa's <10k)
-- No chirp patterns found
-- Standard FSK, not CSS modulation
-- **Conclusion:** Traditional FSK telemetry devices
-
----
-
-## Hardware Requirements
-
-| Component | Qty | Price | Purpose |
-|-----------|-----|-------|---------|
-| **RTL-SDR Blog V4** | 4 | $156 | RF receivers (1 mobile, 4 for DF) |
-| **Raspberry Pi 5 (4GB)** | 1 | $85 | Core processing platform |
-| **Nagoya NA-771 Antenna** | 4 | $82 | Dual-band VHF/UHF reception |
-| **Anker 20,000mAh Power Bank** | 1 | $45 | 8+ hour field operation |
-| **Anker 7-Port USB Hub** | 1 | $40 | Multi-SDR connectivity |
-| **GPS Module (NEO-6M)** | 1 | $11 | Geo-tagging |
-| **64GB microSD Card** | 1 | $15 | OS and recordings |
-| **Raspberry Pi Case + Cooler** | 1 | $25 | Protection and thermal management |
-| **Total** | | **~$459** | Complete mobile SIGINT station |
-
-*Note: Can start with 1 SDR ($39) for basic scanning*
-
----
-
-## System Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      ReconRaven System                       │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │   RTL-SDR    │  │   RTL-SDR    │  │   RTL-SDR    │      │
-│  │   (Mobile)   │  │   (Array)    │  │   (Array)    │  ... │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘      │
-│         │                 │                 │               │
-│         └─────────────────┴─────────────────┘               │
-│                          │                                   │
-│                  ┌───────▼────────┐                          │
-│                  │  SDR Controller │                         │
-│                  │  (Mode Switch)  │                         │
-│                  └───────┬─────────┘                         │
-│                          │                                   │
-│          ┌───────────────┼───────────────┐                  │
-│          │               │               │                   │
-│     ┌────▼────┐    ┌────▼────┐    ┌────▼────┐              │
-│     │ Scanner │    │ Anomaly │    │   DF    │              │
-│     │ Engine  │    │ Detector│    │ Engine  │              │
-│     └────┬────┘    └────┬────┘    └────┬────┘              │
-│          │              │              │                     │
-│          └──────────────┼──────────────┘                     │
-│                         │                                    │
-│                  ┌──────▼───────┐                            │
-│                  │   Recorder   │                            │
-│                  │  (IQ Files)  │                            │
-│                  └──────┬───────┘                            │
-│                         │                                    │
-│         ┌───────────────┼───────────────┐                   │
-│         │               │               │                    │
-│    ┌────▼────┐    ┌────▼────┐    ┌────▼────┐               │
-│    │   ISM   │    │ Remote  │    │   URH   │               │
-│    │Analyzer │    │ Decoder │    │Analyzer │               │
-│    └────┬────┘    └────┬────┘    └────┬────┘               │
-│         │              │              │                      │
-│         └──────────────┼──────────────┘                      │
-│                        │                                     │
-│                 ┌──────▼───────┐                             │
-│                 │   Dashboard  │                             │
-│                 │   (Browser)  │                             │
-│                 └──────────────┘                             │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Operating Modes
-
-### **Mode 1: Mobile (Single SDR)**
-- Fast sequential scanning
-- Battery efficient
-- Portable operation  
-- Coverage: 2m, 70cm, ISM bands
-
-### **Mode 2: Mobile Multi (2-3 SDRs)**
-- Parallel band scanning
-- Faster coverage (3-4x speed)
-- Distributes bands across SDRs
-
-### **Mode 3: Parallel Scan (4+ SDRs)**
-- All SDRs scan simultaneously
-- Fastest anomaly detection
-- Auto-switches to DF mode
-
-### **Mode 4: Direction Finding (4 SDRs)**
-- Phase-coherent array
-- MUSIC algorithm bearings
-- ±5-10° accuracy
-- Triggered by anomalies
-
----
-
-## File Formats
-
-### **.npy Files** (IQ Recordings)
-- Complex samples (I+Q)
-- Compatible with: URH, GQRX, Inspectrum
-- Can replay, demodulate, analyze any way
-- Most versatile format
-
-### **Analysis Reports**
-- `*_bursts.png` - Burst visualization
-- `*_decoded.png` - Demodulation plots
-- `*_analysis.png` - Spectrum/spectrogram
-- `*_fingerprint.txt` - Device identification
-- `*_urh_analysis.txt` - Protocol details
-
----
-
-## Professional Tool Integration
-
-### **rtl_433** (Recommended)
-Download: https://github.com/merbanan/rtl_433/releases
-
-**Use for:** Automatic ISM device decoding (200+ protocols)
+### Setting Up Location
 
 ```bash
-rtl_433 -f 915M -s 2.4M    # Live scanning
-rtl_433 -r file.cu8 -A      # Analyze recording
+# Option 1: Auto-detect (uses IP geolocation)
+python reconraven.py setup --auto
+
+# Option 2: Specify state (gets all statewide frequencies)
+python reconraven.py setup --state CA
+
+# Option 3: Exact location (best for accurate repeater matching)
+python reconraven.py setup --state AL --city Huntsville --lat 34.7304 --lon -86.5859
 ```
 
-### **Universal Radio Hacker**
-Download: https://github.com/jopohl/urh/releases
+### Data Sources
 
-**Use for:** Visual protocol analysis, unknown signal decoding
+- Ham repeaters: RepeaterBook API
+- Public safety: RadioReference data
+- NOAA: NWS station database
+- All cached locally for offline use
 
-### **Inspectrum**
-**Use for:** Fast spectrogram viewing
-
-### **SigIDWiki**  
-Website: https://www.sigidwiki.com/
-
-**Use for:** Signal identification database
+Run setup once, works forever offline. Re-run if you move or want to update the database.
 
 ---
 
-## Identified Devices (Examples)
+## Field Operations Guide
 
-From real testing:
+### Pre-Deployment Checklist
 
-| Device | Frequency | Modulation | Bit Rate | Signature |
-|--------|-----------|------------|----------|-----------|
-| Honeywell Security Sensor | 925 MHz | FSK | 77k baud | 7.6ms bursts |
-| Garage Door Remote | 915 MHz | OOK | 100k baud | <15ms, rolling |
-| TPMS Sensor | 915 MHz | FSK | 20-40k | 50-150ms |
-| Weather Station | 433 MHz | OOK | 1-5k | Periodic |
+- [ ] Location setup complete (`reconraven.py setup`)
+- [ ] Hardware connected and powered
+- [ ] Antennas attached (check for proper connections)
+- [ ] GPS has fix (if using GPS)
+- [ ] Initial baseline scan complete
+- [ ] Dashboard accessible from your device
 
----
+### Typical Workflow
 
-## Training Scenarios
-
-### **1. Device Identification**
-- Capture unknown signals
-- Run through analysis tools
-- Match against databases
-- Document findings
-
-### **2. Protocol Reverse Engineering**
-- Record multiple transmissions
-- Extract bit patterns
-- Identify preambles/sync words
-- Decode payload structure
-
-### **3. Security Assessment**
-- Test rolling vs fixed codes
-- Measure encryption strength
-- Identify vulnerabilities
-- Document attack vectors
-
-### **4. Direction Finding**
-- Deploy 4-SDR array
-- Trigger on target signal
-- Calculate bearings
-- Geo-locate transmitter
-
----
-
-## Performance
-
-### **Scanning Speed**
-- Mobile (1 SDR): ~6 seconds/sweep
-- Mobile Multi (4 SDRs): ~2 seconds/sweep
-- Parallel (4 SDRs): <1 second (simultaneous)
-
-### **Detection**
-- Anomaly threshold: >10-15 dB above baseline
-- Auto-record on detection
-- Rolling code identification
-
-### **Analysis**
-- IQ file load: 2-5 seconds
-- Full analysis: 10-30 seconds
-- Real-time dashboard updates
-
----
-
-## Troubleshooting
-
-### **SDR Access Denied**
+**1. Initial Recon**
 ```bash
-# Kill existing processes
-taskkill /F /IM python3.13.exe
+python reconraven.py scan --dashboard
+```
+- Let it build baseline (first run, ~10 minutes)
+- Check dashboard for identified devices
+- Note any unexpected signals
 
-# Check USB
-rtl_test
+**2. Active Monitoring**
+- Scanner auto-records anomalies (>15dB above baseline)
+- Watch dashboard for real-time alerts
+- Recordings saved to `recordings/audio/`
+
+**3. Post-Mission Analysis**
+```bash
+# Analyze all captures
+python reconraven.py analyze --all
+
+# Review identified devices
+python reconraven.py db devices
+
+# Check for rolling codes or encrypted signals
+python decode_remote.py recordings/audio/suspicious_915MHz.npy
 ```
 
-### **No Signals Detected**
+**4. Update Baseline**
+```bash
+# After identifying friendly signals, promote to baseline
+python reconraven.py db promote
+```
+
+### Power Management
+
+- Mobile mode (1 SDR): 8+ hours on 20000mAh
+- Mobile multi (4 SDRs): 5-6 hours
+- DF mode (4 SDRs active): 4-5 hours
+- Tip: Throttle scan rate in `hardware.yaml` to extend battery
+
+### Troubleshooting in the Field
+
+**Scanner won't start:**
+- Check SDR connection: `rtl_test`
+- Verify permissions (Linux): `sudo usermod -a -G plugdev $USER`
+- Kill lingering processes: `python kill_dashboard.py`
+
+**No signals detected:**
 - Check antenna connections
-- Verify frequency ranges
-- Adjust gain settings
-- Test with known transmitter
+- Verify gain setting (try `manual` in hardware.yaml)
+- Run quick scan on known frequency (146.52 MHz - 2m simplex)
 
-### **Analysis Slow**
-- Uses first 2 seconds of recording only
-- Adjust sample count in code
-- Close other programs
+**Dashboard not updating:**
+- Check Flask is running: `netstat -an | grep 5000`
+- Try different browser
+- Clear browser cache
 
----
-
-## Future Enhancements
-
-- [ ] Real-time demodulation during scanning
-- [ ] Automatic rtl_433 integration
-- [ ] Cloud protocol database sync
-- [ ] Mobile app for dashboard
-- [ ] AI-based signal classification
-- [ ] Collaborative threat intelligence
+**High disk usage:**
+- IQ files are 366MB per 10 seconds
+- Delete old recordings: `rm recordings/audio/*.npy`
+- Or implement auto-cleanup (TODO for next version)
 
 ---
 
-## Security & Legal
+## Advanced Features
 
-⚠️ **Important:**
-- Passive reception only (legal everywhere)
-- Do NOT transmit on captured frequencies
-- Respect privacy laws
-- Educational/research purposes
-- Follow FCC Part 15 regulations
+### Direction Finding
+
+With 4 SDRs in a coherent array, ReconRaven can calculate signal bearings.
+
+**Setup:**
+1. Mount 4 SDRs in circular or linear array
+2. Install clock sync hardware (28.8MHz distribution)
+3. Calibrate array geometry in `hardware.yaml`
+4. Use known transmitter for calibration
+
+**Usage:**
+- System auto-switches to DF mode on strong signal detection
+- MUSIC algorithm calculates bearing
+- Accuracy: 5-10° typical (depends on SNR and calibration)
+- Results shown in dashboard with compass visualization
+
+**Limitations:**
+- Requires stable mount (no DF while mobile)
+- Accuracy degrades below ~10dB SNR
+- Multipath can cause errors (use open areas)
+
+### Drone Detection
+
+ReconRaven can detect drone control signals (UHF control links):
+
+```bash
+# Monitor drone bands specifically
+python examples/drone_hunt.py
+```
+
+Looks for:
+- Burst patterns typical of telemetry
+- Frequency hopping
+- Known DJI/other manufacturer patterns
+
+**Note:** RTL-SDR is limited to UHF. Won't catch 2.4/5.8GHz video links. Consider adding a second SDR with upconverter for those bands.
+
+### Multi-Protocol Demodulation
+
+Supports analog and digital voice:
+- Analog: FM, AM, SSB
+- Digital: DMR, P25, NXDN, ProVoice, Fusion
+
+Requires `dsd` (Digital Speech Decoder) installed:
+```bash
+sudo apt install dsd
+```
+
+Demodulation happens automatically when strong voice signals are detected.
 
 ---
 
-## Credits
+## Development & Contributing
 
-Built with:
-- pyrtlsdr - RTL-SDR Python bindings
-- NumPy/SciPy - Signal processing
-- Flask - Web dashboard
-- Matplotlib - Visualization
+### Project Structure
+
+```
+ReconRaven/
+├── reconraven.py          # Unified CLI (use this)
+├── advanced_scanner.py    # Core scanning engine
+├── database.py            # SQLite interface
+├── hardware/              # SDR control
+├── scanning/              # Spectrum & anomaly detection
+├── demodulation/          # Protocol decoders
+├── direction_finding/     # DF algorithms
+├── web/                   # Flask dashboard
+├── visualization/         # Dashboard UI
+├── config/                # YAML configs
+├── examples/              # Usage examples
+└── _archived_scripts/     # Old single-purpose scripts
+```
+
+### Testing Without Hardware
+
+```bash
+# Use simulation mode
+python app.py --simulate
+
+# Or test individual components
+python test_simulation.py
+```
+
+### Contributing
+
+Pull requests welcome. Areas that need work:
+- Better protocol decoders (especially proprietary stuff)
+- Improved DF algorithms
+- Auto-cleanup for recordings
+- Better device signature database
+- Windows driver installation automation
+- Android app for dashboard (someone please)
+
+Code style: We're not picky. Make it work, make it readable, add comments for weird stuff.
+
+---
+
+## Known Issues & Limitations
+
+### Hardware Limitations
+
+- RTL-SDR V4 range: 24 MHz - 1766 MHz (no HF, no 2.4/5.8 GHz)
+- Sample rate limited to 2.4 Msps (affects wide signals)
+- 8-bit ADC (dynamic range limitations)
+- No transmit capability (receive-only)
+
+### Software Quirks
+
+- Windows driver setup is annoying (Zadig required)
+- Some protocols poorly documented (we do our best)
+- DF mode needs manual calibration
+- Dashboard can lag with 1000+ signals (we'll optimize eventually)
+
+### Legal Stuff
+
+**Important:** ReconRaven is a receive-only platform. It cannot and will not transmit.
+
+**Legal to use:** Receiving public RF signals (ham, public safety, ISM, etc.)
+
+**NOT legal:** 
+- Decrypting encrypted communications
+- Intercepting private communications with intent to use/disclose
+- Using this to violate privacy laws in your jurisdiction
+
+**Your responsibility:** Know your local laws. This tool is for education, research, and authorized operations only. If you're not sure if something is legal, it probably isn't.
+
+We built this for SIGINT training. Use it responsibly.
+
+---
+
+## Credits & Thanks
+
+Built by instructors for instructors. 
 
 Inspired by:
-- Universal Radio Hacker (URH)
-- rtl_433 project
-- KerberosSDR
-- SIGINT community
+- KerberosSDR (DF techniques)
+- Universal Radio Hacker (protocol analysis)
+- rtl_433 (ISM decoding)
+- The entire RTL-SDR community
+
+If this helps your training program, drop us a note. If you find bugs, open an issue. If you want to contribute, send a PR.
+
+---
+
+## License
+
+MIT License - See LICENSE file
+
+TL;DR: Do whatever you want with it. Build on it, break it, sell it, whatever. Just don't blame us when things go sideways.
 
 ---
 
 ## Support
 
-**Documentation:** See `docs/` folder
-**Issues:** Check SIGNAL_ANALYSIS_RESULTS.md  
-**Updates:** Follow the ReconRaven repo
+**Documentation:** You're reading it.
 
-**Built for SIGINT training. Tested with real RF environments. Production ready.**
+**Issues:** GitHub issues tab
+
+**Questions:** Open a discussion on GitHub
+
+**Security issues:** Email us (see profile)
+
+**"It doesn't work":** That's not a question. Check the troubleshooting section first.
 
 ---
 
-*ReconRaven - Professional SIGINT training platform* 🦅
+Built with spite for expensive SIGINT gear and love for the RTL-SDR community.
+
+Now go find some signals.

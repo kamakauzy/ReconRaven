@@ -274,13 +274,56 @@ def main():
     print("# Detects, demodulates, and records ham/433/915 MHz signals")
     print("#"*70)
     
-    scanner = AdvancedScanner()
+    # Start dashboard in background
+    print("\nStarting dashboard...")
+    from kill_dashboard import kill_dashboard_processes
+    kill_dashboard_processes()
+    time.sleep(1)
+    
+    dashboard = SDRDashboardServer({'host': '0.0.0.0', 'port': 5000})
+    dashboard.run_threaded()
+    time.sleep(2)
+    
+    # Load database stats
+    db = get_db()
+    stats = db.get_statistics()
+    
+    # Initialize dashboard state
+    dashboard.update_state({
+        'mode': 'scanning',
+        'status': 'initializing',
+        'baseline_count': stats['baseline_frequencies'],
+        'device_count': stats['identified_devices'],
+        'recording_count': stats['total_recordings'],
+        'anomaly_count': stats['anomalies']
+    })
+    
+    print(f"Dashboard: http://localhost:5000")
+    print(f"Database: {stats['total_recordings']} recordings, {stats['identified_devices']} devices")
+    
+    # Create scanner with dashboard integration
+    scanner = AdvancedScanner(dashboard_server=dashboard)
     
     try:
         if not scanner.init_sdr():
             sys.exit(1)
         
-        scanner.build_baseline()
+        # Build or load baseline
+        if stats['baseline_frequencies'] == 0:
+            print("\nNo baseline found. Building baseline...")
+            scanner.build_baseline()
+        else:
+            print(f"\nLoading existing baseline ({stats['baseline_frequencies']} frequencies)...")
+            for entry in db.get_baseline():
+                scanner.baseline[entry['frequency_hz']] = {
+                    'mean': entry['power_dbm'],
+                    'std': entry['std_dbm'] or 5.0,
+                    'max': entry['power_dbm'] + 10,
+                    'band': entry['band']
+                }
+            print(f"Loaded {len(scanner.baseline)} frequencies")
+        
+        dashboard.update_state({'status': 'monitoring', 'baseline_count': len(scanner.baseline)})
         scanner.monitor_with_recording()
         
     except Exception as e:
@@ -289,7 +332,9 @@ def main():
         traceback.print_exc()
     finally:
         scanner.close()
+        dashboard.update_state({'status': 'stopped', 'mode': 'idle'})
         print("\nSDR closed. Check 'recordings/' folder for captured audio!")
+        print("Dashboard still running at http://localhost:5000")
 
 if __name__ == "__main__":
     main()
