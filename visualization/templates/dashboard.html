@@ -700,7 +700,7 @@
                     const timeDiv = item.querySelector('.signal-time');
                     
                     if (freqDiv) freqDiv.textContent = `${freqMHz} MHz (${band})`;
-                    if (detailsDiv) detailsDiv.innerHTML = `Power: ${power} dBm ${delta} dB | ${signal.filename ? 'Recorded' : 'Not recorded'}`;
+                    if (detailsDiv) detailsDiv.innerHTML = `Power: ${power} dBm ${delta} dB | ${signal.recording_file || signal.recording_filename || signal.filename ? 'Recorded' : 'Not recorded'}`;
                     if (timeDiv) timeDiv.textContent = time;
                     
                     // Update dataset
@@ -726,7 +726,7 @@
             signalItem.innerHTML = `
                 <div class="signal-freq">${freqMHz} MHz (${band})</div>
                 <div class="signal-details">
-                    Power: ${power} dBm ${delta} dB | ${signal.filename ? 'Recorded' : 'Not recorded'}
+                    Power: ${power} dBm ${delta} dB | ${signal.recording_file || signal.recording_filename || signal.filename ? 'Recorded' : 'Not recorded'}
                 </div>
                 <div class="signal-time">${time}</div>
                 <div class="signal-actions">
