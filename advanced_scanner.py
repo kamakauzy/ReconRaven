@@ -222,7 +222,7 @@ class AdvancedScanner:
                 [sys.executable, 'field_analyzer.py', filepath],
                 capture_output=True,
                 text=True,
-                timeout=30  # 30 second timeout
+                timeout=120  # 2 minute timeout (rtl_433 conversion takes time)
             )
             
             if result.returncode == 0:
