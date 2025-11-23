@@ -185,9 +185,7 @@ class ReconRavenDB:
                 d.manufacturer as device_manufacturer,
                 d.device_type as device_type
             FROM signals s
-            LEFT JOIN recordings r ON s.frequency_hz = r.frequency_hz 
-                AND r.captured_at >= datetime(s.detected_at, '-30 seconds')
-                AND r.captured_at <= datetime(s.detected_at, '+30 seconds')
+            LEFT JOIN recordings r ON s.recording_file = r.filename
             LEFT JOIN analysis_results a ON r.id = a.recording_id
             LEFT JOIN devices d ON s.frequency_hz = d.frequency_hz
             WHERE s.is_anomaly = 1 
