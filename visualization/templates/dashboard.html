@@ -739,11 +739,16 @@
         function addAnomalyToList(signal) {
             const anomalyList = document.getElementById('anomaly-list');
             
-            // Check if this frequency already exists
+            // Create signature for matching (freq + modulation + bitrate)
+            const signalSignature = `${signal.frequency_hz}_${signal.analysis_modulation || 'Unknown'}_${signal.analysis_bit_rate || 0}`;
+            
+            // Check if this signature already exists
             const existingItems = anomalyList.querySelectorAll('.signal-item');
             for (let item of existingItems) {
                 const existingData = JSON.parse(item.dataset.signal);
-                if (Math.abs(existingData.frequency_hz - signal.frequency_hz) < 1000) {
+                const existingSignature = `${existingData.frequency_hz}_${existingData.analysis_modulation || 'Unknown'}_${existingData.analysis_bit_rate || 0}`;
+                
+                if (existingSignature === signalSignature) {
                     // Same frequency - update existing entry instead of adding new one
                     const freqMHz = (signal.frequency_hz / 1e6).toFixed(3);
                     const power = signal.power_dbm ? signal.power_dbm.toFixed(1) : '--';
@@ -809,8 +814,18 @@
             // Check if recorded (any of these fields could have the filename)
             const isRecorded = signal.recording_file || signal.recording_filename || signal.filename;
             
+            // Build signature info (modulation + bit rate if available)
+            let signatureInfo = '';
+            if (signal.analysis_modulation && signal.analysis_modulation !== 'Unknown') {
+                signatureInfo = ` [${signal.analysis_modulation}`;
+                if (signal.analysis_bit_rate && signal.analysis_bit_rate > 0) {
+                    signatureInfo += `, ${(signal.analysis_bit_rate/1000).toFixed(1)}k bps`;
+                }
+                signatureInfo += ']';
+            }
+            
             signalItem.innerHTML = `
-                <div class="signal-freq">${freqMHz} MHz ${deviceGuess}${count > 1 ? ` × ${count}` : ''}</div>
+                <div class="signal-freq">${freqMHz} MHz ${deviceGuess}${count > 1 ? ` × ${count}` : ''}${signatureInfo}</div>
                 <div class="signal-details">
                     ${band} | Power: ${power} dBm ${delta} dB | ${isRecorded ? 'Recorded' : 'Not recorded'}
                 </div>
