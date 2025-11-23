@@ -222,7 +222,7 @@ class AdvancedScanner:
                 [sys.executable, 'field_analyzer.py', filepath],
                 capture_output=True,
                 text=True,
-                timeout=120  # 2 minute timeout (rtl_433 conversion takes time)
+                timeout=180  # 3 minute timeout - reduced recording size should complete faster
             )
             
             if result.returncode == 0:
@@ -277,7 +277,7 @@ class AdvancedScanner:
         print("\n" + "="*70)
         print("MONITORING MODE - Will record strong signals")
         print("Commands:")
-        print("  - Anomalies >15 dB above baseline = AUTO-RECORD 10 seconds")
+        print("  - Anomalies >15 dB above baseline = AUTO-RECORD 3 seconds")
         print("  - Press Ctrl+C to stop")
         print("="*70)
         
@@ -318,7 +318,7 @@ class AdvancedScanner:
                         print(f"  [{sig['band']}] {sig['freq']/1e6:.3f} MHz: {sig['power']:.1f} dBm (+{sig['delta']:.1f} dB)")
                         
                         # Record this signal FIRST
-                        recording_file = self.record_signal(sig['freq'], duration=10)
+                        recording_file = self.record_signal(sig['freq'], duration=3)
                         
                         # Auto-analyze the recording
                         device_info = None
