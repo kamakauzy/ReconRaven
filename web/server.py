@@ -114,10 +114,16 @@ class SDRDashboardServer:
             stats = db.get_statistics()
             self.platform_state['baseline_count'] = stats['baseline_frequencies']
             self.platform_state['recording_count'] = stats['total_recordings']
+            self.platform_state['anomaly_count'] = stats['anomalies']
+            self.platform_state['device_count'] = stats['identified_devices']
             
-            # Only update counts, don't reload all devices
-            # Active devices are tracked in self.platform_state['identified_devices']
-            # which is updated by add_signal() as signals are detected
+            # Load anomalies from database (for page refresh persistence)
+            anomalies = db.get_anomalies(limit=50)
+            self.platform_state['anomalies'] = anomalies
+            
+            # Load identified devices
+            devices = db.get_devices()
+            self.platform_state['identified_devices'] = devices[:20]  # Top 20
             
             emit('status_update', self.platform_state)
         

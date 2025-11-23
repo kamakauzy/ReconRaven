@@ -626,12 +626,21 @@
             sdrCount = data.sdr_count || 1;
             updateDFWarning();
             
-            // COMPLETELY SKIP active transmissions update from auto-refresh
-            // Active Transmissions should ONLY be manually populated via specific events
-            // NOT from the periodic refresh which includes unidentified signals
+            // On page load/refresh, populate anomalies from database
+            if (data.anomalies && data.anomalies.length > 0) {
+                console.log('Loading', data.anomalies.length, 'anomalies from database');
+                data.anomalies.forEach(anomaly => {
+                    addAnomalyToList(anomaly);
+                });
+            }
             
-            // Update anomalies - also skip, they come via 'new_signal' event
-            // Only update counts, not the lists themselves
+            // On page load/refresh, populate identified devices  
+            if (data.identified_devices && data.identified_devices.length > 0) {
+                console.log('Loading', data.identified_devices.length, 'devices from database');
+                data.identified_devices.forEach(device => {
+                    addSignalToActiveList(device);
+                });
+            }
             
             // Update active count
             const activeCount = (data.identified_devices ? data.identified_devices.length : 0) + 
@@ -913,6 +922,15 @@
             // Open simple modal or alert showing baseline count
             const count = document.getElementById('baseline-count').textContent;
             alert(`Baseline Database:\n\n${count} frequencies loaded from setup.\n\nThese are the "normal" frequencies for your area and are not shown in the main view.\n\nUse "reconraven.py db devices" to view them via command line.`);
+        }
+        
+        function getBandForFrequency(freq_hz) {
+            // Helper to determine band from frequency
+            if (freq_hz >= 144e6 && freq_hz <= 148e6) return '2m';
+            if (freq_hz >= 420e6 && freq_hz <= 450e6) return '70cm';
+            if (freq_hz >= 433e6 && freq_hz <= 435e6) return 'ISM433';
+            if (freq_hz >= 902e6 && freq_hz <= 928e6) return 'ISM915';
+            return 'Unknown';
         }
         
         function showAnalysis(event, signalData) {
