@@ -726,13 +726,13 @@
                     // Smart device type guess
                     let deviceGuess = '';
                     if (band === 'ISM433' || (signal.frequency_hz >= 433e6 && signal.frequency_hz <= 435e6)) {
-                        deviceGuess = '🚗 Remote/Sensor';
+                        deviceGuess = 'Remote/Sensor';
                     } else if (band === 'ISM915' || (signal.frequency_hz >= 902e6 && signal.frequency_hz <= 928e6)) {
-                        deviceGuess = '📡 ISM Device';
+                        deviceGuess = 'ISM Device';
                     } else if (signal.frequency_hz >= 144e6 && signal.frequency_hz <= 148e6) {
-                        deviceGuess = '📻 2m Ham Radio';
+                        deviceGuess = '2m Ham Radio';
                     } else if (signal.frequency_hz >= 420e6 && signal.frequency_hz <= 450e6) {
-                        deviceGuess = '📻 70cm Radio';
+                        deviceGuess = '70cm Radio';
                     }
                     
                     // Update the content
@@ -768,13 +768,13 @@
             // Smart device type guess based on band and frequency
             let deviceGuess = '';
             if (band === 'ISM433' || (signal.frequency_hz >= 433e6 && signal.frequency_hz <= 435e6)) {
-                deviceGuess = '🚗 Remote/Sensor';
+                deviceGuess = 'Remote/Sensor';
             } else if (band === 'ISM915' || (signal.frequency_hz >= 902e6 && signal.frequency_hz <= 928e6)) {
-                deviceGuess = '📡 ISM Device';
+                deviceGuess = 'ISM Device';
             } else if (signal.frequency_hz >= 144e6 && signal.frequency_hz <= 148e6) {
-                deviceGuess = '📻 2m Ham Radio';
+                deviceGuess = '2m Ham Radio';
             } else if (signal.frequency_hz >= 420e6 && signal.frequency_hz <= 450e6) {
-                deviceGuess = '📻 70cm Radio';
+                deviceGuess = '70cm Radio';
             }
             
             // Check if recorded (any of these fields could have the filename)
