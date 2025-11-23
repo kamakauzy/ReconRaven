@@ -605,6 +605,34 @@
             updateGPS(gps);
         });
         
+        socket.on('analysis_started', (data) => {
+            console.log('Analysis started:', data);
+            // Update modal to show spinner
+            document.getElementById('modalExtractedData').innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <div style="font-size: 24px;">🔄</div>
+                    <div style="margin-top: 10px;"><strong>Analyzing signal...</strong></div>
+                    <div style="margin-top: 5px; opacity: 0.7;">Running field_analyzer.py (may take up to 2 minutes)</div>
+                </div>
+            `;
+        });
+        
+        socket.on('analysis_complete', (signal) => {
+            console.log('Analysis complete:', signal);
+            // Reload modal with fresh data
+            showAnalysisResults(signal);
+        });
+        
+        socket.on('analysis_error', (data) => {
+            console.error('Analysis error:', data);
+            document.getElementById('modalExtractedData').innerHTML = `
+                <div style="color: #ff4444;">
+                    <strong>❌ Analysis Failed</strong><br>
+                    ${data.error}
+                </div>
+            `;
+        });
+        
         function updateDashboard(data) {
             console.log('Dashboard update:', data);
             
@@ -734,7 +762,7 @@
                 <div class="signal-time">${time}</div>
                 <div class="signal-actions">
                     <button class="promote" onclick="promoteToBaseline(event, ${signal.frequency_hz}, '${band}')">Move to Baseline</button>
-                    <button onclick="showAnalysis(event, ${JSON.stringify(signal).replace(/"/g, '&quot;')})">Analyze</button>
+                    <button onclick="analyzeSignal(event, ${JSON.stringify(signal).replace(/"/g, '&quot;')})">Analyze</button>
                     <button onclick="startDFOnSignal(event, ${signal.frequency_hz})">DF This Signal</button>
                     <button class="delete" onclick="dismissAnomaly(event, ${signal.frequency_hz})">Dismiss</button>
                 </div>
@@ -936,8 +964,97 @@
             return 'Unknown';
         }
         
-        function showAnalysis(event, signalData) {
+        function analyzeSignal(event, signalData) {
             event.stopPropagation();
+            
+            // Parse signal data if it's a string
+            const signal = typeof signalData === 'string' ? JSON.parse(signalData) : signalData;
+            
+            // Check if we need to run analysis
+            const needsAnalysis = !signal.analysis_results && signal.recording_analyzed === 0;
+            const hasRecording = signal.recording_file || signal.recording_filename || signal.filename;
+            
+            if (needsAnalysis && hasRecording) {
+                // Trigger analysis
+                const recordingFile = signal.recording_file || signal.recording_filename || signal.filename;
+                console.log('Triggering on-demand analysis for:', recordingFile);
+                
+                // Show modal with spinner FIRST
+                showAnalysis(event, signal);
+                
+                // Then trigger analysis
+                socket.emit('analyze_signal', {
+                    recording_file: recordingFile,
+                    frequency_hz: signal.frequency_hz
+                });
+            } else {
+                // Just show existing data
+                showAnalysis(event, signal);
+            }
+        }
+        
+        function showAnalysisResults(signal) {
+            // Update modal with analysis results without re-opening
+            const modal = document.getElementById('analysisModal');
+            if (modal.style.display === 'block') {
+                // Modal is already open - just update the data
+                const freqMHz = (signal.frequency_hz / 1e6).toFixed(3);
+                const band = signal.band || 'Unknown';
+                
+                // Update extracted data section
+                let extractedHtml = '';
+                if (signal.analysis_results) {
+                    try {
+                        const results = typeof signal.analysis_results === 'string' 
+                            ? JSON.parse(signal.analysis_results) 
+                            : signal.analysis_results;
+                        
+                        extractedHtml = '<strong>✅ Analysis Complete:</strong><br>';
+                        extractedHtml += `Modulation: ${signal.analysis_modulation || 'Unknown'}<br>`;
+                        if (signal.analysis_bit_rate) {
+                            extractedHtml += `Bit Rate: ${signal.analysis_bit_rate} bps<br>`;
+                        }
+                        if (signal.analysis_preambles) {
+                            extractedHtml += `Preambles: ${signal.analysis_preambles}<br>`;
+                        }
+                        if (signal.analysis_confidence) {
+                            extractedHtml += `Confidence: ${(signal.analysis_confidence * 100).toFixed(0)}%<br>`;
+                        }
+                        extractedHtml += '<br><strong>Full Results:</strong><br>';
+                        extractedHtml += `<pre style="font-size: 11px; white-space: pre-wrap;">${JSON.stringify(results, null, 2)}</pre>`;
+                    } catch (e) {
+                        extractedHtml = `<strong>Analysis Data:</strong><br>${signal.analysis_results}`;
+                    }
+                } else {
+                    extractedHtml = '<strong>No analysis data available</strong>';
+                }
+                document.getElementById('modalExtractedData').innerHTML = extractedHtml;
+                
+                // Update device info
+                let deviceHtml = '';
+                if (signal.device_name) {
+                    deviceHtml = '<strong>✅ Identified Device:</strong><br>';
+                    deviceHtml += `Name: ${signal.device_name}<br>`;
+                    if (signal.device_manufacturer) {
+                        deviceHtml += `Manufacturer: ${signal.device_manufacturer}<br>`;
+                    }
+                    if (signal.device_type) {
+                        deviceHtml += `Type: ${signal.device_type}<br>`;
+                    }
+                } else {
+                    deviceHtml = `
+                        <strong>Identification:</strong><br>
+                        Status: Unknown device<br>
+                        <br>
+                        <em>No device match found in database</em>
+                    `;
+                }
+                document.getElementById('modalDeviceInfo').innerHTML = deviceHtml;
+            }
+        }
+        
+        function showAnalysis(event, signalData) {
+            if (event) event.stopPropagation();
             
             // Parse signal data if it's a string
             const signal = typeof signalData === 'string' ? JSON.parse(signalData) : signalData;

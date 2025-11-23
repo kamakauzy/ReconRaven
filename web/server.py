@@ -206,6 +206,67 @@ class SDRDashboardServer:
                 'message': f'DF not yet implemented (requires 4 SDRs)',
                 'success': False
             })
+        
+        @self.socketio.on('analyze_signal')
+        def handle_analyze_signal(data):
+            """Trigger on-demand signal analysis."""
+            import subprocess
+            import os
+            from database import get_db
+            
+            recording_file = data.get('recording_file')
+            frequency_hz = data.get('frequency_hz')
+            
+            if not recording_file:
+                emit('analysis_error', {'error': 'No recording file specified'})
+                return
+            
+            logger.info(f"On-demand analysis requested for {recording_file}")
+            
+            # Notify client that analysis started
+            emit('analysis_started', {'recording_file': recording_file})
+            
+            # Run field_analyzer.py in subprocess
+            try:
+                npy_path = os.path.join('recordings', 'audio', recording_file)
+                if not os.path.exists(npy_path):
+                    emit('analysis_error', {'error': f'Recording file not found: {npy_path}'})
+                    return
+                
+                result = subprocess.run(
+                    ['python', 'field_analyzer.py', npy_path],
+                    capture_output=True,
+                    text=True,
+                    timeout=120  # 2 minutes
+                )
+                
+                if result.returncode == 0:
+                    # Analysis successful - fetch results from database
+                    db = get_db()
+                    
+                    # Get the signal with full analysis data
+                    anomalies = db.get_anomalies(limit=1000)
+                    signal = None
+                    for a in anomalies:
+                        if a.get('recording_file') == recording_file or a.get('recording_filename') == recording_file:
+                            signal = a
+                            break
+                    
+                    if signal:
+                        emit('analysis_complete', signal)
+                        logger.info(f"Analysis complete for {recording_file}")
+                    else:
+                        emit('analysis_error', {'error': 'Analysis completed but results not found in database'})
+                else:
+                    emit('analysis_error', {'error': f'Analysis failed: {result.stderr}'})
+                    logger.error(f"Analysis failed: {result.stderr}")
+                    
+            except subprocess.TimeoutExpired:
+                emit('analysis_error', {'error': 'Analysis timed out (>2 minutes)'})
+                logger.error(f"Analysis timeout for {recording_file}")
+            except Exception as e:
+                emit('analysis_error', {'error': str(e)})
+                logger.error(f"Analysis exception: {e}")
     
     def update_state(self, state_update: Dict[str, Any]):
         """Update platform state and broadcast to clients.
