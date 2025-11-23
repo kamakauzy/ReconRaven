@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SDR SIGINT Platform Dashboard</title>
+    <title>ReconRaven SIGINT Dashboard</title>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <style>
         * {
@@ -58,7 +58,7 @@
         
         .dashboard-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            grid-template-columns: 1fr 1fr;
             gap: 20px;
             margin-bottom: 20px;
         }
@@ -68,6 +68,10 @@
             border-radius: 10px;
             padding: 20px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .panel.full-width {
+            grid-column: 1 / -1;
         }
         
         .panel h2 {
@@ -83,10 +87,27 @@
         
         .signal-item {
             background: #333;
-            padding: 10px;
+            padding: 12px;
             margin-bottom: 10px;
             border-radius: 5px;
             border-left: 3px solid #667eea;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .signal-item:hover {
+            background: #3a3a3a;
+            border-left-color: #FF9800;
+        }
+        
+        .signal-item.selected {
+            background: #3a3a3a;
+            border-left-color: #FF9800;
+            box-shadow: 0 0 10px rgba(255, 152, 0, 0.3);
+        }
+        
+        .signal-item.anomaly {
+            border-left-color: #ff4444;
         }
         
         .signal-freq {
@@ -101,26 +122,53 @@
             opacity: 0.8;
         }
         
-        .bearing-display {
-            text-align: center;
-            padding: 20px;
+        .signal-time {
+            font-size: 11px;
+            opacity: 0.6;
+            margin-top: 3px;
         }
         
-        .bearing-value {
-            font-size: 48px;
-            font-weight: bold;
-            color: #667eea;
-        }
-        
-        .bearing-label {
+        .button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
             font-size: 14px;
-            opacity: 0.8;
-            margin-top: 10px;
+            margin: 5px 5px 5px 0;
+        }
+        
+        .button:hover {
+            background: #764ba2;
+        }
+        
+        .button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        
+        .button.danger {
+            background: #ff4444;
+        }
+        
+        .button.danger:hover {
+            background: #cc0000;
+        }
+        
+        .df-panel {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .compass-container {
+            flex: 1;
+            text-align: center;
         }
         
         .compass {
-            width: 300px;
-            height: 300px;
+            width: 250px;
+            height: 250px;
             margin: 20px auto;
             position: relative;
             border: 3px solid #667eea;
@@ -136,14 +184,32 @@
             height: 0;
             border-left: 10px solid transparent;
             border-right: 10px solid transparent;
-            border-bottom: 100px solid #ff4444;
+            border-bottom: 80px solid #ff4444;
             transform-origin: bottom center;
             transform: translate(-50%, -100%);
+        }
+        
+        .bearing-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+            margin-top: 10px;
+        }
+        
+        .df-info {
+            flex: 1;
+        }
+        
+        .df-controls {
+            margin-top: 15px;
         }
         
         .gps-info {
             font-family: 'Courier New', monospace;
             font-size: 14px;
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 5px;
         }
         
         .gps-row {
@@ -151,21 +217,6 @@
             justify-content: space-between;
             padding: 8px 0;
             border-bottom: 1px solid #333;
-        }
-        
-        .button {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            margin: 5px;
-        }
-        
-        .button:hover {
-            background: #764ba2;
         }
         
         .mode-indicator {
@@ -176,27 +227,49 @@
             font-weight: bold;
         }
         
-        .mode-mobile {
+        .mode-monitoring {
             background: #4CAF50;
+        }
+        
+        .mode-scanning {
+            background: #2196F3;
         }
         
         .mode-df {
             background: #FF9800;
         }
         
-        .mode-unknown {
+        .mode-idle {
             background: #9E9E9E;
+        }
+        
+        .info-message {
+            background: rgba(102, 126, 234, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 13px;
+            margin-top: 10px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .warning-message {
+            background: rgba(255, 152, 0, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 13px;
+            margin-top: 10px;
+            border-left: 3px solid #FF9800;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1><img src="https://raw.githubusercontent.com/kamakauzy/ReconRaven/main/rr.png" alt="ReconRaven" style="height: 40px; vertical-align: middle; margin-right: 10px;">ReconRaven SIGINT Platform</h1>
+        <h1><img src="https://raw.githubusercontent.com/kamakauzy/ReconRaven/main/rr.png" alt="ReconRaven" style="height: 40px; vertical-align: middle; margin-right: 10px;">ReconRaven Operations</h1>
         <div class="status-bar">
             <div class="status-item">
                 <div class="status-label">Mode</div>
                 <div class="status-value">
-                    <span id="mode-indicator" class="mode-indicator mode-unknown">UNKNOWN</span>
+                    <span id="mode-indicator" class="mode-indicator mode-idle">IDLE</span>
                 </div>
             </div>
             <div class="status-item">
@@ -204,19 +277,15 @@
                 <div class="status-value" id="status">Idle</div>
             </div>
             <div class="status-item">
-                <div class="status-label">Baseline Freqs</div>
-                <div class="status-value" id="baseline-count">0</div>
+                <div class="status-label">Active Transmissions</div>
+                <div class="status-value" id="active-count">0</div>
             </div>
             <div class="status-item">
                 <div class="status-label">Anomalies</div>
                 <div class="status-value" id="anomaly-count">0</div>
             </div>
             <div class="status-item">
-                <div class="status-label">Identified Devices</div>
-                <div class="status-value" id="device-count">0</div>
-            </div>
-            <div class="status-item">
-                <div class="status-label">Recordings</div>
+                <div class="status-label">Total Recordings</div>
                 <div class="status-value" id="recording-count">0</div>
             </div>
         </div>
@@ -224,70 +293,90 @@
     
     <div class="dashboard-grid">
         <div class="panel">
-            <h2>Identified Devices</h2>
-            <div id="device-list" class="signal-list">
-                <p style="opacity: 0.5;">No devices identified yet...</p>
+            <h2>Active Transmissions</h2>
+            <div id="active-list" class="signal-list">
+                <p style="opacity: 0.5;">No active transmissions...</p>
             </div>
-            <div style="margin-top: 10px;">
-                <button class="button" onclick="promoteAnomalies()">Promote All to Baseline</button>
-            </div>
-            <div style="margin-top: 5px; opacity: 0.7; font-size: 12px;">
-                Promotes identified devices to baseline (expected frequencies).
+            <div class="info-message">
+                Click a signal to select it for direction finding (requires 4 SDRs)
             </div>
         </div>
         
         <div class="panel">
-            <h2>Active Signals / Anomalies</h2>
+            <h2>Anomalies / Unknown Signals</h2>
             <div id="anomaly-list" class="signal-list">
-                <p style="opacity: 0.5;">Waiting for signals...</p>
+                <p style="opacity: 0.5;">No anomalies detected...</p>
             </div>
-            <div style="margin-top: 10px; opacity: 0.7; font-size: 12px;">
-                Showing unidentified or unusual signals. Once identified, devices appear in "Identified Devices" panel.
-            </div>
-        </div>
-        
-        <div class="panel">
-            <h2>Direction Finding</h2>
-            <div class="bearing-display">
-                <div id="compass" class="compass">
-                    <div id="bearing-marker" class="compass-marker" style="display: none;"></div>
-                </div>
-                <div class="bearing-value" id="bearing-value">--°</div>
-                <div class="bearing-label">Last Bearing</div>
+            <div class="info-message">
+                Signals significantly above baseline. Click to select for DF.
             </div>
         </div>
         
-        <div class="panel">
-            <h2>GPS Position</h2>
-            <div id="gps-info" class="gps-info">
-                <div class="gps-row">
-                    <span>Latitude:</span>
-                    <span id="gps-lat">--</span>
+        <div class="panel full-width">
+            <h2>Direction Finding & GPS</h2>
+            <div class="df-panel">
+                <div class="compass-container">
+                    <div id="compass" class="compass">
+                        <div id="bearing-marker" class="compass-marker" style="display: none;"></div>
+                    </div>
+                    <div class="bearing-value" id="bearing-value">--°</div>
+                    <div style="opacity: 0.7; font-size: 12px; margin-top: 5px;">Last Bearing</div>
                 </div>
-                <div class="gps-row">
-                    <span>Longitude:</span>
-                    <span id="gps-lon">--</span>
-                </div>
-                <div class="gps-row">
-                    <span>Altitude:</span>
-                    <span id="gps-alt">--</span>
-                </div>
-                <div class="gps-row">
-                    <span>Satellites:</span>
-                    <span id="gps-sats">--</span>
+                
+                <div class="df-info">
+                    <h3 style="margin-bottom: 10px;">Selected Signal</h3>
+                    <div id="selected-signal-info" style="opacity: 0.5;">
+                        No signal selected
+                    </div>
+                    
+                    <div class="df-controls">
+                        <button id="df-button" class="button" onclick="startDF()" disabled>Start Direction Finding</button>
+                        <button class="button" onclick="clearSelection()">Clear Selection</button>
+                    </div>
+                    
+                    <div class="warning-message" id="df-warning" style="display: none;">
+                        Direction finding requires 4 synchronized SDRs. Currently: 1 SDR detected.
+                    </div>
+                    
+                    <h3 style="margin-top: 20px; margin-bottom: 10px;">GPS Position</h3>
+                    <div class="gps-info">
+                        <div class="gps-row">
+                            <span>Latitude:</span>
+                            <span id="gps-lat">--</span>
+                        </div>
+                        <div class="gps-row">
+                            <span>Longitude:</span>
+                            <span id="gps-lon">--</span>
+                        </div>
+                        <div class="gps-row">
+                            <span>Altitude:</span>
+                            <span id="gps-alt">--</span>
+                        </div>
+                        <div class="gps-row">
+                            <span>Satellites:</span>
+                            <span id="gps-sats">--</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
         
-        <div class="panel">
-            <h2>Controls</h2>
+        <div class="panel full-width">
+            <h2>Database Management</h2>
+            <button class="button" onclick="window.open('/database', '_blank')">View All Frequencies</button>
+            <button class="button" onclick="promoteToBaseline()">Promote Active to Baseline</button>
+            <button class="button danger" onclick="clearAnomalies()">Clear Anomalies</button>
             <button class="button" onclick="requestUpdate()">Refresh Data</button>
-            <button class="button" onclick="clearSignals()">Clear Signals</button>
+            <div class="info-message">
+                Baseline database: <span id="baseline-count">0</span> frequencies loaded (not shown here)
+            </div>
         </div>
     </div>
     
     <script>
         const socket = io();
+        let selectedSignal = null;
+        let sdrCount = 1;
         
         socket.on('connect', () => {
             console.log('Connected to server');
@@ -305,7 +394,7 @@
         });
         
         socket.on('new_signal', (signal) => {
-            addSignalToList(signal);
+            addSignalToActiveList(signal);
         });
         
         socket.on('new_bearing', (bearing) => {
@@ -321,31 +410,40 @@
             
             // Update mode
             const modeIndicator = document.getElementById('mode-indicator');
-            modeIndicator.textContent = data.mode.toUpperCase();
-            modeIndicator.className = 'mode-indicator mode-' + data.mode;
+            const mode = data.mode || 'idle';
+            modeIndicator.textContent = mode.toUpperCase();
+            modeIndicator.className = 'mode-indicator mode-' + mode;
             
             // Update status
-            document.getElementById('status').textContent = data.status;
+            document.getElementById('status').textContent = data.status || 'Idle';
             
             // Update counts
             document.getElementById('baseline-count').textContent = data.baseline_count || 0;
             document.getElementById('anomaly-count').textContent = data.anomaly_count || 0;
-            document.getElementById('device-count').textContent = data.device_count || 0;
             document.getElementById('recording-count').textContent = data.recording_count || 0;
             
-            // Update anomaly list
+            // Update SDR count
+            sdrCount = data.sdr_count || 1;
+            updateDFWarning();
+            
+            // Update active transmissions (identified devices that have actually transmitted)
+            const activeList = document.getElementById('active-list');
+            if (data.identified_devices && data.identified_devices.length > 0) {
+                activeList.innerHTML = '';
+                data.identified_devices.forEach(device => addSignalToActiveList(device));
+            }
+            
+            // Update anomalies
             const anomalyList = document.getElementById('anomaly-list');
             if (data.signals && data.signals.length > 0) {
                 anomalyList.innerHTML = '';
-                data.signals.slice(-10).reverse().forEach(signal => addSignalToAnomalyList(signal));
+                data.signals.slice(-20).reverse().forEach(signal => addAnomalyToList(signal));
             }
             
-            // Update device list
-            if (data.identified_devices && data.identified_devices.length > 0) {
-                const deviceList = document.getElementById('device-list');
-                deviceList.innerHTML = '';
-                data.identified_devices.forEach(device => addDeviceToList(device));
-            }
+            // Update active count
+            const activeCount = (data.identified_devices ? data.identified_devices.length : 0) + 
+                               (data.signals ? data.signals.length : 0);
+            document.getElementById('active-count').textContent = activeCount;
             
             // Update bearings
             if (data.bearings && data.bearings.length > 0) {
@@ -353,49 +451,112 @@
             }
         }
         
-        function addSignalToAnomalyList(signal) {
-            const anomalyList = document.getElementById('anomaly-list');
+        function addSignalToActiveList(device) {
+            const activeList = document.getElementById('active-list');
             const signalItem = document.createElement('div');
             signalItem.className = 'signal-item';
+            signalItem.onclick = () => selectSignal(device, signalItem);
+            
+            const freqMHz = (device.frequency_hz / 1e6).toFixed(3);
+            const confidence = device.confidence ? (device.confidence * 100).toFixed(0) : '100';
+            const lastSeen = device.last_seen || 'Active';
+            
+            signalItem.innerHTML = `
+                <div class="signal-freq">${device.name || 'Unknown Device'}</div>
+                <div class="signal-details">
+                    ${freqMHz} MHz | ${device.manufacturer || 'Unknown'} | ${device.device_type || 'Unknown Type'}<br>
+                    Confidence: ${confidence}% | Last seen: ${lastSeen}
+                </div>
+            `;
+            
+            signalItem.dataset.signal = JSON.stringify(device);
+            activeList.appendChild(signalItem);
+        }
+        
+        function addAnomalyToList(signal) {
+            const anomalyList = document.getElementById('anomaly-list');
+            const signalItem = document.createElement('div');
+            signalItem.className = 'signal-item anomaly';
+            signalItem.onclick = () => selectSignal(signal, signalItem);
             
             const freqMHz = (signal.frequency_hz / 1e6).toFixed(3);
             const power = signal.power_dbm ? signal.power_dbm.toFixed(1) : '--';
-            const bw = signal.bandwidth_hz ? (signal.bandwidth_hz / 1e3).toFixed(1) : '--';
+            const delta = signal.delta_db ? '+' + signal.delta_db.toFixed(1) : '';
             const band = signal.band || 'Unknown';
+            const time = signal.detected_at || 'Now';
             
             signalItem.innerHTML = `
                 <div class="signal-freq">${freqMHz} MHz (${band})</div>
                 <div class="signal-details">
-                    Power: ${power} dBm | BW: ${bw} kHz
-                    ${signal.filename ? '<br>File: ' + signal.filename : ''}
+                    Power: ${power} dBm ${delta} dB | ${signal.filename ? 'Recorded' : 'Not recorded'}
                 </div>
+                <div class="signal-time">${time}</div>
             `;
             
-            anomalyList.insertBefore(signalItem, anomalyList.firstChild);
-            
-            // Keep only last 20
-            while (anomalyList.children.length > 20) {
-                anomalyList.removeChild(anomalyList.lastChild);
-            }
+            signalItem.dataset.signal = JSON.stringify(signal);
+            anomalyList.appendChild(signalItem);
         }
         
-        function addDeviceToList(device) {
-            const deviceList = document.getElementById('device-list');
-            const deviceItem = document.createElement('div');
-            deviceItem.className = 'signal-item';
+        function selectSignal(signal, element) {
+            // Remove previous selection
+            document.querySelectorAll('.signal-item.selected').forEach(item => {
+                item.classList.remove('selected');
+            });
             
-            const freqMHz = (device.frequency_hz / 1e6).toFixed(3);
-            const confidence = (device.confidence * 100).toFixed(0);
+            // Select new signal
+            element.classList.add('selected');
+            selectedSignal = signal;
             
-            deviceItem.innerHTML = `
-                <div class="signal-freq">${device.name}</div>
-                <div class="signal-details">
-                    ${freqMHz} MHz | ${device.manufacturer}<br>
-                    Type: ${device.type} | Confidence: ${confidence}%
-                </div>
+            // Update selected signal info
+            const freqMHz = (signal.frequency_hz / 1e6).toFixed(3);
+            const infoDiv = document.getElementById('selected-signal-info');
+            infoDiv.style.opacity = '1';
+            infoDiv.innerHTML = `
+                <strong>${signal.name || freqMHz + ' MHz'}</strong><br>
+                Frequency: ${freqMHz} MHz<br>
+                ${signal.manufacturer ? 'Manufacturer: ' + signal.manufacturer + '<br>' : ''}
+                ${signal.device_type ? 'Type: ' + signal.device_type + '<br>' : ''}
+                ${signal.power_dbm ? 'Power: ' + signal.power_dbm.toFixed(1) + ' dBm<br>' : ''}
+                ${signal.band ? 'Band: ' + signal.band + '<br>' : ''}
             `;
             
-            deviceList.appendChild(deviceItem);
+            // Enable DF button if we have 4 SDRs
+            document.getElementById('df-button').disabled = sdrCount < 4;
+        }
+        
+        function clearSelection() {
+            document.querySelectorAll('.signal-item.selected').forEach(item => {
+                item.classList.remove('selected');
+            });
+            selectedSignal = null;
+            document.getElementById('selected-signal-info').style.opacity = '0.5';
+            document.getElementById('selected-signal-info').textContent = 'No signal selected';
+            document.getElementById('df-button').disabled = true;
+        }
+        
+        function startDF() {
+            if (!selectedSignal) {
+                alert('Please select a signal first');
+                return;
+            }
+            
+            if (sdrCount < 4) {
+                alert('Direction finding requires 4 synchronized SDRs. Currently: ' + sdrCount + ' detected.');
+                return;
+            }
+            
+            console.log('Starting DF on:', selectedSignal);
+            socket.emit('start_df', { frequency: selectedSignal.frequency_hz });
+        }
+        
+        function updateDFWarning() {
+            const warning = document.getElementById('df-warning');
+            if (sdrCount < 4) {
+                warning.style.display = 'block';
+                warning.textContent = `Direction finding requires 4 synchronized SDRs. Currently: ${sdrCount} SDR detected.`;
+            } else {
+                warning.style.display = 'none';
+            }
         }
         
         function updateBearing(bearing) {
@@ -408,26 +569,28 @@
         }
         
         function updateGPS(gps) {
-            document.getElementById('gps-lat').textContent = gps.latitude.toFixed(6);
-            document.getElementById('gps-lon').textContent = gps.longitude.toFixed(6);
-            document.getElementById('gps-alt').textContent = gps.altitude_m.toFixed(1) + ' m';
-            document.getElementById('gps-sats').textContent = gps.satellites;
+            document.getElementById('gps-lat').textContent = gps.latitude ? gps.latitude.toFixed(6) : '--';
+            document.getElementById('gps-lon').textContent = gps.longitude ? gps.longitude.toFixed(6) : '--';
+            document.getElementById('gps-alt').textContent = gps.altitude_m ? gps.altitude_m.toFixed(1) + ' m' : '--';
+            document.getElementById('gps-sats').textContent = gps.satellites || '--';
         }
         
         function requestUpdate() {
             socket.emit('request_update');
         }
         
-        function clearSignals() {
-            document.getElementById('anomaly-list').innerHTML = '<p style="opacity: 0.5;">Waiting for signals...</p>';
+        function clearAnomalies() {
+            if (confirm('Clear all anomalies from view?')) {
+                document.getElementById('anomaly-list').innerHTML = '<p style="opacity: 0.5;">No anomalies detected...</p>';
+            }
         }
         
-        function promoteAnomalies() {
-            if (confirm('Promote all identified devices to baseline? This marks them as expected/normal frequencies.')) {
+        function promoteToBaseline() {
+            if (confirm('Promote all active transmissions to baseline? They will be marked as expected/normal frequencies.')) {
                 socket.emit('promote_to_baseline');
+                setTimeout(requestUpdate, 1000);
             }
         }
     </script>
 </body>
 </html>
-
