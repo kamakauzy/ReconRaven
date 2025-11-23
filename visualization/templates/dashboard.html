@@ -654,20 +654,28 @@
             sdrCount = data.sdr_count || 1;
             updateDFWarning();
             
-            // On page load/refresh, populate anomalies from database
+            // CLEAR and repopulate anomalies from database (don't just append)
+            const anomalyList = document.getElementById('anomaly-list');
             if (data.anomalies && data.anomalies.length > 0) {
                 console.log('Loading', data.anomalies.length, 'anomalies from database');
+                anomalyList.innerHTML = ''; // Clear first
                 data.anomalies.forEach(anomaly => {
                     addAnomalyToList(anomaly);
                 });
+            } else {
+                anomalyList.innerHTML = '<p style="opacity: 0.5;">No anomalies detected...</p>';
             }
             
-            // On page load/refresh, populate identified devices  
+            // CLEAR and repopulate identified devices from database
+            const activeList = document.getElementById('active-list');
             if (data.identified_devices && data.identified_devices.length > 0) {
                 console.log('Loading', data.identified_devices.length, 'devices from database');
+                activeList.innerHTML = ''; // Clear first
                 data.identified_devices.forEach(device => {
                     addSignalToActiveList(device);
                 });
+            } else {
+                activeList.innerHTML = '<p style="opacity: 0.5;">No active transmissions...</p>';
             }
             
             // Update active count
