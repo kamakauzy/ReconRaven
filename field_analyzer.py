@@ -300,37 +300,37 @@ class FieldAnalyzer:
             
             print(f"[DB] Analysis results saved (recording_id={recording_id})")
             
-            # Also add/update device if identified
-            if results['confidence'] >= 0.6:
-                device_name = self._get_device_name(results)
-                frequency = self._extract_frequency(filename)
+            # Also add/update device (always create, even if unknown)
+            device_name = self._get_device_name(results)
+            frequency = self._extract_frequency(filename)
+            
+            if frequency:
+                manufacturer = None
+                device_type = None
                 
-                if frequency:
-                    manufacturer = None
-                    device_type = None
-                    
-                    if results.get('signature_match'):
-                        manufacturer = results['signature_match'].get('manufacturer')
-                        device_type = results['signature_match'].get('device_type')
-                    elif results.get('rtl433_result') and results['rtl433_result'].get('count', 0) > 0:
-                        device = results['rtl433_result']['devices'][0]
-                        manufacturer = device.get('manufacturer', 'Unknown')
-                        device_type = device.get('model', 'Unknown')
-                    
-                    device_id = self.db.add_device(
-                        freq=frequency,
-                        name=device_name,
-                        manufacturer=manufacturer,
-                        device_type=device_type,
-                        modulation=modulation,
-                        bit_rate=bit_rate,
-                        confidence=results['confidence']
-                    )
-                    
-                    # Mark recording as analyzed
-                    self.db.mark_recording_analyzed(recording_id, device_id)
-                    
-                    print(f"[DB] Device added/updated: {device_name}")
+                if results.get('signature_match'):
+                    manufacturer = results['signature_match'].get('manufacturer')
+                    device_type = results['signature_match'].get('device_type')
+                elif results.get('rtl433_result') and results['rtl433_result'].get('count', 0) > 0:
+                    device = results['rtl433_result']['devices'][0]
+                    manufacturer = device.get('manufacturer', 'Unknown')
+                    device_type = device.get('model', 'Unknown')
+                
+                # Always create device entry (even if "Unknown")
+                device_id = self.db.add_device(
+                    freq=frequency,
+                    name=device_name if device_name != "Unknown" else f"{frequency/1e6:.3f} MHz Signal",
+                    manufacturer=manufacturer,
+                    device_type=device_type,
+                    modulation=modulation,
+                    bit_rate=bit_rate,
+                    confidence=results['confidence']
+                )
+                
+                # Mark recording as analyzed
+                self.db.mark_recording_analyzed(recording_id, device_id)
+                
+                print(f"[DB] Device added/updated: {device_name}")
             
         except Exception as e:
             print(f"[DB] Error saving to database: {e}")
