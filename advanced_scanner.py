@@ -253,8 +253,36 @@ class AdvancedScanner:
                     for sig in strong_signals:
                         print(f"  [{sig['band']}] {sig['freq']/1e6:.3f} MHz: {sig['power']:.1f} dBm (+{sig['delta']:.1f} dB)")
                         
+                        # Add to database as anomaly
+                        signal_id = self.db.add_signal(
+                            freq=sig['freq'],
+                            band=sig['band'],
+                            power=sig['power'],
+                            baseline_power=sig['baseline'],
+                            is_anomaly=True
+                        )
+                        
+                        # Notify dashboard of new signal
+                        if self.dashboard:
+                            self.dashboard.add_signal({
+                                'frequency_hz': sig['freq'],
+                                'band': sig['band'],
+                                'power_dbm': sig['power'],
+                                'baseline_power_dbm': sig['baseline'],
+                                'delta_db': sig['delta'],
+                                'detected_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                            })
+                        
                         # Record this signal
                         self.record_signal(sig['freq'], duration=10)
+                    
+                    # Update dashboard stats
+                    if self.dashboard:
+                        stats = self.db.get_statistics()
+                        self.dashboard.update_state({
+                            'anomaly_count': stats['anomalies'],
+                            'recording_count': stats['total_recordings']
+                        })
                         
                 else:
                     print("Monitoring - no strong signals")
@@ -293,9 +321,11 @@ def main():
         'mode': 'scanning',
         'status': 'initializing',
         'baseline_count': stats['baseline_frequencies'],
-        'device_count': stats['identified_devices'],
+        'device_count': 0,  # Start at 0 - will increment as devices are detected
         'recording_count': stats['total_recordings'],
-        'anomaly_count': stats['anomalies']
+        'anomaly_count': 0,  # Start at 0 - will increment as anomalies detected
+        'identified_devices': [],  # Empty - will populate as signals detected
+        'signals': []  # Empty - will populate as anomalies detected
     })
     
     print(f"Dashboard: http://localhost:5000")
