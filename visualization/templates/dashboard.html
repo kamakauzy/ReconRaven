@@ -722,7 +722,7 @@
                 <div class="signal-time">${time}</div>
                 <div class="signal-actions">
                     <button class="promote" onclick="promoteToBaseline(event, ${signal.frequency_hz}, '${band}')">Move to Baseline</button>
-                    <button onclick="showAnalysis(event, ${signal.frequency_hz}, '${signal.filename || ''}', '${band}')">Analyze</button>
+                    <button onclick="showAnalysis(event, ${JSON.stringify(signal).replace(/"/g, '&quot;')})">Analyze</button>
                     <button onclick="startDFOnSignal(event, ${signal.frequency_hz})">DF This Signal</button>
                     <button class="delete" onclick="dismissAnomaly(event, ${signal.frequency_hz})">Dismiss</button>
                 </div>
@@ -915,53 +915,103 @@
             alert(`Baseline Database:\n\n${count} frequencies loaded from setup.\n\nThese are the "normal" frequencies for your area and are not shown in the main view.\n\nUse "reconraven.py db devices" to view them via command line.`);
         }
         
-        function showAnalysis(event, frequency, filename, band) {
+        function showAnalysis(event, signalData) {
             event.stopPropagation();
             
-            const freqMHz = (frequency / 1e6).toFixed(3);
+            // Parse signal data if it's a string
+            const signal = typeof signalData === 'string' ? JSON.parse(signalData) : signalData;
+            
+            const freqMHz = (signal.frequency_hz / 1e6).toFixed(3);
+            const band = signal.band || 'Unknown';
             const modal = document.getElementById('analysisModal');
             
             // Set title
             document.getElementById('modalTitle').textContent = `Analysis: ${freqMHz} MHz (${band})`;
             
             // Set signal info
+            const detectedAt = signal.detected_at ? new Date(signal.detected_at).toLocaleString() : 'Unknown';
+            const powerDbm = signal.power_dbm ? signal.power_dbm.toFixed(1) : 'N/A';
+            
             document.getElementById('modalSignalInfo').innerHTML = `
-                Frequency: ${freqMHz} MHz<br>
-                Band: ${band}<br>
-                Recording: ${filename || 'Not recorded'}<br>
-                Timestamp: ${new Date().toLocaleString()}
+                <strong>Frequency:</strong> ${freqMHz} MHz<br>
+                <strong>Band:</strong> ${band}<br>
+                <strong>Power:</strong> ${powerDbm} dBm<br>
+                <strong>Recording:</strong> ${signal.recording_filename || 'Not recorded'}<br>
+                <strong>Detected:</strong> ${detectedAt}<br>
+                <strong>Analyzed:</strong> ${signal.recording_analyzed ? 'Yes' : 'No'}
             `;
             
             // Check if audio exists (voice band)
             const voiceBands = ['2m', '70cm'];
-            if (voiceBands.includes(band) && filename) {
+            if (voiceBands.includes(band) && signal.recording_filename) {
                 // Show audio player
                 document.getElementById('modalAudioSection').style.display = 'block';
                 const audioPlayer = document.getElementById('modalAudioPlayer');
                 // Replace .npy with .wav
-                const wavFile = filename.replace('.npy', '.wav');
+                const wavFile = signal.recording_filename.replace('.npy', '.wav');
                 audioPlayer.src = `/recordings/audio/${wavFile}`;
             } else {
                 document.getElementById('modalAudioSection').style.display = 'none';
             }
             
-            // Set extracted data (placeholder - will be populated from DB in future)
-            document.getElementById('modalExtractedData').innerHTML = `
-                <strong>Signal Characteristics:</strong><br>
-                Modulation: ${band.includes('ISM') ? 'OOK/ASK/FSK' : 'FM'}<br>
-                Bandwidth: ~25 kHz<br>
-                ${band.includes('ISM') ? 'Type: Digital burst transmission<br>' : 'Type: Voice/data transmission<br>'}
-                <br>
-                <em>Full analysis results will be displayed here after processing...</em>
-            `;
+            // Set extracted data from analysis
+            let extractedHtml = '';
+            if (signal.analysis_results) {
+                try {
+                    const results = typeof signal.analysis_results === 'string' 
+                        ? JSON.parse(signal.analysis_results) 
+                        : signal.analysis_results;
+                    
+                    extractedHtml = '<strong>Analysis Complete:</strong><br>';
+                    extractedHtml += `Modulation: ${signal.analysis_modulation || 'Unknown'}<br>`;
+                    if (signal.analysis_bit_rate) {
+                        extractedHtml += `Bit Rate: ${signal.analysis_bit_rate} bps<br>`;
+                    }
+                    if (signal.analysis_preambles) {
+                        extractedHtml += `Preambles: ${signal.analysis_preambles}<br>`;
+                    }
+                    if (signal.analysis_confidence) {
+                        extractedHtml += `Confidence: ${(signal.analysis_confidence * 100).toFixed(0)}%<br>`;
+                    }
+                    extractedHtml += '<br><strong>Full Results:</strong><br>';
+                    extractedHtml += `<pre style="font-size: 11px; white-space: pre-wrap;">${JSON.stringify(results, null, 2)}</pre>`;
+                } catch (e) {
+                    extractedHtml = `<strong>Analysis Data:</strong><br>${signal.analysis_results}`;
+                }
+            } else if (signal.recording_analyzed) {
+                extractedHtml = '<strong>Analyzed</strong> but no results stored.<br><em>Re-run analysis to get full data.</em>';
+            } else {
+                extractedHtml = `
+                    <strong>Signal Characteristics:</strong><br>
+                    Modulation: ${band.includes('ISM') ? 'OOK/ASK/FSK' : 'FM'}<br>
+                    Bandwidth: ~25 kHz<br>
+                    ${band.includes('ISM') ? 'Type: Digital burst transmission<br>' : 'Type: Voice/data transmission<br>'}
+                    <br>
+                    <em>No analysis data available yet. Record this signal to analyze.</em>
+                `;
+            }
+            document.getElementById('modalExtractedData').innerHTML = extractedHtml;
             
-            // Set device info (placeholder)
-            document.getElementById('modalDeviceInfo').innerHTML = `
-                <strong>Identification:</strong><br>
-                Status: Analyzing...<br>
-                <br>
-                <em>Device identification in progress...</em>
-            `;
+            // Set device info
+            let deviceHtml = '';
+            if (signal.device_name) {
+                deviceHtml = '<strong>Identified Device:</strong><br>';
+                deviceHtml += `Name: ${signal.device_name}<br>`;
+                if (signal.device_manufacturer) {
+                    deviceHtml += `Manufacturer: ${signal.device_manufacturer}<br>`;
+                }
+                if (signal.device_type) {
+                    deviceHtml += `Type: ${signal.device_type}<br>`;
+                }
+            } else {
+                deviceHtml = `
+                    <strong>Identification:</strong><br>
+                    Status: Unknown device<br>
+                    <br>
+                    <em>Device identification in progress or signal too weak to identify...</em>
+                `;
+            }
+            document.getElementById('modalDeviceInfo').innerHTML = deviceHtml;
             
             // Show modal
             modal.style.display = 'block';

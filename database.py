@@ -169,12 +169,30 @@ class ReconRavenDB:
         return cursor.lastrowid
     
     def get_anomalies(self, limit: int = 100) -> List[Dict]:
-        """Get recent anomalies"""
+        """Get recent anomalies with analysis data"""
         cursor = self.conn.cursor()
         cursor.execute('''
-            SELECT * FROM signals 
-            WHERE is_anomaly = 1 
-            ORDER BY detected_at DESC 
+            SELECT 
+                s.*,
+                r.filename as recording_filename,
+                r.analyzed as recording_analyzed,
+                a.modulation as analysis_modulation,
+                a.bit_rate as analysis_bit_rate,
+                a.preambles as analysis_preambles,
+                a.results_json as analysis_results,
+                a.confidence as analysis_confidence,
+                d.name as device_name,
+                d.manufacturer as device_manufacturer,
+                d.device_type as device_type
+            FROM signals s
+            LEFT JOIN recordings r ON s.frequency_hz = r.frequency_hz 
+                AND r.captured_at >= datetime(s.detected_at, '-30 seconds')
+                AND r.captured_at <= datetime(s.detected_at, '+30 seconds')
+            LEFT JOIN analysis_results a ON r.id = a.recording_id
+            LEFT JOIN devices d ON s.frequency_hz = d.frequency_hz
+            WHERE s.is_anomaly = 1 
+            GROUP BY s.id
+            ORDER BY s.detected_at DESC 
             LIMIT ?
         ''', (limit,))
         return [dict(row) for row in cursor.fetchall()]

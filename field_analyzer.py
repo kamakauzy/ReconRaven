@@ -10,6 +10,7 @@ import os
 import numpy as np
 from binary_decoder import BinaryDecoder
 from rtl433_integration import RTL433Integration
+from database import get_db
 
 class FieldAnalyzer:
     """Complete signal analysis with offline capability"""
@@ -17,6 +18,7 @@ class FieldAnalyzer:
     def __init__(self):
         self.signatures = self._load_signatures()
         self.rtl433 = RTL433Integration()
+        self.db = get_db()
         
     def _load_signatures(self):
         """Load local device signature database"""
@@ -158,7 +160,7 @@ class FieldAnalyzer:
             print("  - Industrial equipment not in database")
             print("  - New/uncommon device")
             
-        # Save results
+        # Save results to JSON
         output_file = npy_file.replace('.npy', '_complete_analysis.json')
         with open(output_file, 'w') as f:
             # Convert numpy types to Python types for JSON
@@ -166,6 +168,9 @@ class FieldAnalyzer:
             json.dump(results_json, f, indent=2)
         
         print(f"\nComplete analysis saved: {output_file}")
+        
+        # Save to database
+        self._save_to_database(npy_file, results)
         
         return results
     
@@ -246,6 +251,91 @@ class FieldAnalyzer:
         elif isinstance(obj, np.ndarray):
             return obj.tolist()
         return obj
+    
+    def _save_to_database(self, npy_file, results):
+        """Save analysis results to database"""
+        try:
+            # Get recording ID from filename
+            filename = os.path.basename(npy_file)
+            recordings = self.db.get_recordings()
+            recording_id = None
+            
+            for rec in recordings:
+                if rec['filename'] == filename:
+                    recording_id = rec['id']
+                    break
+            
+            if not recording_id:
+                print(f"[DB] Warning: Could not find recording for {filename}")
+                return
+            
+            # Extract data for database
+            binary_decode = results.get('binary_decode', {})
+            modulation = binary_decode.get('modulation', 'Unknown')
+            bit_rate = binary_decode.get('bit_rate')
+            
+            preambles_str = None
+            if binary_decode.get('preambles'):
+                preambles_str = ','.join([p['pattern'] for p in binary_decode['preambles'][:3]])
+            
+            # Convert results to JSON
+            results_json = json.dumps(self._convert_to_json_serializable(results))
+            
+            # Save analysis results
+            cursor = self.db.conn.cursor()
+            cursor.execute('''
+                INSERT INTO analysis_results 
+                (recording_id, analysis_type, modulation, bit_rate, preambles, results_json, confidence)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                recording_id,
+                'field_analysis',
+                modulation,
+                bit_rate,
+                preambles_str,
+                results_json,
+                results['confidence']
+            ))
+            self.db.conn.commit()
+            
+            print(f"[DB] Analysis results saved (recording_id={recording_id})")
+            
+            # Also add/update device if identified
+            if results['confidence'] >= 0.6:
+                device_name = self._get_device_name(results)
+                frequency = self._extract_frequency(filename)
+                
+                if frequency:
+                    manufacturer = None
+                    device_type = None
+                    
+                    if results.get('signature_match'):
+                        manufacturer = results['signature_match'].get('manufacturer')
+                        device_type = results['signature_match'].get('device_type')
+                    elif results.get('rtl433_result') and results['rtl433_result'].get('count', 0) > 0:
+                        device = results['rtl433_result']['devices'][0]
+                        manufacturer = device.get('manufacturer', 'Unknown')
+                        device_type = device.get('model', 'Unknown')
+                    
+                    device_id = self.db.add_device(
+                        freq=frequency,
+                        name=device_name,
+                        manufacturer=manufacturer,
+                        device_type=device_type,
+                        modulation=modulation,
+                        bit_rate=bit_rate,
+                        confidence=results['confidence']
+                    )
+                    
+                    # Mark recording as analyzed
+                    self.db.mark_recording_analyzed(recording_id, device_id)
+                    
+                    print(f"[DB] Device added/updated: {device_name}")
+            
+        except Exception as e:
+            print(f"[DB] Error saving to database: {e}")
+            import traceback
+            traceback.print_exc()
 
 def main():
     if len(sys.argv) < 2:
