@@ -93,7 +93,30 @@ device_signatures.json # Device database (offline)
 
 ## Quick Start
 
-### 1. Basic Scanning
+### 1. Initial Setup (One-Time)
+
+**Download frequencies for your location:**
+
+```bash
+# Automatic (detects from IP):
+python setup_location.py --auto
+
+# Manual (recommended):
+python setup_location.py --state AL --city Huntsville --lat 34.7304 --lon -86.5859
+
+# Just state:
+python setup_location.py --state CA
+```
+
+**What it downloads:**
+- Ham repeaters for your state (from RepeaterBook)
+- State-level public safety frequencies
+- NOAA weather radio stations
+- Updates database with GPS-tagged frequencies
+
+**One command, works offline forever!**
+
+### 2. Basic Scanning
 ```bash
 # Quick scanner (fast baseline + anomaly detection)
 python quick_scanner.py

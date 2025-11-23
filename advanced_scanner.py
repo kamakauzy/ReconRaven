@@ -14,13 +14,17 @@ from collections import defaultdict
 from datetime import datetime
 import threading
 import signal
+from database import get_db
+from web.server import SDRDashboardServer
 
 class AdvancedScanner:
-    def __init__(self):
+    def __init__(self, dashboard_server=None):
         self.sdr = None
         self.baseline = {}
         self.recording = False
         self.demod_process = None
+        self.db = get_db()
+        self.dashboard = dashboard_server
         
         # Output directories
         self.output_dir = "recordings"
@@ -116,14 +120,23 @@ class AdvancedScanner:
                     print('.', end='', flush=True)
             print(f" done ({count} frequencies)")
         
-        # Calculate baseline
+        # Calculate baseline and save to database
         for freq, powers in all_readings.items():
-            self.baseline[freq] = {
+            baseline_data = {
                 'mean': np.mean(powers),
                 'std': np.std(powers),
                 'max': np.max(powers),
                 'band': self.get_band_name(freq)
             }
+            self.baseline[freq] = baseline_data
+            
+            # Add to database
+            self.db.add_baseline_frequency(
+                freq=freq,
+                band=baseline_data['band'],
+                power=baseline_data['mean'],
+                std=baseline_data['std']
+            )
         
         print(f"\nBaseline complete: {len(self.baseline)} frequencies")
         return True
@@ -167,6 +180,23 @@ class AdvancedScanner:
             print(f"SUCCESS! IQ recording saved: {iq_file}")
             print(f"File size: {size:.1f} MB")
             print(f"To replay: Use GQRX, URH, or Inspectrum")
+            
+            # Add to database
+            try:
+                filename = os.path.basename(iq_file)
+                self.db.add_recording(
+                    filename=filename,
+                    freq=freq,
+                    band=band,
+                    duration=duration,
+                    file_size_mb=size
+                )
+                
+                # Update dashboard if connected
+                if self.dashboard:
+                    self.dashboard.update_state({'recording_count': self.db.get_statistics()['total_recordings']})
+            except Exception as e:
+                print(f"Database error: {e}")
             
             with open(log_file, 'a') as f:
                 f.write(f"{timestamp},{freq},{band},{signal_type},iq_complete,{size:.1f}MB\n")

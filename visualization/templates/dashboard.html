@@ -302,6 +302,8 @@
         });
         
         function updateDashboard(data) {
+            console.log('Dashboard update:', data);
+            
             // Update mode
             const modeIndicator = document.getElementById('mode-indicator');
             modeIndicator.textContent = data.mode.toUpperCase();
@@ -310,50 +312,75 @@
             // Update status
             document.getElementById('status').textContent = data.status;
             
-            // Update signal count
-            document.getElementById('signal-count').textContent = data.signals.length;
+            // Update counts
+            document.getElementById('baseline-count').textContent = data.baseline_count || 0;
+            document.getElementById('anomaly-count').textContent = data.anomaly_count || 0;
+            document.getElementById('device-count').textContent = data.device_count || 0;
+            document.getElementById('recording-count').textContent = data.recording_count || 0;
             
-            // Update GPS status
-            if (data.gps && data.gps.mode >= 2) {
-                document.getElementById('gps-status').textContent = 'Fixed';
-                updateGPS(data.gps);
+            // Update anomaly list
+            const anomalyList = document.getElementById('anomaly-list');
+            if (data.signals && data.signals.length > 0) {
+                anomalyList.innerHTML = '';
+                data.signals.slice(-10).reverse().forEach(signal => addSignalToAnomalyList(signal));
             }
             
-            // Update signal list
-            if (data.signals.length > 0) {
-                const signalList = document.getElementById('signal-list');
-                signalList.innerHTML = '';
-                data.signals.slice(-10).reverse().forEach(signal => addSignalToList(signal));
+            // Update device list
+            if (data.identified_devices && data.identified_devices.length > 0) {
+                const deviceList = document.getElementById('device-list');
+                deviceList.innerHTML = '';
+                data.identified_devices.forEach(device => addDeviceToList(device));
             }
             
             // Update bearings
-            if (data.bearings.length > 0) {
+            if (data.bearings && data.bearings.length > 0) {
                 updateBearing(data.bearings[data.bearings.length - 1]);
             }
         }
         
-        function addSignalToList(signal) {
-            const signalList = document.getElementById('signal-list');
+        function addSignalToAnomalyList(signal) {
+            const anomalyList = document.getElementById('anomaly-list');
             const signalItem = document.createElement('div');
             signalItem.className = 'signal-item';
             
             const freqMHz = (signal.frequency_hz / 1e6).toFixed(3);
             const power = signal.power_dbm ? signal.power_dbm.toFixed(1) : '--';
             const bw = signal.bandwidth_hz ? (signal.bandwidth_hz / 1e3).toFixed(1) : '--';
+            const band = signal.band || 'Unknown';
             
             signalItem.innerHTML = `
-                <div class="signal-freq">${freqMHz} MHz</div>
+                <div class="signal-freq">${freqMHz} MHz (${band})</div>
                 <div class="signal-details">
                     Power: ${power} dBm | BW: ${bw} kHz
+                    ${signal.filename ? '<br>File: ' + signal.filename : ''}
                 </div>
             `;
             
-            signalList.insertBefore(signalItem, signalList.firstChild);
+            anomalyList.insertBefore(signalItem, anomalyList.firstChild);
             
-            // Keep only last 10
-            while (signalList.children.length > 10) {
-                signalList.removeChild(signalList.lastChild);
+            // Keep only last 20
+            while (anomalyList.children.length > 20) {
+                anomalyList.removeChild(anomalyList.lastChild);
             }
+        }
+        
+        function addDeviceToList(device) {
+            const deviceList = document.getElementById('device-list');
+            const deviceItem = document.createElement('div');
+            deviceItem.className = 'signal-item';
+            
+            const freqMHz = (device.frequency_hz / 1e6).toFixed(3);
+            const confidence = (device.confidence * 100).toFixed(0);
+            
+            deviceItem.innerHTML = `
+                <div class="signal-freq">${device.name}</div>
+                <div class="signal-details">
+                    ${freqMHz} MHz | ${device.manufacturer}<br>
+                    Type: ${device.type} | Confidence: ${confidence}%
+                </div>
+            `;
+            
+            deviceList.appendChild(deviceItem);
         }
         
         function updateBearing(bearing) {
@@ -377,7 +404,7 @@
         }
         
         function clearSignals() {
-            document.getElementById('signal-list').innerHTML = '<p style="opacity: 0.5;">Waiting for signals...</p>';
+            document.getElementById('anomaly-list').innerHTML = '<p style="opacity: 0.5;">Waiting for anomalies...</p>';
         }
     </script>
 </body>

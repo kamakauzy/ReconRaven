@@ -297,6 +297,19 @@ class ReconRavenDB:
     
     # ========== STATISTICS ==========
     
+    def get_frequency_range_info(self, freq: float) -> Optional[Dict]:
+        """Get frequency range information for a given frequency"""
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            SELECT name, type, band, mode, description 
+            FROM frequency_ranges 
+            WHERE start_hz <= ? AND end_hz >= ?
+            ORDER BY (end_hz - start_hz) ASC
+            LIMIT 1
+        ''', (freq, freq))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    
     def get_statistics(self) -> Dict:
         """Get overall statistics"""
         cursor = self.conn.cursor()
