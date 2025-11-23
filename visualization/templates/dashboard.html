@@ -403,7 +403,7 @@
         
         <div class="panel full-width">
             <h2>Database Management</h2>
-            <button class="button" onclick="window.open('/database', '_blank')">View All Frequencies</button>
+            <button class="button" onclick="viewBaseline()">View Baseline Frequencies</button>
             <button class="button danger" onclick="clearAnomalies()">Clear All Anomalies</button>
             <button class="button" onclick="requestUpdate()">Refresh Data</button>
             <div class="info-message">
@@ -677,6 +677,12 @@
                     setTimeout(() => item.remove(), 300);
                 }
             }
+        }
+        
+        function viewBaseline() {
+            // Open simple modal or alert showing baseline count
+            const count = document.getElementById('baseline-count').textContent;
+            alert(`Baseline Database:\n\n${count} frequencies loaded from setup.\n\nThese are the "normal" frequencies for your area and are not shown in the main view.\n\nUse "reconraven.py db devices" to view them via command line.`);
         }
     </script>
 </body>
