@@ -723,10 +723,13 @@
             const band = signal.band || 'Unknown';
             const time = signal.detected_at || 'Now';
             
+            // Check if recorded (any of these fields could have the filename)
+            const isRecorded = signal.recording_file || signal.recording_filename || signal.filename;
+            
             signalItem.innerHTML = `
                 <div class="signal-freq">${freqMHz} MHz (${band})</div>
                 <div class="signal-details">
-                    Power: ${power} dBm ${delta} dB | ${signal.recording_file || signal.recording_filename || signal.filename ? 'Recorded' : 'Not recorded'}
+                    Power: ${power} dBm ${delta} dB | ${isRecorded ? 'Recorded' : 'Not recorded'}
                 </div>
                 <div class="signal-time">${time}</div>
                 <div class="signal-actions">
@@ -947,7 +950,12 @@
             document.getElementById('modalTitle').textContent = `Analysis: ${freqMHz} MHz (${band})`;
             
             // Set signal info
-            const detectedAt = signal.detected_at ? new Date(signal.detected_at).toLocaleString() : 'Unknown';
+            // Convert UTC timestamp to local time
+            let detectedAt = 'Unknown';
+            if (signal.detected_at) {
+                const date = new Date(signal.detected_at + 'Z'); // Add Z to indicate UTC
+                detectedAt = date.toLocaleString();
+            }
             const powerDbm = signal.power_dbm ? signal.power_dbm.toFixed(1) : 'N/A';
             
             document.getElementById('modalSignalInfo').innerHTML = `
