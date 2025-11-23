@@ -61,76 +61,184 @@ python run_dashboard.py
 
 ## Analysis Tools
 
-### 🔍 **ISM Band Analyzer**
-Identifies ISM device types (remotes, sensors, TPMS, etc.)
+### Complete Field-Capable Analysis System
+
+**Multi-Method Device Identification (No Internet Required):**
+
+1. **Binary Decoder** - Extracts actual bits from signals
+2. **rtl_433 Integration** - 200+ device protocols  
+3. **Device Signature Database** - Offline matching
+4. **Manufacturer OUI Lookup** - Brand identification
+
+### Individual Analysis Tools
+
+**ISM Band Analyzer** (`ism_analyzer.py`)
 - Detects burst patterns
-- Classifies by timing characteristics  
-- Matches against known device signatures
+- Classifies device types (remotes, sensors, TPMS)
+- Timing analysis
+```bash
+python ism_analyzer.py <file.npy>
+```
 
-**Usage:** `python ism_analyzer.py <file.npy>`
+**Binary Decoder** (`binary_decoder.py`)
+- Extracts 0s and 1s from IQ samples
+- Detects modulation (OOK/ASK/FSK)
+- Finds preambles (10101010, 11110000, etc.)
+- Converts to hex
+```bash
+python binary_decoder.py <file.npy>
+```
 
-### 🔓 **Remote Decoder**
-Extracts binary codes from garage/car remotes
-- Demodulates OOK/ASK signals
-- Extracts bit streams
+**rtl_433 Integration** (`rtl433_integration.py`)
+- Automatic device identification
+- 200+ protocols (weather stations, remotes, TPMS, etc.)
+- Extracts device IDs and sensor data
+```bash
+python rtl433_integration.py <file.npy>
+```
+
+**Complete Field Analyzer** (`field_analyzer.py`)
+- Combines all methods
+- Multi-level confidence scoring
+- Fully offline capable
+```bash
+python field_analyzer.py <file.npy>
+```
+
+**Remote Decoder** (`decode_remote.py`)
+- Extracts binary codes from remotes
 - Detects fixed vs rolling codes
 - Security assessment
-
-**Usage:** `python decode_remote.py <file.npy>`
-
-### 📡 **URH-Style Analyzer**  
-Professional protocol analysis
-- Auto-detects modulation (ASK/FSK/PSK)
-- Extracts symbol rates
-- Finds preambles
-- Compares to protocol database
-
-**Usage:** `python urh_analyze.py <file.npy>`
-
-### 🎯 **Signal Fingerprinter**
-Brand/model identification
-- RF characteristics analysis
-- Bit rate detection
-- Bandwidth measurement
-- Device database matching
-
-**Usage:** `python fingerprint_signal.py <file.npy>`
-
-### 📊 **IQ Player**
-View and analyze recordings
-- Time domain plots
-- Frequency spectrum (FFT)
-- Spectrograms
-- FM/AM demodulation
-
-**Usage:** `python play_iq.py <file.npy> [--fm|--am]`
-
-### 🔄 **Master Analyzer**
-Runs all tools automatically
 ```bash
-python analyze_all.py <file.npy>      # Single file
-python analyze_all.py --all           # All recordings
+python decode_remote.py <file.npy>
+```
+
+**URH-Style Analyzer** (`urh_analyze.py`)
+- Auto-detects modulation
+- Extracts symbol rates
+- Protocol database comparison
+```bash
+python urh_analyze.py <file.npy>
+```
+
+**Signal Fingerprinter** (`fingerprint_signal.py`)
+- Brand/model identification
+- RF characteristics analysis
+- Device database matching
+```bash
+python fingerprint_signal.py <file.npy>
+```
+
+**IQ Player** (`play_iq.py`)
+- Visualize recordings
+- Time/frequency/spectrogram plots
+- FM/AM demodulation
+```bash
+python play_iq.py <file.npy> [--fm|--am]
+```
+
+**Master Analyzer** (`analyze_all.py`)
+- Runs all tools automatically
+```bash
+python analyze_all.py <file.npy>
+python analyze_all.py --all
+```
+
+---
+
+## How Device Identification Works
+
+### Level 1: RF Characteristics (Always Works)
+```
+Signal -> FFT -> Modulation Type + Bit Rate + Bandwidth
+Confidence: 30-50%
+```
+
+### Level 2: Signature Matching (Offline Database)
+```
+Frequency + Modulation + Bit Rate -> Device Family
+Example: 925 MHz + FSK + 77k baud = "Honeywell Security"
+Confidence: 60-80%
+```
+
+### Level 3: Binary Decoding
+```
+IQ -> Demodulate -> Binary -> Find Preambles -> Extract Headers
+Example: "11110000" preamble = Keeloq garage door
+Confidence: 70-90%
+```
+
+### Level 4: rtl_433 Protocol Match
+```
+Recording -> rtl_433 -> Known Protocol Decoder
+Example: "Acurite 592TXR Temperature Sensor, ID: 1234"
+Confidence: 90-95%
 ```
 
 ---
 
 ## Example Analysis Results
 
-### Signal Captured: 925 MHz
+### Your Local RF Environment (Actual Captures)
 
-**Identified As:**
-- **Device:** Honeywell Security Sensor
-- **Type:** Door/Window Sensor or Motion Detector
-- **Modulation:** FSK (95% confidence)
-- **Bit Rate:** 77,419 baud
-- **Security:** Modern rolling code system
+**9 Active Frequencies Identified | 4 Device Types | All FSK Modulation**
 
-**How We Identified It:**
-1. Frequency signature (925 MHz ISM)
-2. FSK modulation (frequency varies)
-3. ~77k baud rate (matches Honeywell)
-4. Short 7.6ms bursts (sensor transmission)
-5. Multiple bursts (rolling code confirmed)
+#### Device A: Industrial High-Speed Data Link
+- **Frequencies:** 902.1, 905.9, 911.7 MHz (frequency hopping)
+- **Bit Rate:** 240,000 baud (very fast)
+- **Modulation:** FSK
+- **Behavior:** Continuous transmission, frequency hopping
+- **Confidence:** 80%
+- **Likely Identity:** Smart meter (electric/gas/water) or industrial SCADA telemetry
+- **Notes:** Professional-grade equipment, NOT consumer IoT
+
+#### Device B: Honeywell Security Sensors  
+- **Frequencies:** 908.6, 914.1, 925.0 MHz
+- **Bit Rate:** 67,000 - 77,000 baud
+- **Modulation:** FSK
+- **Behavior:** Continuous monitoring
+- **Confidence:** 85% (Honeywell confirmed at 925 MHz)
+- **Identified As:** Honeywell 5800 Series wireless sensors
+- **Typical Devices:** Door/window contacts, motion detectors, glass break sensors
+- **Security:** Rolling code (secure)
+
+#### Device C: Battery-Powered Sensors
+- **Frequencies:** 909.5, 913.1 MHz  
+- **Bit Rate:** 38,000 - 60,000 baud
+- **Modulation:** FSK
+- **Behavior:** Burst transmissions (~35ms)
+- **Confidence:** 60%
+- **Likely Identity:** Weather station or temperature sensors
+- **Notes:** Event-driven, power-efficient design
+
+#### Device D: High-Speed Link #2
+- **Frequency:** 920.0 MHz
+- **Bit Rate:** 218,000 baud
+- **Modulation:** FSK
+- **Confidence:** 50%
+- **Likely Related To:** Device A (possibly different channel)
+
+### Environment Assessment
+
+**Type:** Suburban/Light Urban  
+**Device Density:** HIGH (9 active frequencies)
+**Primary Band:** 915 MHz ISM (North America)
+**Notable:** Industrial/utility infrastructure present (smart meter likely)
+
+### Key Findings
+
+1. **Frequency Hopping Detected** - Device A hops across 902-912 MHz
+2. **Professional Security System** - Honeywell 5800 series identified
+3. **No Consumer Remotes** - All devices are continuous monitoring type (no OOK/ASK)
+4. **Dense IoT Environment** - Multiple sensor networks active
+
+### Meshtastic/LoRa Assessment
+
+**NOT Meshtastic/LoRa detected**
+- Bit rates too high (38-240k baud vs LoRa's <10k)
+- No chirp patterns found
+- Standard FSK, not CSS modulation
+- **Conclusion:** Traditional FSK telemetry devices
 
 ---
 
