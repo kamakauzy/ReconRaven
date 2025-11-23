@@ -110,6 +110,46 @@
             border-left-color: #ff4444;
         }
         
+        .signal-actions {
+            margin-top: 8px;
+            display: none;
+        }
+        
+        .signal-item.selected .signal-actions {
+            display: block;
+        }
+        
+        .signal-actions button {
+            background: #555;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            margin-right: 5px;
+        }
+        
+        .signal-actions button:hover {
+            background: #667eea;
+        }
+        
+        .signal-actions button.promote {
+            background: #4CAF50;
+        }
+        
+        .signal-actions button.promote:hover {
+            background: #45a049;
+        }
+        
+        .signal-actions button.delete {
+            background: #ff4444;
+        }
+        
+        .signal-actions button.delete:hover {
+            background: #cc0000;
+        }
+        
         .signal-freq {
             font-size: 16px;
             font-weight: bold;
@@ -364,11 +404,11 @@
         <div class="panel full-width">
             <h2>Database Management</h2>
             <button class="button" onclick="window.open('/database', '_blank')">View All Frequencies</button>
-            <button class="button" onclick="promoteToBaseline()">Promote Active to Baseline</button>
-            <button class="button danger" onclick="clearAnomalies()">Clear Anomalies</button>
+            <button class="button danger" onclick="clearAnomalies()">Clear All Anomalies</button>
             <button class="button" onclick="requestUpdate()">Refresh Data</button>
             <div class="info-message">
-                Baseline database: <span id="baseline-count">0</span> frequencies loaded (not shown here)
+                Baseline database: <span id="baseline-count">0</span> frequencies loaded (not shown here)<br>
+                <strong>Tip:</strong> Click any signal to select it, then use the action buttons to move to baseline or start DF
             </div>
         </div>
     </div>
@@ -467,6 +507,10 @@
                     ${freqMHz} MHz | ${device.manufacturer || 'Unknown'} | ${device.device_type || 'Unknown Type'}<br>
                     Confidence: ${confidence}% | Last seen: ${lastSeen}
                 </div>
+                <div class="signal-actions">
+                    <button class="promote" onclick="promoteToBaseline(event, ${device.frequency_hz})">Move to Baseline</button>
+                    <button onclick="startDFOnSignal(event, ${device.frequency_hz})">DF This Signal</button>
+                </div>
             `;
             
             signalItem.dataset.signal = JSON.stringify(device);
@@ -491,6 +535,11 @@
                     Power: ${power} dBm ${delta} dB | ${signal.filename ? 'Recorded' : 'Not recorded'}
                 </div>
                 <div class="signal-time">${time}</div>
+                <div class="signal-actions">
+                    <button class="promote" onclick="promoteToBaseline(event, ${signal.frequency_hz}, '${band}')">Move to Baseline</button>
+                    <button onclick="startDFOnSignal(event, ${signal.frequency_hz})">DF This Signal</button>
+                    <button class="delete" onclick="dismissAnomaly(event, ${signal.frequency_hz})">Dismiss</button>
+                </div>
             `;
             
             signalItem.dataset.signal = JSON.stringify(signal);
@@ -585,10 +634,48 @@
             }
         }
         
-        function promoteToBaseline() {
-            if (confirm('Promote all active transmissions to baseline? They will be marked as expected/normal frequencies.')) {
-                socket.emit('promote_to_baseline');
-                setTimeout(requestUpdate, 1000);
+        function promoteToBaseline(event, frequency, band) {
+            event.stopPropagation();
+            
+            const freqMHz = (frequency / 1e6).toFixed(3);
+            if (confirm(`Move ${freqMHz} MHz to baseline?\n\nThis will mark it as a known/expected frequency.`)) {
+                socket.emit('promote_frequency', { 
+                    frequency: frequency,
+                    band: band || 'Unknown'
+                });
+                
+                // Remove from UI
+                const item = event.target.closest('.signal-item');
+                if (item) {
+                    item.style.opacity = '0.5';
+                    item.style.pointerEvents = 'none';
+                    setTimeout(() => item.remove(), 500);
+                }
+            }
+        }
+        
+        function startDFOnSignal(event, frequency) {
+            event.stopPropagation();
+            
+            if (sdrCount < 4) {
+                alert('Direction finding requires 4 synchronized SDRs. Currently: ' + sdrCount + ' detected.');
+                return;
+            }
+            
+            console.log('Starting DF on:', frequency);
+            socket.emit('start_df', { frequency: frequency });
+        }
+        
+        function dismissAnomaly(event, frequency) {
+            event.stopPropagation();
+            
+            const freqMHz = (frequency / 1e6).toFixed(3);
+            if (confirm(`Dismiss anomaly at ${freqMHz} MHz?`)) {
+                const item = event.target.closest('.signal-item');
+                if (item) {
+                    item.style.opacity = '0.5';
+                    setTimeout(() => item.remove(), 300);
+                }
             }
         }
     </script>

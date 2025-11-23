@@ -145,6 +145,47 @@ class SDRDashboardServer:
             
             # Send updated state
             emit('status_update', self.platform_state)
+        
+        @self.socketio.on('promote_frequency')
+        def handle_promote_frequency(data):
+            """Promote a single frequency to baseline."""
+            from database import get_db
+            db = get_db()
+            
+            frequency = data.get('frequency')
+            band = data.get('band', 'Unknown')
+            
+            if frequency:
+                # Get band info
+                freq_info = db.get_frequency_range_info(frequency)
+                if freq_info:
+                    band = freq_info['name']
+                
+                # Add to baseline
+                db.add_baseline_frequency(
+                    freq=frequency,
+                    band=band,
+                    power=-60.0,
+                    std=5.0
+                )
+                
+                logger.info(f"Promoted {frequency/1e6:.3f} MHz to baseline")
+                emit('status_update', {
+                    'message': f'Promoted {frequency/1e6:.3f} MHz to baseline',
+                    'success': True
+                })
+        
+        @self.socketio.on('start_df')
+        def handle_start_df(data):
+            """Start direction finding on a frequency."""
+            frequency = data.get('frequency')
+            logger.info(f"DF requested for {frequency/1e6:.3f} MHz")
+            
+            # In future: trigger actual DF mode
+            emit('status_update', {
+                'message': f'DF not yet implemented (requires 4 SDRs)',
+                'success': False
+            })
     
     def update_state(self, state_update: Dict[str, Any]):
         """Update platform state and broadcast to clients.
