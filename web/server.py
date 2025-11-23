@@ -81,6 +81,14 @@ class SDRDashboardServer:
             """Toggle operating mode (if supported)."""
             # This would trigger mode change in main app
             return jsonify({'success': True})
+        
+        @self.app.route('/recordings/audio/<path:filename>')
+        def serve_audio(filename):
+            """Serve audio files for playback."""
+            from flask import send_from_directory
+            import os
+            audio_dir = os.path.join(os.getcwd(), 'recordings', 'audio')
+            return send_from_directory(audio_dir, filename)
     
     def _setup_socketio(self):
         """Setup SocketIO event handlers."""

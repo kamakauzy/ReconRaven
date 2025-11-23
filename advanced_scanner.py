@@ -16,6 +16,7 @@ import threading
 import signal
 from database import get_db
 from web.server import SDRDashboardServer
+from recording_manager import RecordingManager
 
 class AdvancedScanner:
     def __init__(self, dashboard_server=None):
@@ -25,6 +26,7 @@ class AdvancedScanner:
         self.demod_process = None
         self.db = get_db()
         self.dashboard = dashboard_server
+        self.recording_manager = RecordingManager(self.db)
         
         # Output directories
         self.output_dir = "recordings"
@@ -320,9 +322,24 @@ class AdvancedScanner:
                         
                         # Auto-analyze the recording
                         device_info = None
+                        recording_id = None
                         if recording_file:
+                            # Get recording ID from database
+                            recordings = self.db.get_recordings()
+                            for rec in recordings:
+                                if rec['filename'] == recording_file:
+                                    recording_id = rec['id']
+                                    break
+                            
                             print(f"\n[Auto-Analysis] Analyzing {recording_file}...")
                             device_info = self.analyze_recording(f"{self.output_dir}/audio/{recording_file}")
+                            
+                            # Mark as analyzed
+                            if recording_id:
+                                self.db.mark_recording_analyzed(recording_id)
+                                
+                                # Auto-cleanup based on band
+                                self.recording_manager.cleanup_after_analysis(recording_id, device_info)
                         
                         # Add to database as anomaly AFTER recording
                         signal_id = self.db.add_signal(

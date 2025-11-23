@@ -254,6 +254,23 @@ class ReconRavenDB:
         cursor.execute(query)
         return [dict(row) for row in cursor.fetchall()]
     
+    def get_recording_by_id(self, recording_id: int) -> Optional[Dict]:
+        """Get specific recording by ID"""
+        cursor = self.conn.cursor()
+        cursor.execute('SELECT * FROM recordings WHERE id = ?', (recording_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    
+    def update_recording_audio(self, recording_id: int, audio_filename: str):
+        """Update recording with audio filename (WAV)"""
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            UPDATE recordings 
+            SET filename = ? 
+            WHERE id = ?
+        ''', (audio_filename, recording_id))
+        self.conn.commit()
+    
     def mark_recording_analyzed(self, recording_id: int, device_id: int = None):
         """Mark recording as analyzed"""
         cursor = self.conn.cursor()

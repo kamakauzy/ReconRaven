@@ -357,6 +357,68 @@
             margin-top: 10px;
             border-left: 3px solid #FF9800;
         }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+        }
+        
+        .modal-content {
+            background: #2a2a2a;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-close {
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        .modal-close:hover {
+            color: #fff;
+        }
+        
+        .analysis-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #333;
+            border-radius: 5px;
+        }
+        
+        .analysis-section h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .analysis-data {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        
+        .audio-player {
+            margin: 15px 0;
+        }
+        
+        .audio-player audio {
+            width: 100%;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -469,6 +531,43 @@
             <div class="info-message">
                 Baseline database: <span id="baseline-count">0</span> frequencies loaded (not shown here)<br>
                 <strong>Tip:</strong> Click any signal to select it, then use the action buttons to move to baseline or start DF
+            </div>
+        </div>
+    </div>
+    
+    <!-- Deep Analysis Modal -->
+    <div id="analysisModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeAnalysisModal()">&times;</span>
+            <h2 id="modalTitle">Signal Analysis</h2>
+            
+            <div class="analysis-section">
+                <h3>Signal Information</h3>
+                <div id="modalSignalInfo" class="analysis-data"></div>
+            </div>
+            
+            <div class="analysis-section" id="modalAudioSection" style="display: none;">
+                <h3>Audio Playback</h3>
+                <div class="audio-player">
+                    <audio id="modalAudioPlayer" controls></audio>
+                    <div style="margin-top: 10px; font-size: 12px; opacity: 0.7;">
+                        FM demodulated audio - listen for voice transmissions
+                    </div>
+                </div>
+            </div>
+            
+            <div class="analysis-section">
+                <h3>Extracted Data</h3>
+                <div id="modalExtractedData" class="analysis-data">
+                    Analysis results will appear here...
+                </div>
+            </div>
+            
+            <div class="analysis-section">
+                <h3>Device Identification</h3>
+                <div id="modalDeviceInfo" class="analysis-data">
+                    Device information will appear here...
+                </div>
             </div>
         </div>
     </div>
@@ -623,6 +722,7 @@
                 <div class="signal-time">${time}</div>
                 <div class="signal-actions">
                     <button class="promote" onclick="promoteToBaseline(event, ${signal.frequency_hz}, '${band}')">Move to Baseline</button>
+                    <button onclick="showAnalysis(event, ${signal.frequency_hz}, '${signal.filename || ''}', '${band}')">Analyze</button>
                     <button onclick="startDFOnSignal(event, ${signal.frequency_hz})">DF This Signal</button>
                     <button class="delete" onclick="dismissAnomaly(event, ${signal.frequency_hz})">Dismiss</button>
                 </div>
@@ -813,6 +913,76 @@
             // Open simple modal or alert showing baseline count
             const count = document.getElementById('baseline-count').textContent;
             alert(`Baseline Database:\n\n${count} frequencies loaded from setup.\n\nThese are the "normal" frequencies for your area and are not shown in the main view.\n\nUse "reconraven.py db devices" to view them via command line.`);
+        }
+        
+        function showAnalysis(event, frequency, filename, band) {
+            event.stopPropagation();
+            
+            const freqMHz = (frequency / 1e6).toFixed(3);
+            const modal = document.getElementById('analysisModal');
+            
+            // Set title
+            document.getElementById('modalTitle').textContent = `Analysis: ${freqMHz} MHz (${band})`;
+            
+            // Set signal info
+            document.getElementById('modalSignalInfo').innerHTML = `
+                Frequency: ${freqMHz} MHz<br>
+                Band: ${band}<br>
+                Recording: ${filename || 'Not recorded'}<br>
+                Timestamp: ${new Date().toLocaleString()}
+            `;
+            
+            // Check if audio exists (voice band)
+            const voiceBands = ['2m', '70cm'];
+            if (voiceBands.includes(band) && filename) {
+                // Show audio player
+                document.getElementById('modalAudioSection').style.display = 'block';
+                const audioPlayer = document.getElementById('modalAudioPlayer');
+                // Replace .npy with .wav
+                const wavFile = filename.replace('.npy', '.wav');
+                audioPlayer.src = `/recordings/audio/${wavFile}`;
+            } else {
+                document.getElementById('modalAudioSection').style.display = 'none';
+            }
+            
+            // Set extracted data (placeholder - will be populated from DB in future)
+            document.getElementById('modalExtractedData').innerHTML = `
+                <strong>Signal Characteristics:</strong><br>
+                Modulation: ${band.includes('ISM') ? 'OOK/ASK/FSK' : 'FM'}<br>
+                Bandwidth: ~25 kHz<br>
+                ${band.includes('ISM') ? 'Type: Digital burst transmission<br>' : 'Type: Voice/data transmission<br>'}
+                <br>
+                <em>Full analysis results will be displayed here after processing...</em>
+            `;
+            
+            // Set device info (placeholder)
+            document.getElementById('modalDeviceInfo').innerHTML = `
+                <strong>Identification:</strong><br>
+                Status: Analyzing...<br>
+                <br>
+                <em>Device identification in progress...</em>
+            `;
+            
+            // Show modal
+            modal.style.display = 'block';
+        }
+        
+        function closeAnalysisModal() {
+            const modal = document.getElementById('analysisModal');
+            modal.style.display = 'none';
+            
+            // Stop audio if playing
+            const audioPlayer = document.getElementById('modalAudioPlayer');
+            audioPlayer.pause();
+            audioPlayer.src = '';
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('analysisModal');
+            if (event.target == modal) {
+                closeAnalysisModal();
+            }
         }
     </script>
 </body>
