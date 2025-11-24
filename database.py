@@ -292,6 +292,11 @@ class ReconRavenDB:
         ''')
         return [dict(row) for row in cursor.fetchall()]
     
+    def get_all_transcripts(self) -> List[Dict]:
+        """Get all transcripts (stub for compatibility)"""
+        # Transcripts not supported in simplified schema yet
+        return []
+    
     def clear_anomalies(self):
         """Clear all anomaly signals (for fresh start)"""
         cursor = self.conn.cursor()
