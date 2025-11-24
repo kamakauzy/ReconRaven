@@ -25,7 +25,13 @@ class SDRDashboardServer:
                          static_folder='../visualization/static')
         self.app.config['SECRET_KEY'] = 'sdr-sigint-secret-key'
         CORS(self.app)
-        self.socketio = SocketIO(self.app, cors_allowed_origins="*")
+        self.socketio = SocketIO(
+            self.app, 
+            cors_allowed_origins="*",
+            max_http_buffer_size=10_000_000,  # 10MB buffer for large payloads
+            ping_timeout=60,
+            ping_interval=25
+        )
         
         self.host = self.config.get('host', '0.0.0.0')
         self.port = self.config.get('port', 5000)
@@ -563,8 +569,7 @@ class SDRDashboardServer:
             host=self.host,
             port=self.port,
             debug=self.debug,
-            use_reloader=False,
-            max_http_buffer_size=10_000_000  # 10MB limit (default is 1MB)
+            use_reloader=False
         )
     
     def run_threaded(self):
