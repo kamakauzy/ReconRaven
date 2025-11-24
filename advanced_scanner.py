@@ -62,9 +62,34 @@ class AdvancedScanner:
         for freq in range(144000000, 148000000, 100000):
             self.scan_freqs.append(freq)
         
+        # Add important 2m simplex/calling frequencies for guaranteed detection
+        important_2m = [
+            146.400e6,  # Calling frequency (some regions)
+            146.460e6,  # Simplex
+            146.520e6,  # National simplex calling frequency
+            146.550e6,  # Simplex
+            146.562e6,  # User test frequency
+            146.580e6,  # Common simplex
+            147.420e6,  # Simplex
+            147.450e6,  # Simplex
+            147.480e6,  # Simplex
+            147.510e6,  # Simplex
+            147.540e6,  # Simplex
+        ]
+        self.scan_freqs.extend([f for f in important_2m if f not in self.scan_freqs])
+        
         # 70cm Amateur Band (420-450 MHz) - every 100 kHz  
         for freq in range(420000000, 450000000, 100000):
             self.scan_freqs.append(freq)
+        
+        # Add important 70cm simplex/calling frequencies
+        important_70cm = [
+            446.000e6,  # National simplex calling
+            446.500e6,  # Simplex
+            447.000e6,  # Simplex
+            433.500e6,  # ISM/Ham crossover (common for data)
+        ]
+        self.scan_freqs.extend([f for f in important_70cm if f not in self.scan_freqs])
         
         # 433 MHz ISM Band (433.05-434.79 MHz) - every 25 kHz for high resolution
         for freq in range(433050000, 434790000, 25000):
@@ -73,6 +98,14 @@ class AdvancedScanner:
         # 915 MHz ISM Band (902-928 MHz) - every 100 kHz
         for freq in range(902000000, 928000000, 100000):
             self.scan_freqs.append(freq)
+        
+        # Sort frequencies for efficient scanning (avoid large jumps)
+        self.scan_freqs.sort()
+        
+        print(f"Loaded {len(self.scan_freqs)} scan frequencies")
+        print(f"  - 2m band: {sum(1 for f in self.scan_freqs if 144e6 <= f <= 148e6)} freqs")
+        print(f"  - 70cm band: {sum(1 for f in self.scan_freqs if 420e6 <= f <= 450e6)} freqs")
+        print(f"  - ISM bands: {sum(1 for f in self.scan_freqs if 433e6 <= f <= 435e6 or 902e6 <= f <= 928e6)} freqs")
         
         # Dynamically determine band names
         self.band_names = {}
@@ -126,7 +159,7 @@ class AdvancedScanner:
                         def init_sdr_thread():
                             try:
                                 sdr = RtlSdr(device_index=i)
-                                sdr.sample_rate = 2.4e6
+                                sdr.sample_rate = 2.8e6  # Increased from 2.4 to 2.8 Msps for better coverage
                                 sdr.gain = 'auto'
                                 sdr_obj[0] = sdr
                             except Exception as e:
@@ -171,7 +204,7 @@ class AdvancedScanner:
             else:
                 print("Initializing RTL-SDR (single mode)...", end='', flush=True)
                 self.sdr = RtlSdr()
-                self.sdr.sample_rate = 2.4e6
+                self.sdr.sample_rate = 2.8e6  # Increased from 2.4 to 2.8 Msps for better coverage
                 self.sdr.gain = 'auto'
                 print(" OK")
                 
