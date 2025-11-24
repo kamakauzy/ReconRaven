@@ -237,12 +237,12 @@ class SDRDashboardServer:
             self.platform_state['anomaly_count'] = stats['anomalies']
             self.platform_state['device_count'] = stats['identified_devices']
             
-            # Load anomalies (simple query, no joins)
-            anomalies = db.get_anomalies(limit=100)
+            # Load anomalies (simple query, no joins) - REDUCED to prevent packet overflow
+            anomalies = db.get_anomalies(limit=20)
             self.platform_state['anomalies'] = anomalies
             
-            # Load identified signals (simple query, no joins)
-            devices = db.get_identified_signals(limit=50)
+            # Load identified signals (simple query, no joins) - REDUCED to prevent packet overflow
+            devices = db.get_identified_signals(limit=15)
             self.platform_state['identified_devices'] = devices
             
             logger.info(f"[REFRESH] Loaded {len(anomalies)} anomalies, {len(devices)} devices")
@@ -489,8 +489,8 @@ class SDRDashboardServer:
             from database import get_db
             db = get_db()
             
-            anomalies = db.get_anomalies(limit=100)
-            devices = db.get_identified_signals(limit=50)
+            anomalies = db.get_anomalies(limit=20)
+            devices = db.get_identified_signals(limit=15)
             
             self.platform_state['anomalies'] = anomalies
             self.platform_state['identified_devices'] = devices
@@ -563,7 +563,8 @@ class SDRDashboardServer:
             host=self.host,
             port=self.port,
             debug=self.debug,
-            use_reloader=False
+            use_reloader=False,
+            max_http_buffer_size=10_000_000  # 10MB limit (default is 1MB)
         )
     
     def run_threaded(self):
