@@ -542,6 +542,66 @@
             width: 100%;
             margin-top: 10px;
         }
+        
+        /* SDR Status Cards */
+        .sdr-card {
+            background: #333;
+            border-radius: 8px;
+            padding: 15px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .sdr-card.active {
+            border-left-color: #4CAF50;
+            background: linear-gradient(135deg, #2a2a2a 0%, #1e3a1e 100%);
+        }
+        
+        .sdr-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .sdr-card-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .sdr-card.active .sdr-card-title {
+            color: #4CAF50;
+        }
+        
+        .sdr-card-badge {
+            background: #667eea;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .sdr-card.active .sdr-card-badge {
+            background: #4CAF50;
+        }
+        
+        .sdr-freq-list {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.8;
+        }
+        
+        .sdr-freq-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid #444;
+        }
+        
+        .sdr-freq-item:last-child {
+            border-bottom: none;
+        }
     </style>
 </head>
 <body>
@@ -584,6 +644,15 @@
     
     <!-- Tab: Signals (Default) -->
     <div id="tab-signals" class="tab-content active">
+    
+    <!-- SDR Status Panel -->
+    <div class="panel full-width" id="sdr-status-panel" style="margin-bottom: 20px; display: none;">
+        <h2>📡 SDR Status & Frequency Assignments</h2>
+        <div id="sdr-status-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-top: 15px;">
+            <!-- SDR cards will be inserted here by JavaScript -->
+        </div>
+    </div>
+    
     <div class="dashboard-grid">
         <div class="panel">
             <h2>Active Transmissions</h2>
@@ -1001,8 +1070,13 @@
             document.getElementById('recording-count').textContent = data.recording_count || 0;
             
             // Update SDR count
-            sdrCount = data.sdr_count || 1;
+            sdrCount = data.sdr_count || data.num_sdrs || 1;
             updateDFWarning();
+            
+            // Update SDR Status Panel
+            if (data.sdr_assignments && data.sdr_assignments.length > 0) {
+                updateSDRStatus(data.sdr_assignments, data.num_sdrs || data.sdr_count);
+            }
             
             // CLEAR and repopulate anomalies from database (don't just append)
             const anomalyList = document.getElementById('anomaly-list');
@@ -1255,6 +1329,52 @@
             
             console.log('Starting DF on:', selectedSignal);
             socket.emit('start_df', { frequency: selectedSignal.frequency_hz });
+        }
+        
+        function updateSDRStatus(sdrAssignments, totalSDRs) {
+            const panel = document.getElementById('sdr-status-panel');
+            const grid = document.getElementById('sdr-status-grid');
+            
+            // Show the panel
+            panel.style.display = 'block';
+            
+            // Clear existing cards
+            grid.innerHTML = '';
+            
+            // Create a card for each SDR
+            sdrAssignments.forEach(sdr => {
+                const card = document.createElement('div');
+                card.className = 'sdr-card active';
+                
+                let bandsHTML = '';
+                if (sdr.bands) {
+                    for (const [bandName, bandData] of Object.entries(sdr.bands)) {
+                        const minMHz = (bandData.min / 1e6).toFixed(2);
+                        const maxMHz = (bandData.max / 1e6).toFixed(2);
+                        bandsHTML += `
+                            <div class="sdr-freq-item">
+                                <span><strong>${bandName}</strong></span>
+                                <span>${minMHz} - ${maxMHz} MHz (${bandData.count} freqs)</span>
+                            </div>
+                        `;
+                    }
+                }
+                
+                card.innerHTML = `
+                    <div class="sdr-card-header">
+                        <div class="sdr-card-title">📡 SDR #${sdr.index}</div>
+                        <div class="sdr-card-badge">ACTIVE</div>
+                    </div>
+                    <div style="font-size: 13px; opacity: 0.8; margin-bottom: 10px;">
+                        Scanning ${sdr.freq_count} frequencies
+                    </div>
+                    <div class="sdr-freq-list">
+                        ${bandsHTML || '<div style="opacity: 0.5;">No assignments</div>'}
+                    </div>
+                `;
+                
+                grid.appendChild(card);
+            });
         }
         
         function updateDFWarning() {
