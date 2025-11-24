@@ -347,6 +347,7 @@ class AdvancedScanner:
             traceback.print_exc()
             with open(log_file, 'a') as f:
                 f.write(f"{timestamp},{freq},{band},{signal_type},error,{str(e)}\n")
+            return None  # Return None if recording failed
             return None  # Return None on error
     
     def analyze_recording(self, filepath):
@@ -638,29 +639,30 @@ class AdvancedScanner:
                                 'freq': freq,
                                 'power': power,
                                 'delta': delta,
-                                'band': self.get_band_name(freq)
+                                'band': self.get_band_name(freq),
+                                'baseline': baseline['mean']
                             })
-                            
-                            # Save to database
-                            self.db.add_signal(
-                                freq=freq,
-                                band=self.get_band_name(freq),
-                                power=power,
-                                baseline_power=baseline['mean'],
-                                is_anomaly=True,
-                                recording_file=None
-                            )
                 
-                # Display results
+                # Display results and record
                 if strong_signals:
                     print(f"[Scan #{scan_num}] {scan_time} - [!] {len(strong_signals)} ANOMALIES DETECTED!")
                     for sig in strong_signals[:3]:  # Show top 3
                         print(f"  - {sig['freq']/1e6:.3f} MHz ({sig['band']}) - {sig['power']:.1f} dBm (+{sig['delta']:.1f} dB)")
                     
-                    # Record strongest signal
+                    # Record strongest signal FIRST
                     strongest = max(strong_signals, key=lambda x: x['delta'])
                     print(f"\n  [REC] Recording strongest: {strongest['freq']/1e6:.3f} MHz...")
-                    self.record_signal(strongest['freq'], duration=3)
+                    recording_file = self.record_signal(strongest['freq'], duration=3)
+                    
+                    # Now save to database WITH the recording filename
+                    self.db.add_signal(
+                        freq=strongest['freq'],
+                        band=strongest['band'],
+                        power=strongest['power'],
+                        baseline_power=strongest['baseline'],
+                        is_anomaly=True,
+                        recording_file=recording_file
+                    )
                 else:
                     print(f"[Scan #{scan_num}] {scan_time} - Monitoring ({len(results)} freqs checked)")
                 
