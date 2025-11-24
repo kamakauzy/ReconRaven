@@ -245,10 +245,17 @@ class SDRDashboardServer:
             # Load TRUE anomalies (unidentified signals only)
             anomalies = db.get_anomalies(limit=50)
             self.platform_state['anomalies'] = anomalies
+            logger.info(f"Loaded {len(anomalies)} anomalies from database")
             
             # Load identified devices with baseline status
             devices = db.get_devices()
             self.platform_state['identified_devices'] = devices[:30]  # Top 30
+            logger.info(f"Loaded {len(devices[:30])} identified devices from database")
+            
+            # Log what we're about to emit
+            logger.info(f"Emitting state with keys: {list(self.platform_state.keys())}")
+            logger.info(f"Anomalies array length: {len(self.platform_state.get('anomalies', []))}")
+            logger.info(f"Devices array length: {len(self.platform_state.get('identified_devices', []))}")
             
             emit('status_update', self.platform_state)
         
