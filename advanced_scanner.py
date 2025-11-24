@@ -485,21 +485,28 @@ class AdvancedScanner:
                             print(f"\n[Auto-Analysis] Analyzing {recording_file}...")
                             device_info = self.analyze_recording(f"{self.output_dir}/audio/{recording_file}")
                             
-                            # Mark as analyzed
-                            if recording_id:
-                                self.db.mark_recording_analyzed(recording_id)
-                                
-                                # Auto-cleanup based on band
+                            # Auto-cleanup based on band
+                            if device_info and recording_id:
                                 self.recording_manager.cleanup_after_analysis(recording_id, device_info)
                         
-                        # Add to database as anomaly AFTER recording
+                        # Add to database as anomaly AFTER recording WITH analysis results
+                        signal_kwargs = {}
+                        if device_info:
+                            signal_kwargs.update({
+                                'device_name': device_info.get('name'),
+                                'device_type': device_info.get('device_type'),
+                                'manufacturer': device_info.get('manufacturer'),
+                                'confidence': device_info.get('confidence')
+                            })
+                        
                         signal_id = self.db.add_signal(
                             freq=sig['freq'],
                             band=sig['band'],
                             power=sig['power'],
                             baseline_power=sig['baseline'],
                             is_anomaly=True,
-                            recording_file=recording_file
+                            recording_file=recording_file,
+                            **signal_kwargs
                         )
                         
                         # Notify dashboard of new signal with filename
