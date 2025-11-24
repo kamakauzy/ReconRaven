@@ -201,9 +201,14 @@ class AdvancedScanner:
     def scan_frequency(self, freq):
         """Scan single frequency, return power in dBm"""
         try:
-            self.sdr.center_freq = freq
+            # Use appropriate SDR (single or first from array)
+            active_sdr = self.sdr if self.sdr else (self.sdrs[0] if self.sdrs else None)
+            if not active_sdr:
+                return None
+            
+            active_sdr.center_freq = freq
             time.sleep(0.03)  # Faster scanning
-            samples = self.sdr.read_samples(128 * 1024)
+            samples = active_sdr.read_samples(128 * 1024)
             power = 10 * np.log10(np.mean(np.abs(samples)**2))
             return power
         except Exception as e:
