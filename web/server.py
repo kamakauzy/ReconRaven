@@ -226,36 +226,26 @@ class SDRDashboardServer:
         
         @self.socketio.on('request_update')
         def handle_update_request():
-            """Handle update request from client."""
+            """Handle update request from client - SIMPLIFIED"""
             from database import get_db
             db = get_db()
             
-            # Auto-promote identified devices to baseline
-            promoted_count = db.auto_promote_devices_to_baseline()
-            if promoted_count > 0:
-                logger.info(f"Auto-promoted {promoted_count} identified devices to baseline")
-            
-            # Refresh data from database
+            # Refresh stats from database
             stats = db.get_statistics()
             self.platform_state['baseline_count'] = stats['baseline_frequencies']
             self.platform_state['recording_count'] = stats['total_recordings']
             self.platform_state['anomaly_count'] = stats['anomalies']
             self.platform_state['device_count'] = stats['identified_devices']
             
-            # Load TRUE anomalies (unidentified signals only)
-            anomalies = db.get_anomalies(limit=50)
+            # Load anomalies (simple query, no joins)
+            anomalies = db.get_anomalies(limit=100)
             self.platform_state['anomalies'] = anomalies
-            logger.info(f"Loaded {len(anomalies)} anomalies from database")
             
-            # Load identified devices with baseline status
-            devices = db.get_devices()
-            self.platform_state['identified_devices'] = devices[:30]  # Top 30
-            logger.info(f"Loaded {len(devices[:30])} identified devices from database")
+            # Load identified signals (simple query, no joins)
+            devices = db.get_identified_signals(limit=50)
+            self.platform_state['identified_devices'] = devices
             
-            # Log what we're about to emit
-            logger.info(f"Emitting state with keys: {list(self.platform_state.keys())}")
-            logger.info(f"Anomalies array length: {len(self.platform_state.get('anomalies', []))}")
-            logger.info(f"Devices array length: {len(self.platform_state.get('identified_devices', []))}")
+            logger.info(f"[REFRESH] Loaded {len(anomalies)} anomalies, {len(devices)} devices")
             
             emit('status_update', self.platform_state)
         
@@ -490,38 +480,28 @@ class SDRDashboardServer:
             })
     
     def update_state(self, state_update: Dict[str, Any]):
-        """Update platform state and broadcast to clients.
-        
-        Args:
-            state_update: Dictionary with state updates
-        """
-        # Don't allow overwriting database arrays with None
-        # Preserve anomalies and identified_devices unless explicitly updating
-        if 'anomalies' in state_update and state_update['anomalies'] is None:
-            del state_update['anomalies']
-        if 'identified_devices' in state_update and state_update['identified_devices'] is None:
-            del state_update['identified_devices']
-        
+        """Update platform state and broadcast to clients - SIMPLIFIED"""
+        # Just update what's provided
         self.platform_state.update(state_update)
         
-        # ALWAYS refresh anomalies and identified_devices from database before emitting
-        # This ensures the UI always shows current data even if scanner doesn't send arrays
+        # ALWAYS load fresh data from DB when emitting
         try:
             from database import get_db
             db = get_db()
             
-            # Load current anomalies and devices from DB
-            anomalies = db.get_anomalies(limit=50)
-            devices = db.get_devices()[:30]
+            anomalies = db.get_anomalies(limit=100)
+            devices = db.get_identified_signals(limit=50)
             
             self.platform_state['anomalies'] = anomalies
             self.platform_state['identified_devices'] = devices
             
-            print(f"[UPDATE_STATE] Loaded {len(anomalies)} anomalies, {len(devices)} devices from DB")
+            # Update counts too
+            stats = db.get_statistics()
+            self.platform_state['anomaly_count'] = stats['anomalies']
+            self.platform_state['device_count'] = stats['identified_devices']
+            
         except Exception as e:
-            print(f"[UPDATE_STATE] ERROR loading from DB: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"[UPDATE_STATE] Error loading from DB: {e}")
         
         # Broadcast to all connected clients
         self.socketio.emit('status_update', self.platform_state)
