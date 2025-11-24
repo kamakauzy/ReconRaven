@@ -231,7 +231,6 @@ class ReconRavenDB:
             LEFT JOIN devices d ON s.frequency_hz = d.frequency_hz
             WHERE s.is_anomaly = 1 
                 AND s.frequency_hz NOT IN (SELECT frequency_hz FROM baseline WHERE user_promoted = 1)
-                AND d.id IS NULL
             GROUP BY s.frequency_hz, COALESCE(a.modulation, 'Unknown'), COALESCE(a.bit_rate, 0)
             ORDER BY MAX(s.detected_at) DESC 
             LIMIT ?
