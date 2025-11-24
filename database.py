@@ -105,12 +105,17 @@ class ReconRavenDB:
         ''', (freq, band, power, std, power, std))
         self.conn.commit()
     
-    def get_baseline(self, freq: float) -> Optional[Dict]:
-        """Get baseline for a frequency"""
+    def get_baseline(self, freq: float = None) -> Optional[Dict]:
+        """Get baseline for a frequency, or all baselines if freq is None"""
         cursor = self.conn.cursor()
-        cursor.execute('SELECT * FROM baseline WHERE frequency_hz = ?', (freq,))
-        row = cursor.fetchone()
-        return dict(row) if row else None
+        if freq is not None:
+            cursor.execute('SELECT * FROM baseline WHERE frequency_hz = ?', (freq,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+        else:
+            # Return all baselines (for loading)
+            cursor.execute('SELECT * FROM baseline ORDER BY frequency_hz')
+            return [dict(row) for row in cursor.fetchall()]
     
     def get_all_baseline(self) -> List[Dict]:
         """Get all baseline frequencies"""
