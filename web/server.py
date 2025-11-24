@@ -38,7 +38,13 @@ class SDRDashboardServer:
             'signals': [],
             'bearings': [],
             'gps': None,
-            'status': 'idle'
+            'status': 'idle',
+            'anomaly_count': 0,
+            'recording_count': 0,
+            'baseline_count': 0,
+            'device_count': 0,
+            'anomalies': [],
+            'identified_devices': []
         }
         
         self._setup_routes()
@@ -483,6 +489,11 @@ class SDRDashboardServer:
             state_update: Dictionary with state updates
         """
         self.platform_state.update(state_update)
+        
+        # Ensure database stats are always included if not explicitly updated
+        if 'anomaly_count' not in state_update:
+            # Preserve existing stats
+            pass  # Already in platform_state from previous updates
         
         # Broadcast to all connected clients
         self.socketio.emit('status_update', self.platform_state)
