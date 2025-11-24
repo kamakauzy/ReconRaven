@@ -1,10 +1,31 @@
 # ReconRaven
 
-![Banner](rr.png)
+![Banner](visualization/static/img/rr.png)
+
+## ⚠️ **ALPHA SOFTWARE - UNDER ACTIVE DEVELOPMENT** ⚠️
+
+**THIS PROJECT IS IN EARLY DEVELOPMENT AND NOT FULLY TESTED!**
+
+- **Expect bugs, crashes, and incomplete features**
+- **RF environment setup is CRITICAL** - See `docs/RF_SETUP_GUIDE.md`
+- **Not recommended for production use yet**
+- **API and command structure may change without notice**
+- **Use at your own risk!**
+
+**Known Issues:**
+- Scanner may hang during initialization (kill with `pkill -9 python; pkill -9 rtl`)
+- RF interference causes false positives or missed detections
+- Direction finding requires careful calibration (not fully implemented)
+- Voice transcription is resource-intensive
+- Database migrations may require manual intervention
+
+**Testing Status:** Hardware detection and basic scanning work. Multi-SDR concurrent scanning works but needs proper RF environment. Advanced features (DF, voice transcription, correlation analysis) are experimental.
+
+---
 
 > Because sometimes you need to know what's broadcasting in your neighborhood. Or your enemy's.
 
-A complete SIGINT platform built on RTL-SDR for signal intelligence training, research, and field operations. Scans, records, analyzes, and identifies RF signals across multiple bands with zero internet dependency.
+A SIGINT platform built on RTL-SDR for signal intelligence training, research, and field operations. Scans, records, analyzes, and identifies RF signals across multiple bands with zero internet dependency.
 
 **Built for:** SIGINT instructors, RF enthusiasts, security researchers, and anyone who thinks "I wonder what that signal is" way too often.
 
@@ -77,6 +98,10 @@ You'll need one of these configurations:
 
 ## Quick Start
 
+**IMPORTANT: Read `docs/RF_SETUP_GUIDE.md` BEFORE running the scanner!**
+
+Proper RF environment setup is critical. SDRs must be physically separated from computers and interference sources or you'll only see noise.
+
 ### Installation
 
 ```bash
@@ -89,14 +114,15 @@ sudo apt update
 sudo apt install rtl-sdr librtlsdr-dev python3-pip
 
 # Install Python dependencies
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 
-# This downloads all dependencies for offline use:
-# - Socket.IO (local copy already bundled in visualization/static/)
-# - Whisper AI model (downloads ~74MB on first run)
-# - All Python packages
+# Test your SDRs and RF environment
+python3 reconraven.py test sdr      # Detect SDRs
+python3 reconraven.py test noise    # Check noise floor
+python3 reconraven.py test freq --freq 146.52 --duration 60  # Monitor frequency
 
-# After this setup, the system runs 100% offline!
+# If tests pass, run the scanner
+python3 reconraven.py scan --dashboard
 
 # On Windows, you'll also need Zadig to install WinUSB drivers for RTL-SDR
 # Download from: https://zadig.akeo.ie/
@@ -105,17 +131,44 @@ pip install -r requirements.txt
 
 ### First Run Setup
 
-**Download frequencies for your area** (one-time, then works offline forever):
+**CRITICAL: Validate RF Environment First!**
 
 ```bash
-# Auto-detect your location
-python reconraven.py setup --auto
+# 1. Test SDR detection (should show 1-4 SDRs)
+python3 reconraven.py test sdr
 
-# Or specify manually (recommended for accuracy)
-python reconraven.py setup --state AL --city Huntsville --lat 34.7304 --lon -86.5859
+# 2. Check noise floor (MUST be < -20 dBm on all bands)
+python3 reconraven.py test noise
+
+# 3. Test reception with a known transmitter
+#    (have someone transmit on 146.52 MHz while test runs)
+python3 reconraven.py test freq --freq 146.52 --duration 60
+
+# Expected: Baseline < -20 dBm, transmission shows +20-30 dB increase
 ```
 
-This pulls ham repeaters, public safety frequencies, and NOAA weather stations for your state. You'll need internet for this step, but after that everything runs offline.
+**If noise > -10 dBm:** RF interference detected! See `docs/RF_SETUP_GUIDE.md` for solutions.
+
+**Once tests pass:**
+
+```bash
+# Start scanning with dashboard
+python3 reconraven.py scan --dashboard --rebuild-baseline
+
+# Dashboard: http://localhost:5000
+```
+
+**Optional - Download frequencies for your area** (one-time, requires internet):
+
+```bash
+# Auto-detect location
+python3 reconraven.py setup --auto
+
+# Or specify manually
+python3 reconraven.py setup --state AL --city Huntsville
+```
+
+This pulls ham repeaters and public safety frequencies. After this, everything runs offline.
 
 ### Basic Usage
 

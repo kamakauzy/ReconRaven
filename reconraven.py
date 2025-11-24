@@ -350,212 +350,39 @@ def cmd_cleanup(args):
 
 def cmd_test(args):
     """Run diagnostic tests"""
-    from rtlsdr import RtlSdr, librtlsdr
-    import numpy as np
-    import time
+    # Import test modules
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'tests'))
+    
+    try:
+        from test_hardware import test_sdr_detection, test_sdr_initialization, test_multi_sdr_initialization
+        from test_rf_environment import test_noise_floor, test_frequency_monitoring, test_band_scan
+    except ImportError as e:
+        print(f"ERROR: Could not import test modules: {e}")
+        print("Make sure the tests/ directory exists with test_hardware.py and test_rf_environment.py")
+        return 1
     
     if args.mode == 'sdr':
-        # Detect and list all SDRs
-        print("\n" + "="*70)
-        print("SDR DETECTION TEST")
-        print("="*70)
-        
-        count = librtlsdr.rtlsdr_get_device_count()
-        print(f"\nFound {count} RTL-SDR device(s)")
-        
-        if count == 0:
-            print("\nNo SDRs detected!")
-            print("Check:")
-            print("  - SDRs are plugged into USB")
-            print("  - udev rules are installed (Linux)")
-            print("  - Drivers are installed (Windows)")
-            return 1
-        
-        for i in range(count):
-            try:
-                print(f"\n  SDR #{i}:")
-                sdr = RtlSdr(device_index=i)
-                print(f"    Tuner: {sdr.get_tuner_type()}")
-                print(f"    Sample rate: {sdr.sample_rate/1e6:.1f} Msps (default)")
-                print(f"    Gain: {sdr.gain} dB")
-                sdr.close()
-            except Exception as e:
-                print(f"    ERROR: {e}")
-        
-        print("\n" + "="*70)
-        return 0
+        return 0 if test_sdr_detection() else 1
     
     elif args.mode == 'noise':
-        # Check noise floor across spectrum
-        print("\n" + "="*70)
-        print("NOISE FLOOR TEST")
-        print("="*70)
-        
-        sdr = RtlSdr()
-        sdr.sample_rate = 2.8e6
-        sdr.gain = 'auto'
-        
-        test_freqs = {
-            '2m': 146.5e6,
-            '70cm': 435.0e6,
-            'ISM433': 433.92e6,
-            'ISM915': 915.0e6
-        }
-        
-        print(f"\nTesting noise floor on {len(test_freqs)} bands...")
-        print("(Disconnect antennas for true noise floor test)\n")
-        
-        results = {}
-        for band, freq in test_freqs.items():
-            sdr.center_freq = freq
-            time.sleep(0.1)
-            samples = sdr.read_samples(256 * 1024)
-            power = 10 * np.log10(np.mean(np.abs(samples)**2) + 1e-10)
-            results[band] = power
-            status = "GOOD" if power < -20 else "WARNING" if power < -10 else "SATURATED"
-            print(f"  {band:8s} ({freq/1e6:>7.2f} MHz): {power:>6.1f} dBm  [{status}]")
-        
-        sdr.close()
-        
-        print("\nInterpretation:")
-        print("  < -20 dBm: Good noise floor")
-        print("  -20 to -10 dBm: Elevated noise (check RF environment)")
-        print("  > -10 dBm: Saturated! (move SDR away from interference)")
-        print("\n" + "="*70)
-        return 0
+        return 0 if test_noise_floor() else 1
     
     elif args.mode == 'freq':
-        # Test specific frequency
         if not args.freq:
             print("ERROR: --freq required for freq mode")
+            print("Example: reconraven.py test freq --freq 146.52 --duration 60")
             return 1
-        
-        freq_hz = args.freq * 1e6
-        duration = args.duration
-        
-        print("\n" + "="*70)
-        print(f"FREQUENCY TEST: {args.freq:.3f} MHz")
-        print("="*70)
-        print(f"\nMonitoring for {duration} seconds...")
-        print("TRANSMIT NOW!\n")
-        
-        sdr = RtlSdr()
-        sdr.sample_rate = 2.8e6
-        sdr.gain = 'auto'
-        sdr.center_freq = freq_hz
-        
-        baseline_samples = []
-        for i in range(5):
-            samples = sdr.read_samples(128 * 1024)
-            power = 10 * np.log10(np.mean(np.abs(samples)**2) + 1e-10)
-            baseline_samples.append(power)
-            time.sleep(0.2)
-        
-        baseline = np.mean(baseline_samples)
-        print(f"Baseline: {baseline:.1f} dBm (avg of 5 samples)\n")
-        
-        max_power = baseline
-        max_delta = 0
-        start = time.time()
-        
-        while time.time() - start < duration:
-            samples = sdr.read_samples(128 * 1024)
-            power = 10 * np.log10(np.mean(np.abs(samples)**2) + 1e-10)
-            delta = power - baseline
-            
-            if power > max_power:
-                max_power = power
-                max_delta = delta
-            
-            status = ""
-            if delta > 15:
-                status = " <-- STRONG SIGNAL!"
-            elif delta > 10:
-                status = " <-- Signal detected"
-            elif delta > 5:
-                status = " <-- Weak signal"
-            
-            print(f"  {power:>6.1f} dBm (Δ{delta:>+5.1f} dB){status}", flush=True)
-            time.sleep(0.5)
-        
-        sdr.close()
-        
-        print(f"\nResults:")
-        print(f"  Baseline: {baseline:.1f} dBm")
-        print(f"  Max power: {max_power:.1f} dBm")
-        print(f"  Max delta: +{max_delta:.1f} dB")
-        
-        if max_delta > 15:
-            print(f"  Status: ✓ STRONG transmission detected!")
-        elif max_delta > 10:
-            print(f"  Status: ✓ Transmission detected")
-        elif max_delta > 5:
-            print(f"  Status: ⚠ Weak signal detected")
-        else:
-            print(f"  Status: ✗ No significant signal detected")
-        
-        print("\n" + "="*70)
-        return 0
+        return 0 if test_frequency_monitoring(args.freq, args.duration) else 1
     
     elif args.mode == 'rf':
-        # Scan a band
         if not args.band:
             print("ERROR: --band required for rf mode")
+            print("Example: reconraven.py test rf --band 2m")
             return 1
-        
-        bands = {
-            '2m': (146.0e6, 147.0e6, 100e3),
-            '70cm': (435.0e6, 436.0e6, 100e3),
-            '433': (433.0e6, 434.0e6, 50e3),
-            '915': (915.0e6, 916.0e6, 100e3)
-        }
-        
-        start_freq, end_freq, step = bands[args.band]
-        
-        print("\n" + "="*70)
-        print(f"RF BAND SCAN: {args.band.upper()}")
-        print("="*70)
-        print(f"Range: {start_freq/1e6:.1f} - {end_freq/1e6:.1f} MHz")
-        print(f"Step: {step/1e3:.0f} kHz\n")
-        
-        sdr = RtlSdr()
-        sdr.sample_rate = 2.8e6
-        sdr.gain = 'auto'
-        
-        freqs = np.arange(start_freq, end_freq, step)
-        print(f"Scanning {len(freqs)} frequencies...\n")
-        
-        results = []
-        for freq in freqs:
-            sdr.center_freq = freq
-            time.sleep(0.01)
-            samples = sdr.read_samples(128 * 1024)
-            power = 10 * np.log10(np.mean(np.abs(samples)**2) + 1e-10)
-            results.append((freq, power))
-            
-            status = ""
-            if power > -10:
-                status = " [STRONG]"
-            elif power > -20:
-                status = " [SIGNAL]"
-            
-            print(f"  {freq/1e6:>7.3f} MHz: {power:>6.1f} dBm{status}")
-        
-        sdr.close()
-        
-        # Summary
-        powers = [p for f, p in results]
-        avg_power = np.mean(powers)
-        max_power = np.max(powers)
-        max_freq = results[np.argmax(powers)][0]
-        
-        print(f"\nSummary:")
-        print(f"  Average power: {avg_power:.1f} dBm")
-        print(f"  Peak power: {max_power:.1f} dBm at {max_freq/1e6:.3f} MHz")
-        print(f"  Signals > -20 dBm: {sum(1 for p in powers if p > -20)}")
-        
-        print("\n" + "="*70)
-        return 0
+        return 0 if test_band_scan(args.band) else 1
+    
+    return 1
 
 def main():
     """Main CLI entry point"""
