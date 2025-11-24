@@ -37,6 +37,12 @@ pyargus==1.1.2
 soundfile==0.12.1
 wave
 
+# Voice Transcription (Whisper AI)
+openai-whisper==20231117
+# Whisper dependencies are auto-installed, but may need:
+# - torch (CPU or CUDA depending on system)
+# - ffmpeg (system package)
+
 # Logging and Utilities
 colorlog==6.8.0
 python-dateutil==2.8.2

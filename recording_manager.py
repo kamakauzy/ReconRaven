@@ -2,19 +2,34 @@
 """
 Smart Recording Cleanup Module
 Automatically manages disk space by cleaning up recordings after analysis
+Also handles voice signal transcription
 """
 
 import os
 import numpy as np
 from scipy import signal
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class RecordingManager:
-    """Manages recording lifecycle and cleanup"""
+    """Manages recording lifecycle, cleanup, and transcription"""
     
     def __init__(self, db):
         self.db = db
+        self.voice_transcriber = None  # Lazy load
+        
+    def _get_transcriber(self):
+        """Lazy load voice transcriber"""
+        if self.voice_transcriber is None:
+            try:
+                from voice_transcriber import VoiceTranscriber
+                self.voice_transcriber = VoiceTranscriber(model_size='base')
+            except Exception as e:
+                logger.warning(f"Could not load transcriber: {e}")
+        return self.voice_transcriber
         
     def should_keep_recording(self, frequency_hz, band):
         """Determine if recording should be kept based on band/type"""
@@ -74,7 +89,9 @@ class RecordingManager:
             return None
     
     def cleanup_after_analysis(self, recording_id, analysis_results):
-        """Clean up recording based on analysis results and band"""
+        """Clean up recording based on analysis results and band
+        Also transcribes voice signals if detected
+        """
         try:
             # Get recording info
             recording = self.db.get_recording_by_id(recording_id)
@@ -94,7 +111,7 @@ class RecordingManager:
                 # ISM band - delete immediately
                 size_mb = os.path.getsize(filepath) / (1024 * 1024)
                 os.remove(filepath)
-                print(f"[Cleanup] Deleted {recording['filename']} ({size_mb:.1f}MB) - ISM band, no replay value")
+                logger.info(f"Deleted {recording['filename']} ({size_mb:.1f}MB) - ISM band, no replay value")
                 
             elif decision == 'convert_to_wav':
                 # Voice band - convert to WAV then delete .npy
@@ -103,20 +120,62 @@ class RecordingManager:
                     # Update database with WAV filename
                     self.db.update_recording_audio(recording_id, os.path.basename(wav_file))
                     
+                    # AUTO-TRANSCRIBE VOICE SIGNALS
+                    self.transcribe_voice_recording(recording_id, wav_file)
+                    
                     # Delete the large .npy file
                     npy_size_mb = os.path.getsize(filepath) / (1024 * 1024)
                     os.remove(filepath)
-                    print(f"[Cleanup] Converted to WAV and deleted .npy ({npy_size_mb:.1f}MB saved)")
+                    logger.info(f"Converted to WAV and deleted .npy ({npy_size_mb:.1f}MB saved)")
                 else:
-                    print(f"[Cleanup] WAV conversion failed, keeping .npy for manual review")
+                    logger.warning(f"WAV conversion failed, keeping .npy for manual review")
             
             else:
                 # Keep for manual review
-                print(f"[Cleanup] Keeping {recording['filename']} for manual review")
+                logger.info(f"Keeping {recording['filename']} for manual review")
                 
         except Exception as e:
-            print(f"[Cleanup] Error: {e}")
-
+            logger.error(f"Cleanup error: {e}")
+    
+    def transcribe_voice_recording(self, recording_id, wav_filepath):
+        """Auto-transcribe voice recording using Whisper"""
+        try:
+            # Check if already transcribed
+            existing = self.db.get_transcript(recording_id)
+            if existing:
+                logger.info(f"Recording {recording_id} already transcribed, skipping")
+                return
+            
+            transcriber = self._get_transcriber()
+            if not transcriber:
+                logger.warning("Transcriber not available, skipping transcription")
+                return
+            
+            logger.info(f"Transcribing {os.path.basename(wav_filepath)}...")
+            result = transcriber.transcribe_file(wav_filepath)
+            
+            if 'error' in result:
+                logger.error(f"Transcription failed: {result['error']}")
+                return
+            
+            # Save to database
+            text = result.get('text', '')
+            if text:
+                self.db.add_transcript(
+                    recording_id=recording_id,
+                    text=text,
+                    language=result.get('language'),
+                    confidence=result.get('confidence', 0.0),
+                    duration=result.get('duration', 0.0),
+                    segments=result.get('segments', [])
+                )
+                logger.info(f"Transcription saved: '{text[:50]}...'")
+            else:
+                logger.info("No speech detected in recording")
+                
+        except Exception as e:
+            logger.error(f"Transcription error: {e}")
+    
 
 def cleanup_old_recordings(db, days_old=7):
     """Bulk cleanup of old unanalyzed recordings"""

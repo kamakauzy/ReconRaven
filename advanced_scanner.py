@@ -19,8 +19,18 @@ from web.server import SDRDashboardServer
 from recording_manager import RecordingManager
 
 class AdvancedScanner:
-    def __init__(self, dashboard_server=None):
+    def __init__(self, dashboard_server=None, num_sdrs=None):
+        """
+        Initialize scanner with optional multi-SDR support.
+        
+        Args:
+            dashboard_server: Optional dashboard for real-time updates
+            num_sdrs: Number of SDRs to use (None = auto-detect, 1 = single mode, 4+ = concurrent mode)
+        """
         self.sdr = None
+        self.sdrs = []  # Multiple SDRs for concurrent scanning
+        self.num_sdrs = num_sdrs
+        self.concurrent_mode = False
         self.baseline = {}
         self.recording = False
         self.demod_process = None
@@ -28,11 +38,22 @@ class AdvancedScanner:
         self.dashboard = dashboard_server
         self.recording_manager = RecordingManager(self.db)
         
+        # Voice detection and transcription
+        from voice_detector import VoiceDetector
+        self.voice_detector = VoiceDetector()
+        self.voice_transcriber = None  # Lazy load when needed
+        
         # Output directories
         self.output_dir = "recordings"
         os.makedirs(self.output_dir, exist_ok=True)
         os.makedirs(f"{self.output_dir}/audio", exist_ok=True)
         os.makedirs(f"{self.output_dir}/logs", exist_ok=True)
+        
+        # Register cleanup handlers
+        import atexit
+        atexit.register(self.cleanup)
+        signal.signal(signal.SIGINT, self._signal_handler)
+        signal.signal(signal.SIGTERM, self._signal_handler)
         
         # Comprehensive frequency scanning - ALL bands
         self.scan_freqs = []
@@ -65,14 +86,101 @@ class AdvancedScanner:
         }
         
     def init_sdr(self):
-        """Initialize RTL-SDR"""
+        """Initialize RTL-SDR(s) - auto-detects and uses multiple if available"""
         try:
-            print("Initializing RTL-SDR...", end='', flush=True)
-            self.sdr = RtlSdr()
-            self.sdr.sample_rate = 2.4e6
-            self.sdr.gain = 'auto'
-            print(" OK")
+            # Detect how many SDRs are available
+            from rtlsdr import librtlsdr
+            available_sdrs = librtlsdr.rtlsdr_get_device_count()
+            
+            if available_sdrs == 0:
+                print("No RTL-SDR devices found!")
+                return False
+            
+            # Determine mode
+            if self.num_sdrs is None:
+                # Auto-detect: use all available SDRs if 3+, otherwise single mode
+                if available_sdrs >= 3:  # Changed from 4 to 3
+                    self.num_sdrs = available_sdrs
+                    self.concurrent_mode = True
+                else:
+                    self.num_sdrs = 1
+                    self.concurrent_mode = False
+            elif self.num_sdrs > 1:
+                self.concurrent_mode = True
+                if self.num_sdrs > available_sdrs:
+                    print(f"Warning: Requested {self.num_sdrs} SDRs but only {available_sdrs} available")
+                    self.num_sdrs = available_sdrs
+            
+            # Initialize SDR(s)
+            if self.concurrent_mode:
+                print(f"Initializing {self.num_sdrs} RTL-SDRs for CONCURRENT scanning...")
+                successful_sdrs = 0
+                for i in range(self.num_sdrs):
+                    try:
+                        print(f"  SDR #{i}...", end='', flush=True)
+                        
+                        # Use threading with timeout to prevent hangs
+                        sdr_obj = [None]
+                        error_obj = [None]
+                        
+                        def init_sdr_thread():
+                            try:
+                                sdr = RtlSdr(device_index=i)
+                                sdr.sample_rate = 2.4e6
+                                sdr.gain = 'auto'
+                                sdr_obj[0] = sdr
+                            except Exception as e:
+                                error_obj[0] = e
+                        
+                        thread = threading.Thread(target=init_sdr_thread)
+                        thread.daemon = True
+                        thread.start()
+                        thread.join(timeout=10.0)  # 10 second timeout (increased)
+                        
+                        if thread.is_alive():
+                            print(f" TIMEOUT (hung, skipping)")
+                            # Don't wait for it, just continue with other SDRs
+                            continue
+                        
+                        if error_obj[0]:
+                            raise error_obj[0]
+                        
+                        if sdr_obj[0]:
+                            self.sdrs.append(sdr_obj[0])
+                            successful_sdrs += 1
+                            print(" OK")
+                        else:
+                            print(" FAILED (unknown error)")
+                            continue
+                            
+                    except Exception as e:
+                        print(f" FAILED: {e}")
+                        # Continue with other SDRs instead of failing completely
+                        continue
+                
+                if successful_sdrs == 0:
+                    print("ERROR: No SDRs could be initialized!")
+                    return False
+                
+                print(f"[+] Concurrent mode enabled with {successful_sdrs} SDRs!")
+                self.num_sdrs = successful_sdrs  # Update to actual count
+                
+                # Update dashboard with mode
+                if self.dashboard:
+                    self.dashboard.update_status('CONCURRENT', f'Scanning with {successful_sdrs} SDRs')
+            else:
+                print("Initializing RTL-SDR (single mode)...", end='', flush=True)
+                self.sdr = RtlSdr()
+                self.sdr.sample_rate = 2.4e6
+                self.sdr.gain = 'auto'
+                print(" OK")
+                
+                # Update dashboard
+                if self.dashboard:
+                    self.dashboard.update_status('MOBILE', 'Single SDR scanning')
+            
             return True
+            
         except Exception as e:
             print(f" FAILED: {e}")
             return False
@@ -165,15 +273,19 @@ class AdvancedScanner:
         try:
             # Capture IQ samples directly
             print(f"Capturing raw IQ samples...")
-            self.sdr.center_freq = freq
+            
+            # Use first available SDR (either single or from array)
+            active_sdr = self.sdr if self.sdr else self.sdrs[0]
+            
+            active_sdr.center_freq = freq
             time.sleep(0.1)
             
             # Record for specified duration
-            samples_per_sec = int(self.sdr.sample_rate)
+            samples_per_sec = int(active_sdr.sample_rate)
             total_samples = samples_per_sec * duration
             
             print(f"Reading {total_samples / 1e6:.1f}M samples @ {samples_per_sec/1e6:.1f} Msps...")
-            samples = self.sdr.read_samples(total_samples)
+            samples = active_sdr.read_samples(total_samples)
             
             # Save as numpy array
             np.save(iq_file, samples)
@@ -286,7 +398,21 @@ class AdvancedScanner:
             print("\nERROR: No baseline available. Run build_baseline() first.")
             return
         
+        # Update dashboard with initial state
+        if self.dashboard:
+            mode = 'CONCURRENT' if self.concurrent_mode else 'MOBILE'
+            self.dashboard.update_state({
+                'mode': mode,
+                'status': 'scanning',
+                'scanning': True
+            })
+        
         scan_num = 0
+        
+        # If concurrent mode, use threaded scanning
+        if self.concurrent_mode:
+            self._concurrent_monitor_with_recording()
+            return
         
         try:
             while True:
@@ -386,9 +512,140 @@ class AdvancedScanner:
         except KeyboardInterrupt:
             print(f"\n\nStopped after {scan_num} scans")
     
+    def _concurrent_monitor_with_recording(self):
+        """Monitor with 4 SDRs scanning in parallel"""
+        print(f"\n[CONCURRENT MODE] Using {self.num_sdrs} SDRs for real-time coverage!\n")
+        
+        # Split frequencies across SDRs
+        freq_chunks = [[] for _ in range(self.num_sdrs)]
+        for i, freq in enumerate(self.scan_freqs):
+            freq_chunks[i % self.num_sdrs].append(freq)
+        
+        scan_num = 0
+        
+        try:
+            while True:
+                scan_num += 1
+                scan_time = time.strftime('%H:%M:%S')
+                
+                # Scan all frequencies in parallel using all SDRs
+                results = {}
+                threads = []
+                
+                def scan_chunk(sdr_idx, freqs):
+                    sdr = self.sdrs[sdr_idx]
+                    for freq in freqs:
+                        try:
+                            sdr.center_freq = freq
+                            time.sleep(0.01)  # Let SDR settle
+                            samples = sdr.read_samples(256 * 1024)
+                            power_dbm = 10 * np.log10(np.mean(np.abs(samples)**2) + 1e-10)
+                            results[freq] = power_dbm
+                        except Exception as e:
+                            pass
+                
+                # Start all SDRs scanning in parallel
+                for i, chunk in enumerate(freq_chunks):
+                    t = threading.Thread(target=scan_chunk, args=(i, chunk))
+                    t.start()
+                    threads.append(t)
+                
+                # Wait for all to complete
+                for t in threads:
+                    t.join()
+                
+                # Check for anomalies
+                strong_signals = []
+                for freq, power in results.items():
+                    if freq in self.baseline:
+                        baseline = self.baseline[freq]
+                        delta = power - baseline['mean']
+                        
+                        if delta > 15:  # Strong anomaly
+                            strong_signals.append({
+                                'freq': freq,
+                                'power': power,
+                                'delta': delta,
+                                'band': self.get_band_name(freq)
+                            })
+                            
+                            # Save to database
+                            self.db.add_signal(
+                                freq=freq,
+                                band=self.get_band_name(freq),
+                                power=power,
+                                baseline_power=baseline['mean'],
+                                is_anomaly=True,
+                                recording_file=None
+                            )
+                
+                # Display results
+                if strong_signals:
+                    print(f"[Scan #{scan_num}] {scan_time} - [!] {len(strong_signals)} ANOMALIES DETECTED!")
+                    for sig in strong_signals[:3]:  # Show top 3
+                        print(f"  - {sig['freq']/1e6:.3f} MHz ({sig['band']}) - {sig['power']:.1f} dBm (+{sig['delta']:.1f} dB)")
+                    
+                    # Record strongest signal
+                    strongest = max(strong_signals, key=lambda x: x['delta'])
+                    print(f"\n  [REC] Recording strongest: {strongest['freq']/1e6:.3f} MHz...")
+                    self.record_signal(strongest['freq'], duration=3)
+                else:
+                    print(f"[Scan #{scan_num}] {scan_time} - Monitoring ({len(results)} freqs checked)")
+                
+                # Update dashboard
+                if self.dashboard and strong_signals:
+                    for sig in strong_signals:
+                        self.dashboard.add_signal({
+                            'frequency_hz': sig['freq'],
+                            'power_dbm': sig['power'],
+                            'delta_db': sig['delta'],
+                            'band': sig['band'],
+                            'is_anomaly': True
+                        })
+                
+                time.sleep(3)  # Scan every 3 seconds
+                
+        except KeyboardInterrupt:
+            print(f"\n\nStopped after {scan_num} scans")
+    
+    def _signal_handler(self, signum, frame):
+        """Handle signals for graceful shutdown"""
+        print(f"\n[CLEANUP] Received signal {signum}, cleaning up...")
+        self.cleanup()
+        sys.exit(0)
+    
+    def cleanup(self):
+        """Clean up all SDR resources - ALWAYS called on exit"""
+        try:
+            print("[CLEANUP] Releasing SDR devices...")
+            
+            # Close concurrent SDRs
+            if self.sdrs:
+                for i, sdr in enumerate(self.sdrs):
+                    try:
+                        print(f"[CLEANUP] Closing SDR #{i}...")
+                        sdr.close()
+                    except Exception as e:
+                        print(f"[CLEANUP] Error closing SDR #{i}: {e}")
+                self.sdrs = []
+            
+            # Close single SDR
+            if self.sdr:
+                try:
+                    print("[CLEANUP] Closing primary SDR...")
+                    self.sdr.close()
+                    self.sdr = None
+                except Exception as e:
+                    print(f"[CLEANUP] Error closing primary SDR: {e}")
+            
+            print("[CLEANUP] All SDRs released!")
+            
+        except Exception as e:
+            print(f"[CLEANUP] Error during cleanup: {e}")
+    
     def close(self):
-        if self.sdr:
-            self.sdr.close()
+        """Legacy close method - calls cleanup"""
+        self.cleanup()
 
 def main():
     print("\n" + "#"*70)

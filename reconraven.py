@@ -13,22 +13,38 @@ from database import get_db
 
 def cmd_scan(args):
     """Run scanner with optional dashboard"""
-    from advanced_scanner import AdvancedScanner
-    
-    # Kill any existing dashboard processes
-    import psutil
-    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
-        try:
-            cmdline = proc.info.get('cmdline', [])
-            if cmdline and any('server.py' in str(c) or 'dashboard' in str(c).lower() for c in cmdline):
-                proc.kill()
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            pass
-    
-    scanner = AdvancedScanner()
-    
-    if not scanner.init_sdr():
-        print("ERROR: Failed to initialize SDR!")
+    try:
+        from advanced_scanner import AdvancedScanner
+        
+        # Kill any existing dashboard processes (but not ourselves!)
+        import psutil
+        import os
+        current_pid = os.getpid()
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+            try:
+                if proc.pid == current_pid:
+                    continue  # Don't kill ourselves!
+                cmdline = proc.info.get('cmdline', [])
+                if cmdline and any('server.py' in str(c) for c in cmdline):
+                    print(f"Killing old dashboard process {proc.pid}")
+                    proc.kill()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+        
+        print("Initializing scanner...")
+        scanner = AdvancedScanner()
+        
+        print("Initializing SDR...")
+        if not scanner.init_sdr():
+            print("ERROR: Failed to initialize SDR!")
+            return 1
+        
+        print("[SUCCESS] All SDRs initialized!")
+        
+    except Exception as e:
+        print(f"FATAL ERROR during initialization: {e}")
+        import traceback
+        traceback.print_exc()
         return 1
     
     # Build or load baseline
@@ -48,7 +64,7 @@ def cmd_scan(args):
                 'band': entry['band']
             }
     
-    # Start dashboard if requested
+    # Start dashboard AFTER SDRs are fully initialized
     dashboard = None
     if args.dashboard:
         from web.server import SDRDashboardServer
@@ -70,7 +86,7 @@ def cmd_scan(args):
     except KeyboardInterrupt:
         print("\nStopping...")
     finally:
-        scanner.sdr.close()
+        scanner.cleanup()  # Use cleanup instead of direct sdr.close()
     
     return 0
 
@@ -429,5 +445,13 @@ Examples:
     return commands[args.command](args)
 
 if __name__ == '__main__':
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except Exception as e:
+        print(f"\n{'='*70}")
+        print(f"FATAL ERROR: {e}")
+        print(f"{'='*70}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 

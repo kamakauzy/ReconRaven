@@ -66,6 +66,7 @@ class ReconRavenDB:
                 modulation TEXT,
                 bit_rate INTEGER,
                 confidence REAL,
+                ignored BOOLEAN DEFAULT 0,
                 first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 seen_count INTEGER DEFAULT 1,
@@ -119,6 +120,36 @@ class ReconRavenDB:
                 recordings_made INTEGER DEFAULT 0
             )
         ''')
+        
+        # Voice transcripts table (NEW)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS transcripts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                recording_id INTEGER NOT NULL,
+                text TEXT NOT NULL,
+                language TEXT,
+                confidence REAL,
+                duration_sec REAL,
+                segments_json TEXT,
+                transcribed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (recording_id) REFERENCES recordings(id)
+            )
+        ''')
+        
+        # Transcript keywords table for search (NEW)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS transcript_keywords (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                transcript_id INTEGER NOT NULL,
+                keyword TEXT NOT NULL,
+                frequency INTEGER DEFAULT 1,
+                FOREIGN KEY (transcript_id) REFERENCES transcripts(id)
+            )
+        ''')
+        
+        # Create indexes for better search performance
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_transcript_keywords ON transcript_keywords(keyword)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_transcripts_recording ON transcripts(recording_id)')
         
         self.conn.commit()
     
@@ -200,6 +231,7 @@ class ReconRavenDB:
             LEFT JOIN devices d ON s.frequency_hz = d.frequency_hz
             WHERE s.is_anomaly = 1 
                 AND s.frequency_hz NOT IN (SELECT frequency_hz FROM baseline WHERE user_promoted = 1)
+                AND d.id IS NULL
             GROUP BY s.frequency_hz, COALESCE(a.modulation, 'Unknown'), COALESCE(a.bit_rate, 0)
             ORDER BY MAX(s.detected_at) DESC 
             LIMIT ?
@@ -236,13 +268,99 @@ class ReconRavenDB:
         return cursor.lastrowid
     
     def get_devices(self) -> List[Dict]:
-        """Get all identified devices"""
+        """Get all identified devices with recording status and analysis data"""
         cursor = self.conn.cursor()
         cursor.execute('''
-            SELECT * FROM devices 
-            ORDER BY confidence DESC, last_seen DESC
+            SELECT 
+                d.*,
+                b.id as is_baselined,
+                COUNT(DISTINCT s.id) as signal_count,
+                MAX(s.detected_at) as last_detection,
+                MAX(s.recorded) as has_recording,
+                MAX(s.recording_file) as latest_recording,
+                MAX(r.analyzed) as recording_analyzed,
+                MAX(a.results_json) as analysis_results,
+                MAX(a.confidence) as analysis_confidence
+            FROM devices d
+            LEFT JOIN baseline b ON d.frequency_hz = b.frequency_hz
+            LEFT JOIN signals s ON d.frequency_hz = s.frequency_hz
+            LEFT JOIN recordings r ON s.recording_file = r.filename
+            LEFT JOIN analysis_results a ON r.id = a.recording_id
+            GROUP BY d.id
+            ORDER BY b.id IS NULL DESC, d.confidence DESC, d.last_seen DESC
         ''')
         return [dict(row) for row in cursor.fetchall()]
+    
+    def auto_promote_devices_to_baseline(self) -> int:
+        """Automatically promote identified devices to baseline"""
+        cursor = self.conn.cursor()
+        
+        # Get all identified devices not yet in baseline
+        cursor.execute('''
+            SELECT d.frequency_hz, d.name, d.manufacturer, d.device_type
+            FROM devices d
+            WHERE d.frequency_hz NOT IN (SELECT frequency_hz FROM baseline)
+              AND d.confidence > 0.5
+        ''')
+        
+        devices_to_promote = cursor.fetchall()
+        promoted_count = 0
+        
+        for device in devices_to_promote:
+            # Get band for this frequency
+            freq_info = self.get_frequency_range_info(device['frequency_hz'])
+            band = freq_info['name'] if freq_info else 'Unknown'
+            
+            # Add to baseline with user_promoted flag
+            try:
+                self.add_baseline_frequency(
+                    freq=device['frequency_hz'],
+                    band=band,
+                    power=-60.0,
+                    std=5.0,
+                    user_promoted=True  # Auto-promoted identified device
+                )
+                promoted_count += 1
+            except:
+                pass  # Already in baseline
+        
+        return promoted_count
+    
+    def ignore_device(self, frequency_hz: float):
+        """Ignore/suppress a device (won't show in anomalies)"""
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            UPDATE devices 
+            SET ignored = 1 
+            WHERE frequency_hz = ?
+        ''', (frequency_hz,))
+        
+        # Also add to baseline to suppress anomalies
+        freq_info = self.get_frequency_range_info(frequency_hz)
+        band = freq_info['name'] if freq_info else 'Unknown'
+        
+        try:
+            self.add_baseline_frequency(
+                freq=frequency_hz,
+                band=band,
+                power=-60.0,
+                std=5.0,
+                user_promoted=True
+            )
+        except:
+            pass  # Already in baseline
+        
+        self.conn.commit()
+    
+    def unignore_device(self, frequency_hz: float):
+        """Un-ignore a device"""
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            UPDATE devices 
+            SET ignored = 0 
+            WHERE frequency_hz = ?
+        ''', (frequency_hz,))
+        self.conn.commit()
     
     def get_device_by_frequency(self, freq: float) -> Optional[Dict]:
         """Get device at specific frequency"""
@@ -407,7 +525,135 @@ class ReconRavenDB:
         cursor.execute('SELECT SUM(file_size_mb) as total FROM recordings')
         stats['total_storage_mb'] = cursor.fetchone()['total'] or 0
         
+        # Transcript counts
+        cursor.execute('SELECT COUNT(*) as count FROM transcripts')
+        stats['total_transcripts'] = cursor.fetchone()['count']
+        
         return stats
+    
+    # ========== TRANSCRIPT MANAGEMENT ==========
+    
+    def add_transcript(self, recording_id: int, text: str, language: str = None,
+                      confidence: float = 0.0, duration: float = 0.0,
+                      segments: List[Dict] = None) -> int:
+        """Add voice transcript"""
+        cursor = self.conn.cursor()
+        segments_json = json.dumps(segments) if segments else None
+        
+        cursor.execute('''
+            INSERT INTO transcripts (recording_id, text, language, confidence, duration_sec, segments_json)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (recording_id, text, language, confidence, duration, segments_json))
+        
+        transcript_id = cursor.lastrowid
+        
+        # Extract keywords for search
+        keywords = self._extract_keywords(text)
+        for keyword, freq in keywords.items():
+            cursor.execute('''
+                INSERT INTO transcript_keywords (transcript_id, keyword, frequency)
+                VALUES (?, ?, ?)
+            ''', (transcript_id, keyword, freq))
+        
+        self.conn.commit()
+        return transcript_id
+    
+    def _extract_keywords(self, text: str) -> Dict[str, int]:
+        """Extract keywords from text for search indexing"""
+        # Remove common words
+        stopwords = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+                    'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be',
+                    'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will',
+                    'would', 'should', 'could', 'may', 'might', 'must', 'can', 'this',
+                    'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they'}
+        
+        words = text.lower().split()
+        keywords = {}
+        
+        for word in words:
+            # Clean word
+            word = ''.join(c for c in word if c.isalnum())
+            if len(word) > 2 and word not in stopwords:
+                keywords[word] = keywords.get(word, 0) + 1
+        
+        return keywords
+    
+    def get_transcript(self, recording_id: int) -> Optional[Dict]:
+        """Get transcript for a recording"""
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            SELECT * FROM transcripts
+            WHERE recording_id = ?
+            ORDER BY transcribed_at DESC
+            LIMIT 1
+        ''', (recording_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    
+    def get_all_transcripts(self, limit: int = 100) -> List[Dict]:
+        """Get all transcripts with recording info"""
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            SELECT 
+                t.*,
+                r.filename as recording_filename,
+                r.frequency_hz,
+                r.band,
+                r.captured_at
+            FROM transcripts t
+            JOIN recordings r ON t.recording_id = r.id
+            ORDER BY t.transcribed_at DESC
+            LIMIT ?
+        ''', (limit,))
+        return [dict(row) for row in cursor.fetchall()]
+    
+    def search_transcripts(self, keyword: str, limit: int = 50) -> List[Dict]:
+        """Search transcripts by keyword"""
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            SELECT DISTINCT
+                t.*,
+                r.filename as recording_filename,
+                r.frequency_hz,
+                r.band,
+                r.captured_at,
+                tk.frequency as keyword_frequency
+            FROM transcripts t
+            JOIN recordings r ON t.recording_id = r.id
+            JOIN transcript_keywords tk ON t.id = tk.transcript_id
+            WHERE tk.keyword LIKE ?
+            ORDER BY tk.frequency DESC, t.transcribed_at DESC
+            LIMIT ?
+        ''', (f'%{keyword.lower()}%', limit))
+        return [dict(row) for row in cursor.fetchall()]
+    
+    def get_transcripts_by_frequency(self, frequency_hz: float) -> List[Dict]:
+        """Get all transcripts for a specific frequency"""
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            SELECT 
+                t.*,
+                r.filename as recording_filename,
+                r.captured_at
+            FROM transcripts t
+            JOIN recordings r ON t.recording_id = r.id
+            WHERE r.frequency_hz = ?
+            ORDER BY t.transcribed_at DESC
+        ''', (frequency_hz,))
+        return [dict(row) for row in cursor.fetchall()]
+    
+    def get_untranscribed_recordings(self) -> List[Dict]:
+        """Get recordings that haven't been transcribed yet"""
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            SELECT r.*
+            FROM recordings r
+            LEFT JOIN transcripts t ON r.id = t.recording_id
+            WHERE t.id IS NULL
+              AND r.filename LIKE 'voice_%'
+            ORDER BY r.captured_at DESC
+        ''')
+        return [dict(row) for row in cursor.fetchall()]
     
     def get_dashboard_data(self) -> Dict:
         """Get comprehensive data for dashboard"""

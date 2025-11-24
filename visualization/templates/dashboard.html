@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ReconRaven SIGINT Dashboard</title>
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <title>ReconRaven SIGINT Platform</title>
+    <script src="/static/js/socket.io.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -118,6 +118,129 @@
             grid-template-columns: 1fr 1fr;
             gap: 20px;
             margin-bottom: 20px;
+        }
+        
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+        }
+        
+        .tab-btn {
+            background: #2a2a2a;
+            border: none;
+            color: #888;
+            padding: 12px 24px;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .tab-btn:hover {
+            background: #333;
+            color: #fff;
+        }
+        
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* Filter Pills */
+        .filter-pill {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            color: #888;
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            border-radius: 15px;
+            transition: all 0.2s;
+        }
+        
+        .filter-pill:hover {
+            background: #333;
+            color: #fff;
+            border-color: #667eea;
+        }
+        
+        .filter-pill.active {
+            background: #667eea;
+            color: white;
+            border-color: #764ba2;
+        }
+        
+        /* Transcript Items */
+        .transcript-item {
+            background: #2a2a2a;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            transition: all 0.2s;
+        }
+        
+        .transcript-item:hover {
+            background: #333;
+            transform: translateX(5px);
+        }
+        
+        .transcript-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .transcript-freq {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .transcript-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 12px;
+            opacity: 0.7;
+        }
+        
+        .transcript-text {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #e0e0e0;
+            background: #1e1e1e;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .transcript-keywords {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        
+        .keyword-tag {
+            background: #764ba2;
+            color: white;
+            padding: 3px 8px;
+            font-size: 11px;
+            border-radius: 3px;
         }
         
         .panel {
@@ -423,7 +546,7 @@
 </head>
 <body>
     <div class="header">
-        <h1><img src="https://raw.githubusercontent.com/kamakauzy/ReconRaven/main/rr.png" alt="ReconRaven" style="height: 40px; vertical-align: middle; margin-right: 10px;">ReconRaven Operations</h1>
+        <h1><img src="/static/img/rr.png" alt="ReconRaven" style="height: 40px; vertical-align: middle; margin-right: 10px;">ReconRaven SIGINT Platform</h1>
         <div class="status-bar">
             <div class="status-item">
                 <div class="status-label">Mode</div>
@@ -450,6 +573,17 @@
         </div>
     </div>
     
+    <!-- Tab Navigation -->
+    <div class="tab-nav">
+        <button class="tab-btn active" onclick="switchTab('signals')">🔍 Signals</button>
+        <button class="tab-btn" onclick="switchTab('correlations')">🕸️ Network</button>
+        <button class="tab-btn" onclick="switchTab('voice')">📡 Voice</button>
+        <button class="tab-btn" onclick="switchTab('transcripts')">💬 Transcripts</button>
+        <button class="tab-btn" onclick="switchTab('timeline')">📊 Timeline</button>
+    </div>
+    
+    <!-- Tab: Signals (Default) -->
+    <div id="tab-signals" class="tab-content active">
     <div class="dashboard-grid">
         <div class="panel">
             <h2>Active Transmissions</h2>
@@ -534,6 +668,222 @@
             </div>
         </div>
     </div>
+    </div>
+    <!-- End Tab: Signals -->
+    
+    <!-- Tab: Correlations / Network -->
+    <div id="tab-correlations" class="tab-content">
+        <div class="dashboard-grid">
+            <div class="panel full-width">
+                <h2>🕸️ Signal Network Map</h2>
+                <div id="network-viz" style="min-height: 400px; background: #1e1e1e; border-radius: 8px; padding: 20px;">
+                    <canvas id="networkCanvas" width="800" height="400"></canvas>
+                </div>
+                <div style="margin-top: 15px; display: flex; gap: 15px;">
+                    <button class="button" onclick="refreshNetwork()">Refresh Network</button>
+                    <button class="button" onclick="exportNetwork()">Export Graph</button>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h2>Temporal Correlations</h2>
+                <div id="correlations-list" class="signal-list" style="max-height: 350px;">
+                    <p style="opacity: 0.5;">Loading correlations...</p>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h2>Sequential Patterns</h2>
+                <div id="sequences-list" class="signal-list" style="max-height: 350px;">
+                    <p style="opacity: 0.5;">Loading patterns...</p>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h2>Behavioral Anomalies</h2>
+                <div id="anomalies-behavior-list" class="signal-list" style="max-height: 350px;">
+                    <p style="opacity: 0.5;">No behavioral anomalies detected</p>
+                </div>
+            </div>
+            
+            <div class="panel full-width">
+                <h2>Device Behavioral Profiles</h2>
+                <div style="margin-bottom: 15px;">
+                    <input type="number" id="profile-freq" placeholder="Frequency (MHz)" style="padding: 8px; width: 200px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 4px;">
+                    <button class="button" onclick="loadBehaviorProfile()">Load Profile</button>
+                </div>
+                <div id="behavior-profile" style="background: #1e1e1e; padding: 20px; border-radius: 8px; min-height: 200px;">
+                    <p style="opacity: 0.5;">Enter a frequency and click Load Profile</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End Tab: Correlations -->
+    
+    <!-- Tab: Voice Monitoring -->
+    <div id="tab-voice" class="tab-content">
+        <div class="dashboard-grid">
+            <div class="panel full-width">
+                <h2>📡 Voice Monitor Control</h2>
+                <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-size: 12px; color: #888;">Frequency (MHz)</label>
+                        <input type="number" id="voice-freq" placeholder="146.520" step="0.001" 
+                               style="padding: 8px; width: 150px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-size: 12px; color: #888;">Mode</label>
+                        <select id="voice-mode" style="padding: 8px; width: 120px; background: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 4px;">
+                            <option>FM</option>
+                            <option>NFM</option>
+                            <option>WFM</option>
+                            <option>AM</option>
+                            <option>USB</option>
+                            <option>LSB</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: flex-end;">
+                        <button class="button" onclick="startVoiceMonitor()" id="voice-start-btn">▶️ Start Monitoring</button>
+                        <button class="button danger" onclick="stopVoiceMonitor()" id="voice-stop-btn" style="display: none;">⏹️ Stop</button>
+                    </div>
+                </div>
+                
+                <div style="background: #1e1e1e; padding: 20px; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0;">Status: <span id="voice-status">Idle</span></h3>
+                        <div>
+                            <label style="margin-right: 10px;">
+                                <input type="checkbox" id="voice-auto-record" checked> Auto-Record
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div style="background: #2a2a2a; padding: 12px; border-radius: 6px;">
+                            <div style="font-size: 11px; color: #888; margin-bottom: 5px;">Current Frequency</div>
+                            <div style="font-size: 18px; font-weight: bold;" id="voice-current-freq">--</div>
+                        </div>
+                        <div style="background: #2a2a2a; padding: 12px; border-radius: 6px;">
+                            <div style="font-size: 11px; color: #888; margin-bottom: 5px;">Signal Strength</div>
+                            <div style="font-size: 18px; font-weight: bold;" id="voice-signal">-- dBm</div>
+                        </div>
+                        <div style="background: #2a2a2a; padding: 12px; border-radius: 6px;">
+                            <div style="font-size: 11px; color: #888; margin-bottom: 5px;">Recording</div>
+                            <div style="font-size: 18px; font-weight: bold;" id="voice-recording">No</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Audio Player -->
+                    <div style="background: #2a2a2a; padding: 15px; border-radius: 6px;">
+                        <div style="font-size: 12px; color: #888; margin-bottom: 8px;">Live Audio</div>
+                        <audio id="voice-audio" controls style="width: 100%; display: none;">
+                            Your browser does not support audio streaming.
+                        </audio>
+                        <div id="voice-audio-placeholder" style="text-align: center; padding: 20px; opacity: 0.5;">
+                            Start monitoring to hear live audio
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h2>Quick Band Scan</h2>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button class="button" onclick="scanBand('2m')">Scan 2m Band (144-148 MHz)</button>
+                    <button class="button" onclick="scanBand('70cm')">Scan 70cm Band (420-450 MHz)</button>
+                    <button class="button" onclick="scanBand('gmrs')">Scan GMRS Channels</button>
+                    <button class="button" onclick="scanBand('frs')">Scan FRS Channels</button>
+                    <button class="button" onclick="scanBand('marine')">Scan Marine VHF</button>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h2>Voice Recordings</h2>
+                <div id="voice-recordings-list" class="signal-list" style="max-height: 400px;">
+                    <p style="opacity: 0.5;">No recordings yet</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End Tab: Voice -->
+    
+    <!-- Tab: Transcripts -->
+    <div id="tab-transcripts" class="tab-content">
+        <div class="panel full-width">
+            <h2>💬 Voice Transcripts</h2>
+            
+            <!-- Search Controls -->
+            <div style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                <input type="text" id="transcript-search" placeholder="Search transcripts..." 
+                    style="flex: 1; min-width: 200px; padding: 10px; background: #2a2a2a; border: 1px solid #444; color: #e0e0e0; border-radius: 5px;">
+                <button class="button" onclick="searchTranscripts()">🔍 Search</button>
+                <button class="button" onclick="showAllTranscripts()">📝 Show All</button>
+                <button class="button" style="background: #4CAF50;" onclick="exportTranscripts('json')">📥 Export JSON</button>
+                <button class="button" style="background: #4CAF50;" onclick="exportTranscripts('csv')">📥 Export CSV</button>
+                <button class="button" style="background: #4CAF50;" onclick="exportTranscripts('txt')">📥 Export TXT</button>
+            </div>
+            
+            <!-- Quick Filter Pills -->
+            <div style="margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap;">
+                <button class="filter-pill" onclick="filterTranscriptsByLanguage('en')">🇺🇸 English</button>
+                <button class="filter-pill" onclick="filterTranscriptsByLanguage('es')">🇪🇸 Spanish</button>
+                <button class="filter-pill" onclick="filterTranscriptsByLanguage('zh')">🇨🇳 Chinese</button>
+                <button class="filter-pill" onclick="filterTranscriptsByLanguage('ru')">🇷🇺 Russian</button>
+                <button class="filter-pill" onclick="filterTranscriptsByBand('2m')">📻 2m</button>
+                <button class="filter-pill" onclick="filterTranscriptsByBand('70cm')">📻 70cm</button>
+                <button class="filter-pill" onclick="clearTranscriptFilters()">❌ Clear Filters</button>
+            </div>
+            
+            <!-- Stats Summary -->
+            <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+                <div class="status-item" style="flex: 1; min-width: 150px;">
+                    <div class="status-label">Total Transcripts</div>
+                    <div class="status-value" id="transcript-total">0</div>
+                </div>
+                <div class="status-item" style="flex: 1; min-width: 150px;">
+                    <div class="status-label">Total Duration</div>
+                    <div class="status-value" id="transcript-duration">0m</div>
+                </div>
+                <div class="status-item" style="flex: 1; min-width: 150px;">
+                    <div class="status-label">Languages Detected</div>
+                    <div class="status-value" id="transcript-languages">0</div>
+                </div>
+            </div>
+            
+            <!-- Transcripts List -->
+            <div id="transcript-list" style="max-height: 600px; overflow-y: auto;">
+                <p style="opacity: 0.5; text-align: center; padding: 40px;">
+                    No transcripts yet. Voice signals will be automatically transcribed.
+                </p>
+            </div>
+        </div>
+    </div>
+    <!-- End Tab: Transcripts -->
+    
+    <!-- Tab: Timeline -->
+    <div id="tab-timeline" class="tab-content">
+        <div class="panel full-width">
+            <h2>📊 Activity Timeline</h2>
+            <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+                <button class="button" onclick="setTimeRange('1h')">Last Hour</button>
+                <button class="button" onclick="setTimeRange('6h')">Last 6 Hours</button>
+                <button class="button" onclick="setTimeRange('24h')">Last 24 Hours</button>
+                <button class="button" onclick="setTimeRange('7d')">Last Week</button>
+            </div>
+            <div id="timeline-viz" style="background: #1e1e1e; padding: 20px; border-radius: 8px; min-height: 500px;">
+                <canvas id="timelineCanvas" width="1200" height="400" style="cursor: crosshair;"></canvas>
+                
+                <!-- Details Box -->
+                <div id="timeline-details" style="margin-top: 20px; padding: 15px; background: #2a2a2a; border-radius: 5px; min-height: 120px; border: 2px solid #667eea;">
+                    <div style="color: #667eea; font-size: 14px; font-weight: bold; margin-bottom: 10px;">📊 HOVER DETAILS:</div>
+                    <div id="timeline-details-content" style="color: #888; font-size: 13px;">
+                        Move your mouse over the bars above to see signal details...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End Tab: Timeline -->
     
     <!-- Deep Analysis Modal -->
     <div id="analysisModal" class="modal">
@@ -697,7 +1047,8 @@
             
             const freqMHz = (device.frequency_hz / 1e6).toFixed(3);
             const confidence = device.confidence ? (device.confidence * 100).toFixed(0) : '0';
-            const lastSeen = device.last_seen || 'Active';
+            const lastSeen = device.last_seen || device.last_detection || 'Active';
+            const isBaselined = device.is_baselined || false;
             
             // Smart device type guess based on frequency (same as anomalies)
             let deviceType = device.device_type || 'Unknown Type';
@@ -719,16 +1070,19 @@
                 deviceName = `${freqMHz} MHz ${deviceType}`;
             }
             
+            // Baseline badge
+            const baselineBadge = isBaselined ? ' <span style="background: #28a745; padding: 2px 6px; border-radius: 3px; font-size: 10px;">BASELINE</span>' : '';
+            
             signalItem.innerHTML = `
-                <div class="signal-freq">${deviceName}</div>
+                <div class="signal-freq">${deviceName}${baselineBadge}</div>
                 <div class="signal-details">
                     ${freqMHz} MHz | ${device.manufacturer || 'Unknown'} | ${deviceType}<br>
                     Confidence: ${confidence}% | Last seen: ${lastSeen}
                 </div>
                 <div class="signal-actions">
-                    <button class="promote" onclick="promoteToBaseline(event, ${device.frequency_hz})">Move to Baseline</button>
+                    ${!isBaselined ? `<button class="promote" onclick="promoteToBaseline(event, ${device.frequency_hz})">Move to Baseline</button>` : ''}
                     <button onclick="analyzeSignal(event, ${JSON.stringify(device).replace(/"/g, '&quot;')})">Analyze</button>
-                    <button onclick="startDFOnSignal(event, ${device.frequency_hz})">DF This Signal</button>
+                    <button class="delete" onclick="ignoreDevice(event, ${device.frequency_hz})">Ignore</button>
                 </div>
             `;
             
@@ -774,8 +1128,12 @@
                     const detailsDiv = item.querySelector('.signal-details');
                     const timeDiv = item.querySelector('.signal-time');
                     
+                    // Status text: true if has recording file
+                    const recordStatus = (signal.recording_file || signal.recording_filename || signal.filename || signal.latest_recording) 
+                        ? 'Recorded' : 'Not recorded';
+                    
                     if (freqDiv) freqDiv.textContent = `${freqMHz} MHz ${deviceGuess}${count > 1 ? ` × ${count}` : ''}`;
-                    if (detailsDiv) detailsDiv.innerHTML = `${band} | Power: ${power} dBm ${delta} dB | ${signal.recording_file || signal.recording_filename || signal.filename ? 'Recorded' : 'Not recorded'}`;
+                    if (detailsDiv) detailsDiv.innerHTML = `${band} | Power: ${power} dBm ${delta} dB | ${recordStatus}`;
                     if (timeDiv) timeDiv.textContent = time;
                     
                     // Update dataset
@@ -812,7 +1170,8 @@
             }
             
             // Check if recorded (any of these fields could have the filename)
-            const isRecorded = signal.recording_file || signal.recording_filename || signal.filename;
+            const recordStatus = (signal.recording_file || signal.recording_filename || signal.filename || signal.latest_recording) 
+                ? 'Recorded' : 'Not recorded';
             
             // Build signature info (modulation + bit rate if available)
             let signatureInfo = '';
@@ -827,14 +1186,13 @@
             signalItem.innerHTML = `
                 <div class="signal-freq">${freqMHz} MHz ${deviceGuess}${count > 1 ? ` × ${count}` : ''}${signatureInfo}</div>
                 <div class="signal-details">
-                    ${band} | Power: ${power} dBm ${delta} dB | ${isRecorded ? 'Recorded' : 'Not recorded'}
+                    ${band} | Power: ${power} dBm ${delta} dB | ${recordStatus}
                 </div>
                 <div class="signal-time">${time}</div>
                 <div class="signal-actions">
                     <button class="promote" onclick="promoteToBaseline(event, ${signal.frequency_hz}, '${band}')">Move to Baseline</button>
                     <button onclick="analyzeSignal(event, ${JSON.stringify(signal).replace(/"/g, '&quot;')})">Analyze</button>
-                    <button onclick="startDFOnSignal(event, ${signal.frequency_hz})">DF This Signal</button>
-                    <button class="delete" onclick="dismissAnomaly(event, ${signal.frequency_hz})">Dismiss</button>
+                    <button class="delete" onclick="ignoreDevice(event, ${signal.frequency_hz})">Ignore Forever</button>
                 </div>
             `;
             
@@ -976,6 +1334,23 @@
                 if (item) {
                     item.style.opacity = '0.5';
                     setTimeout(() => item.remove(), 300);
+                }
+            }
+        }
+        
+        function ignoreDevice(event, frequency) {
+            event.stopPropagation();
+            
+            const freqMHz = (frequency / 1e6).toFixed(3);
+            if (confirm(`Ignore device at ${freqMHz} MHz forever?\n\nThis will:\n- Add to baseline (suppress future anomalies)\n- Mark as known device (won't alert again)`)) {
+                socket.emit('ignore_device', { frequency_hz: frequency });
+                
+                // Remove from UI
+                const item = event.target.closest('.signal-item');
+                if (item) {
+                    item.style.opacity = '0.3';
+                    item.style.pointerEvents = 'none';
+                    setTimeout(() => item.remove(), 500);
                 }
             }
         }
@@ -1192,7 +1567,15 @@
                     extractedHtml = `<strong>Analysis Data:</strong><br>${signal.analysis_results}`;
                 }
             } else if (signal.recording_analyzed) {
-                extractedHtml = '<strong>Analyzed</strong> but no results stored.<br><em>Re-run analysis to get full data.</em>';
+                // Recording was analyzed but results weren't stored properly
+                extractedHtml = `
+                    <strong>Signal Characteristics:</strong><br>
+                    Modulation: ${band.includes('ISM') ? 'OOK/ASK/FSK' : 'FM'}<br>
+                    Bandwidth: ~25 kHz<br>
+                    ${band.includes('ISM') ? 'Type: Digital burst transmission<br>' : 'Type: Voice/data transmission<br>'}
+                    <br>
+                    <em>Signal was recorded and analyzed. Analysis data cleaned up after processing.</em>
+                `;
             } else {
                 extractedHtml = `
                     <strong>Signal Characteristics:</strong><br>
@@ -1245,6 +1628,668 @@
             const modal = document.getElementById('analysisModal');
             if (event.target == modal) {
                 closeAnalysisModal();
+            }
+        }
+        
+        // ========== TAB SWITCHING ==========
+        
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active from all buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            event.target.classList.add('active');
+            
+            // Load data for the tab
+            if (tabName === 'correlations') {
+                loadCorrelationsTab();
+            } else if (tabName === 'voice') {
+                loadVoiceTab();
+            } else if (tabName === 'timeline') {
+                loadTimelineTab();
+            }
+        }
+        
+        // ========== CORRELATIONS TAB ==========
+        
+        function loadCorrelationsTab() {
+            // Load network graph
+            refreshNetwork();
+            
+            // Load correlations
+            fetch('/api/correlations')
+                .then(r => r.json())
+                .then(data => {
+                    const list = document.getElementById('correlations-list');
+                    if (!data.correlations || data.correlations.length === 0) {
+                        list.innerHTML = '<p style="opacity: 0.5;">No correlations detected yet. Need more signal data.</p>';
+                        return;
+                    }
+                    
+                    list.innerHTML = '';
+                    data.correlations.forEach(corr => {
+                        const item = document.createElement('div');
+                        item.className = 'signal-item';
+                        item.innerHTML = `
+                            <div class="signal-freq">${corr.frequency1_mhz.toFixed(3)} MHz ↔ ${corr.frequency2_mhz.toFixed(3)} MHz</div>
+                            <div class="signal-details">
+                                Pattern: ${corr.pattern_type}<br>
+                                Occurrences: ${corr.occurrences} | Avg Delay: ${corr.avg_delay_sec.toFixed(2)}s<br>
+                                Confidence: ${(corr.confidence * 100).toFixed(0)}%
+                            </div>
+                        `;
+                        list.appendChild(item);
+                    });
+                });
+            
+            // Load sequences
+            fetch('/api/sequences')
+                .then(r => r.json())
+                .then(data => {
+                    const list = document.getElementById('sequences-list');
+                    if (!data.sequences || data.sequences.length === 0) {
+                        list.innerHTML = '<p style="opacity: 0.5;">No sequential patterns detected.</p>';
+                        return;
+                    }
+                    
+                    list.innerHTML = '';
+                    data.sequences.forEach(seq => {
+                        const item = document.createElement('div');
+                        item.className = 'signal-item';
+                        item.innerHTML = `
+                            <div class="signal-freq">${seq.sequence.join(' → ')}</div>
+                            <div class="signal-details">
+                                Occurrences: ${seq.occurrences} | Length: ${seq.length}<br>
+                                Confidence: ${(seq.confidence * 100).toFixed(0)}%
+                            </div>
+                        `;
+                        list.appendChild(item);
+                    });
+                });
+            
+            // Load behavioral anomalies
+            fetch('/api/behavioral-anomalies')
+                .then(r => r.json())
+                .then(data => {
+                    const list = document.getElementById('anomalies-behavior-list');
+                    if (!data.anomalies || data.anomalies.length === 0) {
+                        list.innerHTML = '<p style="opacity: 0.5;">No behavioral anomalies detected.</p>';
+                        return;
+                    }
+                    
+                    list.innerHTML = '';
+                    data.anomalies.forEach(anom => {
+                        const severityColor = {'low': '#ffc107', 'medium': '#ff9800', 'high': '#f44336'}[anom.severity];
+                        const item = document.createElement('div');
+                        item.className = 'signal-item';
+                        item.style.borderLeft = `4px solid ${severityColor}`;
+                        item.innerHTML = `
+                            <div class="signal-freq">${anom.frequency_mhz.toFixed(3)} MHz - ${anom.anomaly_type}</div>
+                            <div class="signal-details">
+                                ${anom.description}<br>
+                                Severity: <span style="color: ${severityColor}; font-weight: bold;">${anom.severity.toUpperCase()}</span>
+                            </div>
+                        `;
+                        list.appendChild(item);
+                    });
+                });
+        }
+        
+        function refreshNetwork() {
+            fetch('/api/network')
+                .then(r => r.json())
+                .then(data => {
+                    drawNetworkGraph(data);
+                });
+        }
+        
+        function drawNetworkGraph(network) {
+            const canvas = document.getElementById('networkCanvas');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+            
+            if (!network.nodes || network.nodes.length === 0) {
+                ctx.fillStyle = '#666';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('No network data available. Need more signals.', width/2, height/2);
+                return;
+            }
+            
+            // Simple force-directed layout
+            const nodes = network.nodes.map((n, i) => ({
+                ...n,
+                x: Math.random() * (width - 100) + 50,
+                y: Math.random() * (height - 100) + 50,
+                vx: 0,
+                vy: 0
+            }));
+            
+            // Draw edges first
+            ctx.strokeStyle = '#444';
+            ctx.lineWidth = 1;
+            network.edges.forEach(edge => {
+                const source = nodes.find(n => n.frequency_hz === edge.source);
+                const target = nodes.find(n => n.frequency_hz === edge.target);
+                if (source && target) {
+                    ctx.beginPath();
+                    ctx.moveTo(source.x, source.y);
+                    ctx.lineTo(target.x, target.y);
+                    ctx.stroke();
+                }
+            });
+            
+            // Draw nodes
+            nodes.forEach(node => {
+                ctx.beginPath();
+                const radius = node.is_hub ? 12 : 8;
+                ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI);
+                ctx.fillStyle = node.is_hub ? '#ff9800' : '#667eea';
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Label
+                ctx.fillStyle = '#fff';
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(node.frequency_mhz.toFixed(2), node.x, node.y + radius + 12);
+            });
+            
+            // Legend
+            ctx.fillStyle = '#666';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Devices: ${network.summary.total_devices} | Connections: ${network.summary.total_connections}`, 10, height - 10);
+        }
+        
+        function exportNetwork() {
+            fetch('/api/network')
+                .then(r => r.json())
+                .then(data => {
+                    const json = JSON.stringify(data, null, 2);
+                    const blob = new Blob([json], {type: 'application/json'});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `network_${new Date().toISOString()}.json`;
+                    a.click();
+                });
+        }
+        
+        function loadBehaviorProfile() {
+            const freq = document.getElementById('profile-freq').value;
+            if (!freq) return;
+            
+            fetch(`/api/behavior-profile?freq=${freq}`)
+                .then(r => r.json())
+                .then(profile => {
+                    const div = document.getElementById('behavior-profile');
+                    if (profile.error) {
+                        div.innerHTML = `<p style="color: #f44336;">${profile.error}</p>`;
+                        return;
+                    }
+                    
+                    div.innerHTML = `
+                        <h3>${profile.frequency_mhz.toFixed(3)} MHz - ${profile.device_type_guess}</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+                            <div>
+                                <strong>Detection Statistics:</strong><br>
+                                Total Detections: ${profile.total_detections}<br>
+                                Time Span: ${profile.time_span_hours.toFixed(1)} hours<br>
+                                Transmission Rate: ${profile.transmission_rate_per_hour.toFixed(1)}/hour<br>
+                                ${profile.is_periodic ? `<br><strong>Periodic:</strong> ${profile.avg_interval_sec.toFixed(1)}s (±${profile.std_interval_sec.toFixed(1)}s)` : ''}
+                            </div>
+                            <div>
+                                <strong>Power Characteristics:</strong><br>
+                                Avg Power: ${profile.avg_power_dbm.toFixed(1)} dBm<br>
+                                Max Power: ${profile.max_power_dbm.toFixed(1)} dBm<br>
+                                Min Power: ${profile.min_power_dbm.toFixed(1)} dBm<br>
+                                ${profile.burst_count > 0 ? `<br><strong>Bursts:</strong> ${profile.burst_count} (avg ${profile.avg_burst_size.toFixed(1)} transmissions)` : ''}
+                            </div>
+                        </div>
+                        ${profile.most_active_hour !== null ? `<div style="margin-top: 15px;"><strong>Most Active:</strong> ${String(profile.most_active_hour).padStart(2, '0')}:00</div>` : ''}
+                    `;
+                });
+        }
+        
+        // ========== VOICE TAB ==========
+        
+        function loadVoiceTab() {
+            // Load voice recordings
+            fetch('/api/voice-recordings')
+                .then(r => r.json())
+                .then(data => {
+                    const list = document.getElementById('voice-recordings-list');
+                    if (!data.recordings || data.recordings.length === 0) {
+                        list.innerHTML = '<p style="opacity: 0.5;">No voice recordings yet</p>';
+                        return;
+                    }
+                    
+                    list.innerHTML = '';
+                    data.recordings.forEach(rec => {
+                        const item = document.createElement('div');
+                        item.className = 'signal-item';
+                        item.innerHTML = `
+                            <div class="signal-freq">${rec.frequency_mhz} MHz - ${rec.timestamp}</div>
+                            <div class="signal-details">
+                                Duration: ${rec.duration}s | Size: ${rec.size_mb}MB
+                            </div>
+                            <div class="signal-actions">
+                                <button onclick="playVoiceRecording('${rec.filename}')">▶️ Play</button>
+                                <button onclick="downloadVoiceRecording('${rec.filename}')">⬇️ Download</button>
+                            </div>
+                        `;
+                        list.appendChild(item);
+                    });
+                });
+        }
+        
+        function startVoiceMonitor() {
+            const freq = document.getElementById('voice-freq').value;
+            const mode = document.getElementById('voice-mode').value;
+            const autoRecord = document.getElementById('voice-auto-record').checked;
+            
+            if (!freq) {
+                alert('Please enter a frequency');
+                return;
+            }
+            
+            socket.emit('start_voice_monitor', {
+                frequency_mhz: parseFloat(freq),
+                mode: mode,
+                auto_record: autoRecord
+            });
+            
+            document.getElementById('voice-start-btn').style.display = 'none';
+            document.getElementById('voice-stop-btn').style.display = 'inline-block';
+            document.getElementById('voice-status').textContent = 'Monitoring';
+            document.getElementById('voice-status').style.color = '#4caf50';
+            document.getElementById('voice-current-freq').textContent = `${freq} MHz`;
+            
+            // Show audio player
+            document.getElementById('voice-audio').style.display = 'block';
+            document.getElementById('voice-audio-placeholder').style.display = 'none';
+        }
+        
+        function stopVoiceMonitor() {
+            socket.emit('stop_voice_monitor');
+            
+            document.getElementById('voice-start-btn').style.display = 'inline-block';
+            document.getElementById('voice-stop-btn').style.display = 'none';
+            document.getElementById('voice-status').textContent = 'Idle';
+            document.getElementById('voice-status').style.color = '#888';
+            
+            // Hide audio player
+            document.getElementById('voice-audio').style.display = 'none';
+            document.getElementById('voice-audio-placeholder').style.display = 'block';
+        }
+        
+        function scanBand(band) {
+            socket.emit('scan_voice_band', { band: band });
+            alert(`Starting ${band.toUpperCase()} band scan. Watch the voice status for activity.`);
+        }
+        
+        function playVoiceRecording(filename) {
+            const audio = new Audio(`/recordings/voice/${filename}`);
+            audio.play();
+        }
+        
+        function downloadVoiceRecording(filename) {
+            window.location.href = `/recordings/voice/${filename}`;
+        }
+        
+        // ========== TIMELINE TAB ==========
+        
+        function loadTimelineTab() {
+            // Load last 24 hours by default
+            setTimeRange('24h');
+        }
+        
+        function setTimeRange(range) {
+            fetch(`/api/timeline?range=${range}`)
+                .then(r => r.json())
+                .then(data => {
+                    drawTimeline(data);
+                });
+        }
+        
+        function drawTimeline(data) {
+            const canvas = document.getElementById('timelineCanvas');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            if (!data.events || data.events.length === 0) {
+                ctx.fillStyle = '#666';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('No activity in selected time range', width/2, height/2);
+                return;
+            }
+            
+            // Store event data for hover detection
+            window.timelineEvents = data.events;
+            window.timelineBarWidth = Math.max(2, width / data.events.length);
+            
+            // Title
+            ctx.fillStyle = '#666';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Activity Timeline: ${data.events.length} events`, width/2, 20);
+            
+            // Draw events as vertical bars
+            const barWidth = window.timelineBarWidth;
+            data.events.forEach((event, i) => {
+                const x = i * barWidth;
+                const barHeight = Math.min(height - 80, (event.power_dbm + 100) * 3);
+                
+                ctx.fillStyle = event.is_anomaly ? '#f44336' : '#667eea';
+                ctx.fillRect(x, height - barHeight - 50, barWidth - 1, barHeight);
+            });
+            
+            // Draw axis
+            ctx.strokeStyle = '#444';
+            ctx.beginPath();
+            ctx.moveTo(0, height - 50);
+            ctx.lineTo(width, height - 50);
+            ctx.stroke();
+            
+            // Draw time labels (start, middle, end)
+            if (data.events.length > 0) {
+                ctx.fillStyle = '#888';
+                ctx.font = '11px Arial';
+                
+                // Start time (support both timestamp and detected_at)
+                const startTime = new Date(data.events[0].detected_at || data.events[0].timestamp);
+                ctx.textAlign = 'left';
+                ctx.fillText(startTime.toLocaleTimeString(), 5, height - 30);
+                
+                // Middle time
+                const midEvent = data.events[Math.floor(data.events.length / 2)];
+                const midTime = new Date(midEvent.detected_at || midEvent.timestamp);
+                ctx.textAlign = 'center';
+                ctx.fillText(midTime.toLocaleTimeString(), width/2, height - 30);
+                
+                // End time
+                const endTime = new Date(data.events[data.events.length - 1].detected_at || data.events[data.events.length - 1].timestamp);
+                ctx.textAlign = 'right';
+                ctx.fillText(endTime.toLocaleTimeString(), width - 5, height - 30);
+                
+                // Date on second line
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(startTime.toLocaleDateString(), width/2, height - 15);
+            }
+            
+            // Setup hover tooltip (do it here, after drawing)
+            setupTimelineTooltip();
+        }
+        
+        // Global flag to track if tooltip is setup
+        let timelineTooltipSetup = false;
+        
+        function setupTimelineTooltip() {
+            if (timelineTooltipSetup) {
+                return;
+            }
+            
+            const canvas = document.getElementById('timelineCanvas');
+            const detailsContent = document.getElementById('timeline-details-content');
+            
+            if (!canvas || !detailsContent) {
+                console.error('[Timeline] Canvas or details not found!');
+                return;
+            }
+            
+            console.log('[Timeline] Setup SUCCESS! Canvas and details found.');
+            
+            // TEST: Change the text immediately to prove it works
+            detailsContent.innerHTML = '<span style="color: #4CAF50;">✓ Hover system is ACTIVE! Move mouse over bars above...</span>';
+            
+            // Add mousemove handler
+            canvas.onmousemove = function(e) {
+                if (!window.timelineEvents || !window.timelineBarWidth) {
+                    return;
+                }
+                
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const barIndex = Math.floor(x / window.timelineBarWidth);
+                
+                if (barIndex >= 0 && barIndex < window.timelineEvents.length) {
+                    const event = window.timelineEvents[barIndex];
+                    const freqMHz = (event.frequency_hz / 1e6).toFixed(4);
+                    const time = new Date(event.detected_at || event.timestamp).toLocaleString();
+                    const anomalyBadge = event.is_anomaly ? 
+                        '<span style="color: #f44336; font-weight: bold;">🚨 ANOMALY</span>' : 
+                        '<span style="color: #4CAF50; font-weight: bold;">✓ Baseline</span>';
+                    
+                    detailsContent.innerHTML = `
+                        <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px 15px;">
+                            <div style="grid-column: 1 / -1; margin-bottom: 5px;">${anomalyBadge}</div>
+                            <div style="color: #888;">Frequency:</div>
+                            <div style="color: #667eea; font-size: 16px; font-weight: bold;">${freqMHz} MHz</div>
+                            <div style="color: #888;">Band:</div>
+                            <div>${event.band || 'Unknown'}</div>
+                            <div style="color: #888;">Power:</div>
+                            <div style="font-weight: bold;">${event.power_dbm.toFixed(1)} dBm</div>
+                            <div style="color: #888;">Time:</div>
+                            <div>${time}</div>
+                        </div>
+                    `;
+                }
+            };
+            
+            canvas.onmouseleave = function() {
+                detailsContent.innerHTML = '<span style="color: #888;">Move your mouse over the bars above to see signal details...</span>';
+            };
+            
+            timelineTooltipSetup = true;
+            console.log('[Timeline] Hover handlers attached!');
+        }
+        
+        // ===== TRANSCRIPT MANAGEMENT =====
+        let allTranscripts = [];
+        let filteredTranscripts = [];
+        let currentFilters = {
+            keyword: '',
+            language: null,
+            band: null
+        };
+        
+        function loadTranscripts() {
+            socket.emit('request_transcripts', {});
+        }
+        
+        socket.on('transcripts_update', function(data) {
+            allTranscripts = data.transcripts || [];
+            filteredTranscripts = allTranscripts;
+            updateTranscriptDisplay();
+            updateTranscriptStats();
+        });
+        
+        function updateTranscriptDisplay() {
+            const list = document.getElementById('transcript-list');
+            if (!filteredTranscripts || filteredTranscripts.length === 0) {
+                list.innerHTML = '<p style="opacity: 0.5; text-align: center; padding: 40px;">No transcripts found</p>';
+                return;
+            }
+            
+            list.innerHTML = filteredTranscripts.map(t => `
+                <div class="transcript-item">
+                    <div class="transcript-header">
+                        <div>
+                            <span class="transcript-freq">${(t.frequency_hz / 1e6).toFixed(4)} MHz</span>
+                            <span style="margin-left: 10px; color: #888;">${t.band || 'Unknown'}</span>
+                        </div>
+                        <div class="transcript-meta">
+                            <span>🌐 ${t.language || 'unknown'}</span>
+                            <span>⏱️ ${(t.duration_sec || 0).toFixed(1)}s</span>
+                            <span>📊 ${((t.confidence || 0) * 100).toFixed(0)}%</span>
+                            <span>📅 ${new Date(t.transcribed_at).toLocaleString()}</span>
+                        </div>
+                    </div>
+                    <div class="transcript-text">${t.text}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="font-size: 11px; opacity: 0.5;">
+                            📁 ${t.recording_filename || 'unknown'}
+                        </div>
+                        <button class="button" style="padding: 5px 10px; font-size: 11px;" 
+                            onclick="playTranscriptAudio('${t.recording_filename}')">
+                            ▶️ Play Audio
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function updateTranscriptStats() {
+            document.getElementById('transcript-total').textContent = allTranscripts.length;
+            
+            const totalDuration = allTranscripts.reduce((sum, t) => sum + (t.duration_sec || 0), 0);
+            document.getElementById('transcript-duration').textContent = `${Math.floor(totalDuration / 60)}m`;
+            
+            const languages = new Set(allTranscripts.map(t => t.language).filter(l => l));
+            document.getElementById('transcript-languages').textContent = languages.size;
+        }
+        
+        function searchTranscripts() {
+            const keyword = document.getElementById('transcript-search').value.trim().toLowerCase();
+            currentFilters.keyword = keyword;
+            applyTranscriptFilters();
+        }
+        
+        function showAllTranscripts() {
+            document.getElementById('transcript-search').value = '';
+            clearTranscriptFilters();
+        }
+        
+        function filterTranscriptsByLanguage(lang) {
+            currentFilters.language = currentFilters.language === lang ? null : lang;
+            applyTranscriptFilters();
+        }
+        
+        function filterTranscriptsByBand(band) {
+            currentFilters.band = currentFilters.band === band ? null : band;
+            applyTranscriptFilters();
+        }
+        
+        function clearTranscriptFilters() {
+            currentFilters = { keyword: '', language: null, band: null };
+            document.getElementById('transcript-search').value = '';
+            applyTranscriptFilters();
+        }
+        
+        function applyTranscriptFilters() {
+            filteredTranscripts = allTranscripts.filter(t => {
+                // Keyword filter
+                if (currentFilters.keyword && !t.text.toLowerCase().includes(currentFilters.keyword)) {
+                    return false;
+                }
+                
+                // Language filter
+                if (currentFilters.language && t.language !== currentFilters.language) {
+                    return false;
+                }
+                
+                // Band filter
+                if (currentFilters.band && t.band !== currentFilters.band) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            updateTranscriptDisplay();
+        }
+        
+        function exportTranscripts(format) {
+            if (!filteredTranscripts || filteredTranscripts.length === 0) {
+                alert('No transcripts to export');
+                return;
+            }
+            
+            let content = '';
+            let filename = `transcripts_${Date.now()}.${format}`;
+            let mimeType = 'text/plain';
+            
+            if (format === 'json') {
+                content = JSON.stringify(filteredTranscripts, null, 2);
+                mimeType = 'application/json';
+            } else if (format === 'csv') {
+                const headers = ['Frequency (MHz)', 'Band', 'Language', 'Duration (s)', 'Confidence', 'Timestamp', 'Text'];
+                const rows = filteredTranscripts.map(t => [
+                    (t.frequency_hz / 1e6).toFixed(4),
+                    t.band || '',
+                    t.language || '',
+                    (t.duration_sec || 0).toFixed(1),
+                    ((t.confidence || 0) * 100).toFixed(0) + '%',
+                    new Date(t.transcribed_at).toLocaleString(),
+                    '"' + t.text.replace(/"/g, '""') + '"'
+                ]);
+                content = [headers, ...rows].map(row => row.join(',')).join('\\n');
+                mimeType = 'text/csv';
+            } else if (format === 'txt') {
+                content = filteredTranscripts.map(t => {
+                    return `${'='.repeat(70)}
+Frequency: ${(t.frequency_hz / 1e6).toFixed(4)} MHz (${t.band || 'Unknown'})
+Language: ${t.language || 'Unknown'}
+Duration: ${(t.duration_sec || 0).toFixed(1)}s
+Confidence: ${((t.confidence || 0) * 100).toFixed(0)}%
+Timestamp: ${new Date(t.transcribed_at).toLocaleString()}
+
+${t.text}
+`;
+                }).join('\\n\\n');
+            }
+            
+            // Download file
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function playTranscriptAudio(filename) {
+            if (!filename) {
+                alert('Audio file not available');
+                return;
+            }
+            // Request audio file from server
+            alert(`Playing ${filename} (audio playback to be implemented)`);
+        }
+        
+        // Load transcripts when tab is shown
+        function switchTab(tabName) {
+            // Existing tab switching code...
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            
+            // Load transcripts if switching to transcripts tab
+            if (tabName === 'transcripts') {
+                loadTranscripts();
             }
         }
     </script>

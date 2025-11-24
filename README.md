@@ -16,13 +16,21 @@ ReconRaven is a dual-mode SDR platform that works as both a mobile scanning rig 
 - Multi-band scanning (2m, 70cm, 433MHz, 915MHz ISM)
 - Automatic anomaly detection and recording
 - Multi-protocol demodulation (FM/AM/DMR/P25/NXDN/ProVoice/Fusion)
+- **Voice signal auto-detection and transcription (Whisper AI)**
+- **Automatic speech-to-text for all voice transmissions**
+- **Full-text search across all transcripts**
+- **Export transcripts in JSON/CSV/TXT formats**
 - Signal analysis and device fingerprinting
 - Binary protocol decoding (OOK/ASK/FSK)
 - Rolling code detection for security analysis
 - Direction finding with 4-SDR coherent array
-- Real-time web dashboard
-- SQLite database for all metadata
+- Real-time web dashboard with tabbed interface
+- SQLite database for all metadata and transcripts
 - Fully offline capable (after initial setup)
+  - **All JavaScript libraries bundled locally (no CDN dependencies)**
+  - **Dashboard works without internet connection**
+  - **Whisper AI models downloaded once, run locally**
+  - Perfect for field operations and secure environments
 
 **What it's good at:**
 - Finding that mystery signal that's been driving you crazy
@@ -83,6 +91,13 @@ sudo apt install rtl-sdr librtlsdr-dev python3-pip
 # Install Python dependencies
 pip install -r requirements.txt
 
+# This downloads all dependencies for offline use:
+# - Socket.IO (local copy already bundled in visualization/static/)
+# - Whisper AI model (downloads ~74MB on first run)
+# - All Python packages
+
+# After this setup, the system runs 100% offline!
+
 # On Windows, you'll also need Zadig to install WinUSB drivers for RTL-SDR
 # Download from: https://zadig.akeo.ie/
 # Plug in SDR, run Zadig, select "Bulk-In Interface", install WinUSB driver
@@ -105,9 +120,17 @@ This pulls ham repeaters, public safety frequencies, and NOAA weather stations f
 ### Basic Usage
 
 ```bash
-# Start scanning with web dashboard (auto-starts dashboard)
-python advanced_scanner.py
+# Start scanning with web dashboard
+python reconraven.py scan --dashboard
 # Dashboard: http://localhost:5000
+
+# Voice monitoring
+python voice_monitor.py --freq 146.52 --mode FM --record
+python voice_monitor.py --scan 2m
+
+# Signal correlation analysis
+python correlation_engine.py --correlations
+python correlation_engine.py --network
 
 # Analyze captured signals
 python reconraven.py analyze --all
@@ -119,19 +142,52 @@ python reconraven.py db stats
 python reconraven.py db devices
 ```
 
-**Note:** The main scanner (`advanced_scanner.py`) automatically starts the web dashboard. The unified CLI (`reconraven.py`) is available for database management and analysis tasks.
-
 ### The Dashboard
 
-Open `http://localhost:5000` in your browser to see:
-- Real-time scanning status
-- Baseline frequency count
-- Active anomalies
-- Identified devices with confidence scores
-- Direction finding bearings (if in DF mode)
-- GPS position
+Open `http://localhost:5000` in your browser to access:
 
-The dashboard updates in real-time as signals are detected and analyzed.
+**Tab 1: 🔍 Signals** (Smart Signal Monitoring)
+- Real-time scanning status
+- **Smart Anomalies** - Only unidentified signals (known devices auto-promoted)
+- Identified devices with confidence scores and baseline status
+- "Ignore Forever" button for unwanted signals
+- Recording status tracking
+
+**Tab 2: 🕸️ Network** (Intelligence Analysis)
+- Visual network graph showing device relationships
+- Temporal correlations (devices that transmit together)
+- Sequential patterns (A→B→C sequences)
+- Behavioral anomalies
+- Device behavioral profiles
+
+**Tab 3: 📡 Voice** (Voice Monitoring)
+- Live voice monitoring controls
+- FM/AM/SSB/USB/LSB demodulation
+- Quick band scans (2m, 70cm, GMRS, FRS, Marine VHF)
+- Auto-recording with playback
+- Voice recordings archive
+
+**Tab 4: 💬 Transcripts** (Voice Intelligence)
+- **Automatic transcription of all voice signals using Whisper AI**
+- Full-text search across all transcripts
+- Filter by language (EN/ES/ZH/RU/etc)
+- Filter by frequency band (2m, 70cm, etc)
+- Confidence scores and timestamps
+- Export to JSON/CSV/TXT for reports
+- Audio playback linked to transcripts
+- Keyword highlighting and frequency analysis
+
+**Tab 5: 📊 Timeline** (Activity History)
+- Activity timeline visualization
+- Time range selection (1h, 6h, 24h, 7d)
+- Event history and patterns
+
+**Dashboard Features:**
+- Auto-promotes identified devices to baseline (no manual intervention)
+- Only shows TRUE unknowns as anomalies
+- Auto-refresh every 10 seconds
+- Direction finding bearings (if in DF mode with 4 SDRs)
+- GPS position tracking
 
 ---
 
@@ -148,24 +204,25 @@ ReconRaven tracks three types of data:
 - Examples: local ham repeaters, NOAA, your garage door opener
 
 **2. Anomalies / Active Signals**
+- **Smart filtering:** Only shows UNIDENTIFIED signals
 - Signals significantly above baseline
-- Temporary - shows what's currently transmitting
 - Triggers automatic recording if strong enough
-- These are the "something interesting is happening" alerts
+- Known devices automatically filtered out
 
 **3. Identified Devices**
 - Analyzed signals matched to known protocols/devices
-- Persistent across sessions
+- **Auto-promoted to baseline** (no manual work needed)
 - Includes manufacturer, device type, confidence score
+- Shows baseline status with badge
 - Your growing RF signature database
 
 **Typical workflow:**
 ```
 Initial scan → Build baseline → Monitor → Detect anomaly → Auto-record → 
-Analyze recording → Identify device → (optional) Promote to baseline
+Analyze recording → Identify device → AUTO-PROMOTE to baseline
 ```
 
-**Pro tip:** After you've identified all the devices in your area, use the "Promote to Baseline" button in the dashboard. This marks them as expected, so future scans only flag new/unknown signals.
+**How it works now:** The system automatically promotes identified devices to baseline on every dashboard refresh. You'll only see truly unknown signals as anomalies. Use the "Ignore Forever" button for known but unwanted signals (car alarms, neighbor's garage door, etc.).
 
 ### Storage
 
@@ -203,6 +260,118 @@ The system auto-detects which mode to use based on how many SDRs you plug in. No
 ---
 
 ## Analysis Tools
+
+ReconRaven includes multiple layers of analysis:
+
+### Layer 1: Voice Transcription & SIGINT
+
+**Automatic speech-to-text transcription for SIGINT collection:**
+
+The system automatically detects voice signals on known voice bands (2m, 70cm, GMRS, FRS, Marine VHF, Aviation) and transcribes them using OpenAI's Whisper AI. No cloud connection needed - runs 100% locally.
+
+```bash
+# Manual transcription of a single recording
+python voice_transcriber.py --file recordings/audio/voice_146.520.wav
+
+# Batch transcribe all recordings in a folder
+python voice_transcriber.py --batch recordings/audio/ --output transcripts.json
+
+# Batch transcribe all untranscribed recordings in database
+python batch_transcribe.py
+
+# Use different Whisper model sizes
+python voice_transcriber.py --file recording.wav --model base    # Default (fastest)
+python voice_transcriber.py --file recording.wav --model small   # More accurate
+python voice_transcriber.py --file recording.wav --model medium  # Best accuracy
+```
+
+**Transcript Search & Analysis:**
+
+```bash
+# Search database for keywords (via dashboard Transcripts tab)
+# - Full-text search across all transcripts
+# - Filter by language, frequency band, date
+# - Export to JSON/CSV/TXT for reports
+# - Keyword frequency analysis
+```
+
+**How it works:**
+1. System detects voice signal (FM/AM on voice bands)
+2. Records and demodulates to WAV audio
+3. Automatically transcribes using Whisper (base model by default)
+4. Saves transcript to database with metadata
+5. Extracts keywords for searchability
+6. Appears in dashboard Transcripts tab
+
+**Supported languages:** Whisper auto-detects 99+ languages including English, Spanish, Chinese, Russian, Arabic, French, German, Japanese, etc.
+
+**Privacy note:** All processing happens locally on your machine. No data is sent to the cloud.
+
+### Layer 2: Signal Correlation & Behavioral Analysis
+
+**NEW!** Pattern recognition and intelligence gathering without decryption:
+
+```bash
+# Find temporal correlations (signals that occur together)
+python correlation_engine.py --correlations
+
+# Detect sequential patterns (A→B→C sequences)
+python correlation_engine.py --sequences
+
+# Get behavioral profile for a specific device
+python correlation_engine.py --profile 434.5
+
+# Build network map of device relationships
+python correlation_engine.py --network
+
+# Detect behavioral anomalies
+python correlation_engine.py --anomalies
+```
+
+**What it detects:**
+- Command/response relationships ("signal A always triggers signal B")
+- Synchronized transmissions (mesh networks, coordinated devices)
+- Periodic reporting (sensors with regular check-ins)
+- Hub devices (command centers with many connections)
+- Behavioral changes (new devices, unusual activity patterns)
+
+**Use cases:**
+- Map sensor networks without knowing protocols
+- Identify command/control relationships
+- Predict device behavior
+- Auto-prioritize threats
+
+### Layer 2: Voice Traffic Monitoring
+
+**NEW!** Listen to and record voice communications:
+
+```bash
+# Monitor a specific frequency
+python voice_monitor.py --freq 146.52 --mode FM --record
+
+# Scan a voice band looking for activity
+python voice_monitor.py --scan 2m --dwell 5
+
+# Monitor ham repeater
+python voice_monitor.py --freq 146.94 --mode FM --duration 300
+
+# Monitor GMRS channels
+python voice_monitor.py --scan gmrs --dwell 10
+```
+
+**Supported modes:**
+- FM (narrow band - ham, public safety, GMRS/FRS)
+- WFM (wide band - broadcast FM)
+- AM (aviation, AM broadcast)
+- USB/LSB (SSB - ham HF)
+
+**Features:**
+- Auto-recording on voice activity
+- Band scanning (2m, 70cm, GMRS, FRS, Marine VHF)
+- Multiple frequency monitoring
+- WAV file output for later review
+
+### Layer 3: ISM & Binary Analysis
 
 When ReconRaven records a signal, you can throw it through multiple analyzers:
 
