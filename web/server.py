@@ -504,6 +504,15 @@ class SDRDashboardServer:
         
         self.platform_state.update(state_update)
         
+        # ALWAYS refresh anomalies and identified_devices from database before emitting
+        # This ensures the UI always shows current data even if scanner doesn't send arrays
+        from database import get_db
+        db = get_db()
+        
+        # Load current anomalies and devices from DB
+        self.platform_state['anomalies'] = db.get_anomalies(limit=50)
+        self.platform_state['identified_devices'] = db.get_devices()[:30]
+        
         # Broadcast to all connected clients
         self.socketio.emit('status_update', self.platform_state)
     
