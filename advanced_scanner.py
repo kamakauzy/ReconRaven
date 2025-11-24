@@ -256,7 +256,7 @@ class AdvancedScanner:
         print(f"\nBaseline complete: {len(self.baseline)} frequencies")
         return True
     
-    def record_signal(self, freq, duration=10):
+    def record_signal(self, freq, duration=3):
         """Record raw IQ samples"""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         band = self.get_band_name(freq)
@@ -285,12 +285,31 @@ class AdvancedScanner:
             active_sdr.center_freq = freq
             time.sleep(0.1)
             
-            # Record for specified duration
+            # Record for specified duration - read in chunks to avoid USB memory issues
             samples_per_sec = int(active_sdr.sample_rate)
             total_samples = samples_per_sec * duration
             
-            print(f"Reading {total_samples / 1e6:.1f}M samples @ {samples_per_sec/1e6:.1f} Msps...")
-            samples = active_sdr.read_samples(total_samples)
+            # Read in smaller chunks (256K samples at a time) for WSL USB compatibility
+            chunk_size = 256 * 1024
+            num_chunks = int(total_samples / chunk_size)
+            
+            print(f"Reading {total_samples / 1e6:.1f}M samples in {num_chunks} chunks @ {samples_per_sec/1e6:.1f} Msps...")
+            
+            all_samples = []
+            for i in range(num_chunks):
+                try:
+                    chunk = active_sdr.read_samples(chunk_size)
+                    all_samples.append(chunk)
+                    if (i + 1) % 5 == 0:
+                        print(f"  Progress: {(i+1)/num_chunks*100:.0f}%", end='\r', flush=True)
+                except Exception as e:
+                    print(f"\n  Warning: Chunk {i+1} failed, continuing...")
+                    break
+            
+            if not all_samples:
+                raise Exception("Failed to read any samples")
+            
+            samples = np.concatenate(all_samples)
             
             # Save as numpy array
             np.save(iq_file, samples)
