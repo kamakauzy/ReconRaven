@@ -53,10 +53,7 @@ class ReconRavenDB:
                 analysis_data TEXT,
                 
                 -- Timestamps
-                detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                
-                -- Index for fast queries
-                PRIMARY KEY (id)
+                detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         
