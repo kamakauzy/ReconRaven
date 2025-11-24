@@ -1,18 +1,18 @@
 # Core SDR and Signal Processing
-pyrtlsdr==0.2.93
-numpy==1.24.3
-scipy==1.11.4
+pyrtlsdr>=0.2.93
+numpy>=1.24.0
+scipy>=1.10.0
 
 # Web Dashboard
-flask==3.0.0
-flask-socketio==5.3.5
-flask-cors==4.0.0
-python-socketio==5.10.0
-python-engineio==4.8.0
+flask>=3.0.0
+flask-socketio>=5.3.0
+flask-cors>=4.0.0
+python-socketio>=5.10.0
+python-engineio>=4.8.0
 
 # Visualization
-matplotlib==3.8.2
-Pillow==10.1.0
+matplotlib>=3.7.0
+Pillow>=10.0.0
 
 # GPS Integration
 gpsd-py3==0.3.0
@@ -22,11 +22,11 @@ pyserial==3.5
 pyyaml==6.0.1
 
 # System Monitoring
-psutil==5.9.6
-pyusb==1.2.1
+psutil>=5.9.0
+pyusb>=1.2.0
 
 # Direction Finding Algorithms
-pyargus==1.1.2
+pyargus>=1.1.0
 
 # Signal Analysis (URH for drone detection)
 # Note: URH is complex and may need manual installation
@@ -34,23 +34,22 @@ pyargus==1.1.2
 # For now, we'll use core dependencies for pattern matching
 
 # Audio Processing
-soundfile==0.12.1
-wave
+soundfile>=0.12.0
 
 # Voice Transcription (Whisper AI)
-openai-whisper==20231117
+openai-whisper>=20231117
 # Whisper dependencies are auto-installed, but may need:
 # - torch (CPU or CUDA depending on system)
 # - ffmpeg (system package)
 
 # Logging and Utilities
-colorlog==6.8.0
-python-dateutil==2.8.2
+colorlog>=6.7.0
+python-dateutil>=2.8.0
 
 # Testing (optional)
-pytest==7.4.3
-pytest-cov==4.1.0
+pytest>=7.4.0
+pytest-cov>=4.1.0
 
 # Type hints
-typing-extensions==4.9.0
+typing-extensions>=4.8.0
 
