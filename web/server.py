@@ -488,19 +488,14 @@ class SDRDashboardServer:
         Args:
             state_update: Dictionary with state updates
         """
-        # Don't allow overwriting database arrays with empty values
-        # Preserve anomalies and identified_devices unless explicitly updating with data
-        if 'anomalies' in state_update and not state_update['anomalies']:
-            del state_update['anomalies']  # Don't overwrite with empty
-        if 'identified_devices' in state_update and not state_update['identified_devices']:
-            del state_update['identified_devices']  # Don't overwrite with empty
+        # Don't allow overwriting database arrays with None
+        # Preserve anomalies and identified_devices unless explicitly updating
+        if 'anomalies' in state_update and state_update['anomalies'] is None:
+            del state_update['anomalies']
+        if 'identified_devices' in state_update and state_update['identified_devices'] is None:
+            del state_update['identified_devices']
         
         self.platform_state.update(state_update)
-        
-        # Ensure database stats are always included if not explicitly updated
-        if 'anomaly_count' not in state_update:
-            # Preserve existing stats
-            pass  # Already in platform_state from previous updates
         
         # Broadcast to all connected clients
         self.socketio.emit('status_update', self.platform_state)
