@@ -545,6 +545,54 @@ class AdvancedScanner:
         for i, freq in enumerate(self.scan_freqs):
             freq_chunks[i % self.num_sdrs].append(freq)
         
+        # Display SDR assignments
+        print("="*70)
+        print("SDR FREQUENCY ASSIGNMENTS")
+        print("="*70)
+        for i, chunk in enumerate(freq_chunks):
+            if chunk:
+                # Group by band
+                band_ranges = {}
+                for freq in chunk:
+                    band = self.get_band_name(freq)
+                    if band not in band_ranges:
+                        band_ranges[band] = []
+                    band_ranges[band].append(freq)
+                
+                # Display summary
+                print(f"SDR #{i} ({len(chunk)} freqs):")
+                for band, freqs in sorted(band_ranges.items()):
+                    min_freq = min(freqs) / 1e6
+                    max_freq = max(freqs) / 1e6
+                    print(f"  {band:12s}: {min_freq:>7.2f} - {max_freq:>7.2f} MHz ({len(freqs)} freqs)")
+        print("="*70 + "\n")
+        
+        # Update dashboard with SDR assignments
+        if self.dashboard:
+            sdr_info = []
+            for i, chunk in enumerate(freq_chunks):
+                if chunk:
+                    band_ranges = {}
+                    for freq in chunk:
+                        band = self.get_band_name(freq)
+                        if band not in band_ranges:
+                            band_ranges[band] = {'min': freq, 'max': freq, 'count': 0}
+                        band_ranges[band]['min'] = min(band_ranges[band]['min'], freq)
+                        band_ranges[band]['max'] = max(band_ranges[band]['max'], freq)
+                        band_ranges[band]['count'] += 1
+                    
+                    sdr_info.append({
+                        'index': i,
+                        'freq_count': len(chunk),
+                        'bands': band_ranges
+                    })
+            
+            self.dashboard.update_state({
+                'mode': 'CONCURRENT',
+                'num_sdrs': self.num_sdrs,
+                'sdr_assignments': sdr_info
+            })
+        
         scan_num = 0
         
         try:
