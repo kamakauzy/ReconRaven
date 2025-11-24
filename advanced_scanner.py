@@ -541,10 +541,46 @@ class AdvancedScanner:
         """Monitor with 4 SDRs scanning in parallel"""
         print(f"\n[CONCURRENT MODE] Using {self.num_sdrs} SDRs for real-time coverage!\n")
         
-        # Split frequencies across SDRs
+        # Split frequencies by BAND for efficient scanning (no constant retuning)
+        # Group frequencies by band first
+        band_freqs = {
+            '2m': [],
+            '70cm': [],
+            'ISM433': [],
+            'ISM915': []
+        }
+        
+        for freq in self.scan_freqs:
+            band = self.get_band_name(freq)
+            if band in band_freqs:
+                band_freqs[band].append(freq)
+        
+        # Assign bands to SDRs based on how many we have
         freq_chunks = [[] for _ in range(self.num_sdrs)]
-        for i, freq in enumerate(self.scan_freqs):
-            freq_chunks[i % self.num_sdrs].append(freq)
+        
+        if self.num_sdrs == 3:
+            # 3 SDRs: SDR0=2m, SDR1=70cm, SDR2=ISM (both 433+915)
+            freq_chunks[0] = band_freqs['2m']
+            freq_chunks[1] = band_freqs['70cm']
+            freq_chunks[2] = band_freqs['ISM433'] + band_freqs['ISM915']
+        elif self.num_sdrs >= 4:
+            # 4+ SDRs: SDR0=2m, SDR1=70cm, SDR2=433MHz, SDR3=915MHz
+            freq_chunks[0] = band_freqs['2m']
+            freq_chunks[1] = band_freqs['70cm']
+            freq_chunks[2] = band_freqs['ISM433']
+            freq_chunks[3] = band_freqs['ISM915']
+            # Any additional SDRs can help with the largest band
+            if self.num_sdrs > 4:
+                # Split 70cm across extra SDRs (it's the largest)
+                largest_band = band_freqs['70cm']
+                split_size = len(largest_band) // (self.num_sdrs - 3)
+                for i in range(4, self.num_sdrs):
+                    start = (i - 4) * split_size
+                    freq_chunks[i] = largest_band[start:start + split_size]
+        else:
+            # Fallback: round-robin if unexpected SDR count
+            for i, freq in enumerate(self.scan_freqs):
+                freq_chunks[i % self.num_sdrs].append(freq)
         
         # Display SDR assignments
         print("="*70)
