@@ -168,7 +168,7 @@ class AdvancedScanner:
                         thread = threading.Thread(target=init_sdr_thread)
                         thread.daemon = True
                         thread.start()
-                        thread.join(timeout=10.0)  # 10 second timeout (increased)
+                        thread.join(timeout=15.0)  # 15 second timeout
                         
                         if thread.is_alive():
                             print(f" TIMEOUT (hung, skipping)")
@@ -181,7 +181,7 @@ class AdvancedScanner:
                         if sdr_obj[0]:
                             self.sdrs.append(sdr_obj[0])
                             successful_sdrs += 1
-                            print(" OK")
+                            print(" OK", flush=True)
                         else:
                             print(" FAILED (unknown error)")
                             continue
@@ -195,7 +195,7 @@ class AdvancedScanner:
                     print("ERROR: No SDRs could be initialized!")
                     return False
                 
-                print(f"[+] Concurrent mode enabled with {successful_sdrs} SDRs!")
+                print(f"[+] Concurrent mode enabled with {successful_sdrs} SDRs!", flush=True)
                 self.num_sdrs = successful_sdrs  # Update to actual count
                 
                 # Update dashboard with mode
