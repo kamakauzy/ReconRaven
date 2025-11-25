@@ -625,14 +625,25 @@
         // Load demo data
         function loadDemoData() {
             document.getElementById('demo-indicator').style.display = 'inline-block';
+            console.log('Fetching demo data from /api/demo-data...');
             fetch('/api/demo-data')
-                .then(res => res.json())
+                .then(res => {
+                    console.log('Response status:', res.status);
+                    if (!res.ok) {
+                        throw new Error(`HTTP error! status: ${res.status}`);
+                    }
+                    return res.json();
+                })
                 .then(data => {
+                    console.log('Demo data loaded:', data);
                     currentData = data;
                     updateDashboard(data);
                 })
                 .catch(err => {
                     console.error('Failed to load demo data:', err);
+                    // Show error in UI
+                    document.getElementById('stat-mode').textContent = 'ERROR';
+                    alert('Failed to load demo data. Check console for details.');
                 });
         }
 
@@ -908,17 +919,24 @@
                 options: commonOptions
             });
 
-            // Timeline chart
+            // Timeline chart - simplified bar chart instead of scatter
             charts.timeline = new Chart(document.getElementById('timelineChart'), {
-                type: 'scatter',
+                type: 'bar',
                 data: {
-                    datasets: []
+                    labels: [],
+                    datasets: [{
+                        label: 'Frequency (MHz)',
+                        data: [],
+                        backgroundColor: '#667eea'
+                    }]
                 },
                 options: {
                     ...commonOptions,
                     scales: {
-                        x: { type: 'time' },
-                        y: { title: { display: true, text: 'Frequency (MHz)' } }
+                        y: { 
+                            title: { display: true, text: 'Frequency (MHz)' },
+                            beginAtZero: false
+                        }
                     }
                 }
             });
@@ -926,29 +944,34 @@
 
         // Update chart data
         function updateChartData(data) {
-            if (!data || !data.anomalies) return;
+            if (!data || !data.anomalies) {
+                console.log('No data to update charts');
+                return;
+            }
 
-            // Activity chart - last 10 signals
-            const recent = data.anomalies.slice(0, 10).reverse();
-            charts.activity.data.labels = recent.map(s => new Date(s.detected_at).toLocaleTimeString());
-            charts.activity.data.datasets[0].data = recent.map(s => s.power_dbm);
-            charts.activity.update();
+            try {
+                // Activity chart - last 10 signals
+                const recent = data.anomalies.slice(0, 10).reverse();
+                charts.activity.data.labels = recent.map(s => new Date(s.detected_at).toLocaleTimeString());
+                charts.activity.data.datasets[0].data = recent.map(s => s.power_dbm);
+                charts.activity.update();
 
-            // Power distribution
-            charts.power.data.labels = data.anomalies.map(s => (s.frequency_hz / 1e6).toFixed(2));
-            charts.power.data.datasets[0].data = data.anomalies.map(s => s.power_dbm);
-            charts.power.update();
+                // Power distribution
+                charts.power.data.labels = data.anomalies.map(s => (s.frequency_hz / 1e6).toFixed(2));
+                charts.power.data.datasets[0].data = data.anomalies.map(s => s.power_dbm);
+                charts.power.update();
 
-            // Timeline
-            charts.timeline.data.datasets = [{
-                label: 'Detections',
-                data: data.anomalies.map(s => ({
-                    x: new Date(s.detected_at),
-                    y: s.frequency_hz / 1e6
-                })),
-                backgroundColor: '#667eea'
-            }];
-            charts.timeline.update();
+                // Timeline - use simple format without time axis
+                charts.timeline.data.labels = data.anomalies.map(s => new Date(s.detected_at).toLocaleTimeString());
+                charts.timeline.data.datasets = [{
+                    label: 'Frequency (MHz)',
+                    data: data.anomalies.map(s => s.frequency_hz / 1e6),
+                    backgroundColor: '#667eea'
+                }];
+                charts.timeline.update();
+            } catch (err) {
+                console.error('Error updating charts:', err);
+            }
         }
 
         function updateCharts() {
@@ -1032,25 +1055,94 @@
             document.body.classList.add('light-theme');
         }
 
-        // Waterfall simulation
+        // Waterfall simulation with realistic signal peaks
         function initWaterfall() {
             const canvas = document.getElementById('waterfallCanvas');
+            if (!canvas) return;
+            
             const ctx = canvas.getContext('2d');
             canvas.width = canvas.offsetWidth;
             canvas.height = canvas.offsetHeight;
 
-            let yOffset = 0;
+            // Signal peaks at specific frequencies (simulating our detected signals)
+            const signalPeaks = [
+                { position: 0.15, width: 5, strength: 200 },   // 2m band
+                { position: 0.35, width: 3, strength: 180 },   // 70cm
+                { position: 0.65, width: 4, strength: 220 },   // ISM 433
+                { position: 0.85, width: 6, strength: 250 },   // ISM 915
+            ];
+
+            let waterfallData = [];
+            
+            // Initialize with noise
+            for (let i = 0; i < canvas.height; i++) {
+                waterfallData.push(new Array(canvas.width).fill(0));
+            }
+
             setInterval(() => {
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                ctx.putImageData(imageData, 0, 1);
+                // Shift existing data down
+                waterfallData.unshift(new Array(canvas.width).fill(0));
+                waterfallData.pop();
                 
-                // Draw new line at top
+                // Generate new line with noise floor + signal peaks
                 for (let x = 0; x < canvas.width; x++) {
-                    const intensity = Math.random() * 255;
-                    ctx.fillStyle = `rgb(${intensity}, 0, ${255 - intensity})`;
-                    ctx.fillRect(x, 0, 1, 1);
+                    // Base noise floor (20-40)
+                    let intensity = 20 + Math.random() * 20;
+                    
+                    // Add signal peaks
+                    signalPeaks.forEach(peak => {
+                        const peakX = Math.floor(canvas.width * peak.position);
+                        const distance = Math.abs(x - peakX);
+                        
+                        if (distance < peak.width) {
+                            // Gaussian-ish peak with some variation
+                            const peakIntensity = peak.strength * Math.exp(-(distance * distance) / (peak.width * peak.width));
+                            intensity += peakIntensity * (0.8 + Math.random() * 0.4); // Add flutter
+                        }
+                    });
+                    
+                    // Random signal bursts
+                    if (Math.random() > 0.98) {
+                        intensity += Math.random() * 100;
+                    }
+                    
+                    waterfallData[0][x] = Math.min(255, intensity);
                 }
-            }, 50);
+                
+                // Draw the waterfall
+                for (let y = 0; y < canvas.height; y++) {
+                    for (let x = 0; x < canvas.width; x++) {
+                        const intensity = waterfallData[y][x];
+                        
+                        // Color mapping: blue (weak) -> green -> yellow -> red (strong)
+                        let r, g, b;
+                        if (intensity < 80) {
+                            // Dark blue to blue
+                            r = 0;
+                            g = 0;
+                            b = Math.floor(intensity * 2);
+                        } else if (intensity < 150) {
+                            // Blue to cyan to green
+                            r = 0;
+                            g = Math.floor((intensity - 80) * 3);
+                            b = 255 - Math.floor((intensity - 80) * 2);
+                        } else if (intensity < 200) {
+                            // Green to yellow
+                            r = Math.floor((intensity - 150) * 5);
+                            g = 255;
+                            b = 0;
+                        } else {
+                            // Yellow to red
+                            r = 255;
+                            g = Math.max(0, 255 - Math.floor((intensity - 200) * 4));
+                            b = 0;
+                        }
+                        
+                        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                        ctx.fillRect(x, y, 1, 1);
+                    }
+                }
+            }, 50); // Update every 50ms
         }
 
         setTimeout(initWaterfall, 1000);
