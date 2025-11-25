@@ -251,6 +251,41 @@
         .signal-card.band-70cm { border-left-color: var(--band-70cm); }
         .signal-card.band-ism { border-left-color: var(--band-ism); }
         
+        .signal-card.baseline {
+            opacity: 0.7;
+            border-left-color: var(--success) !important;
+        }
+        
+        .signal-card.anomaly {
+            border-left-color: var(--danger) !important;
+            box-shadow: 0 2px 8px rgba(255, 68, 68, 0.2);
+        }
+        
+        .signal-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-left: 8px;
+        }
+        
+        .badge-anomaly {
+            background: var(--danger);
+            color: white;
+        }
+        
+        .badge-baseline {
+            background: var(--success);
+            color: white;
+        }
+        
+        .badge-strong {
+            background: var(--warning);
+            color: white;
+        }
+        
         .signal-header {
             display: flex;
             justify-content: space-between;
@@ -458,12 +493,16 @@
             <div class="stat-value" id="stat-mode">--</div>
         </div>
         <div class="stat-card">
-            <div class="stat-label">Active Signals</div>
+            <div class="stat-label">Total Signals</div>
             <div class="stat-value" id="stat-active">0</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-label">Anomalies</div>
+        <div class="stat-card" style="border-left-color: var(--danger);">
+            <div class="stat-label">🚨 Anomalies</div>
             <div class="stat-value" id="stat-anomalies">0</div>
+        </div>
+        <div class="stat-card" style="border-left-color: var(--success);">
+            <div class="stat-label">✅ Baseline</div>
+            <div class="stat-value" id="stat-baseline-signals">0</div>
         </div>
         <div class="stat-card">
             <div class="stat-label">Recordings</div>
@@ -472,10 +511,6 @@
         <div class="stat-card">
             <div class="stat-label">Identified</div>
             <div class="stat-value" id="stat-identified">0</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Baseline Freqs</div>
-            <div class="stat-value" id="stat-baseline">0</div>
         </div>
     </div>
 
@@ -522,10 +557,37 @@
     <!-- Signals Tab -->
     <div class="tab-content" id="tab-signals">
         <div class="panel">
-            <h2>Signal List</h2>
+            <h2>📡 Signal List</h2>
+            
+            <!-- Legend -->
+            <div style="display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; padding: 10px; background: rgba(102, 126, 234, 0.1); border-radius: 6px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 20px; height: 20px; background: var(--danger); border-radius: 3px;"></div>
+                    <span style="font-size: 12px;">🚨 Anomaly (>15dB)</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 20px; height: 20px; background: var(--success); border-radius: 3px;"></div>
+                    <span style="font-size: 12px;">✅ Baseline (<5dB)</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 20px; height: 20px; background: var(--band-2m); border-radius: 3px;"></div>
+                    <span style="font-size: 12px;">2m Band</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 20px; height: 20px; background: var(--band-70cm); border-radius: 3px;"></div>
+                    <span style="font-size: 12px;">70cm Band</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 20px; height: 20px; background: var(--band-ism); border-radius: 3px;"></div>
+                    <span style="font-size: 12px;">ISM Bands</span>
+                </div>
+            </div>
+            
             <div class="filter-bar">
                 <input type="text" class="search-input" placeholder="Search by frequency..." id="signal-search" oninput="filterSignals()">
                 <button class="filter-chip" data-filter="all" onclick="setFilter('all')">All</button>
+                <button class="filter-chip" data-filter="anomaly" onclick="setFilter('anomaly')">🚨 Anomalies Only</button>
+                <button class="filter-chip" data-filter="baseline" onclick="setFilter('baseline')">✅ Baseline</button>
                 <button class="filter-chip" data-filter="2m" onclick="setFilter('2m')">2m Band</button>
                 <button class="filter-chip" data-filter="70cm" onclick="setFilter('70cm')">70cm Band</button>
                 <button class="filter-chip" data-filter="ism" onclick="setFilter('ism')">ISM Bands</button>
@@ -652,10 +714,16 @@
             // Update stats
             document.getElementById('stat-mode').textContent = data.mode.toUpperCase();
             document.getElementById('stat-active').textContent = data.active_count || 0;
-            document.getElementById('stat-anomalies').textContent = data.anomaly_count || 0;
+            
+            // Calculate anomalies vs baseline
+            const signals = data.anomalies || [];
+            const anomalyCount = signals.filter(s => s.is_anomaly || s.delta_db > 15).length;
+            const baselineCount = signals.filter(s => s.is_baseline || (!s.is_anomaly && s.delta_db < 5)).length;
+            
+            document.getElementById('stat-anomalies').textContent = anomalyCount;
+            document.getElementById('stat-baseline-signals').textContent = baselineCount;
             document.getElementById('stat-recordings').textContent = data.recording_count || 0;
             document.getElementById('stat-identified').textContent = data.device_count || 0;
-            document.getElementById('stat-baseline').textContent = data.baseline_count || 0;
 
             // Update SDR grid
             updateSDRGrid(data.sdr_assignments || []);
@@ -720,11 +788,21 @@
             grid.innerHTML = filtered.map(signal => {
                 const isPinned = pinnedSignals.has(signal.id);
                 const bandClass = `band-${signal.band.toLowerCase().replace('ism', 'ism')}`;
+                const isAnomaly = signal.is_anomaly || signal.delta_db > 15;
+                const isBaseline = signal.is_baseline || (!isAnomaly && signal.delta_db < 5);
+                const statusClass = isAnomaly ? 'anomaly' : (isBaseline ? 'baseline' : '');
+                const statusBadge = isAnomaly ? '<span class="signal-badge badge-anomaly">Anomaly</span>' : 
+                                   (isBaseline ? '<span class="signal-badge badge-baseline">Baseline</span>' : '');
+                const strongBadge = signal.delta_db > 30 ? '<span class="signal-badge badge-strong">Strong</span>' : '';
                 
                 return `
-                    <div class="signal-card ${bandClass} ${isPinned ? 'pinned' : ''}" onclick="showSignalDetail(${signal.id})">
+                    <div class="signal-card ${bandClass} ${statusClass} ${isPinned ? 'pinned' : ''}" onclick="showSignalDetail(${signal.id})">
                         <div class="signal-header">
-                            <div class="signal-freq">${(signal.frequency_hz / 1e6).toFixed(4)} MHz</div>
+                            <div style="display: flex; align-items: center;">
+                                <div class="signal-freq">${(signal.frequency_hz / 1e6).toFixed(4)} MHz</div>
+                                ${statusBadge}
+                                ${strongBadge}
+                            </div>
                             <div class="signal-band">${signal.band}</div>
                         </div>
                         <div class="signal-details">
@@ -785,7 +863,11 @@
 
             // Apply filter
             if (currentFilter !== 'all') {
-                if (currentFilter === 'recorded') {
+                if (currentFilter === 'anomaly') {
+                    filtered = filtered.filter(s => s.is_anomaly || s.delta_db > 15);
+                } else if (currentFilter === 'baseline') {
+                    filtered = filtered.filter(s => s.is_baseline || (!s.is_anomaly && s.delta_db < 5));
+                } else if (currentFilter === 'recorded') {
                     filtered = filtered.filter(s => s.recorded);
                 } else if (currentFilter === 'identified') {
                     filtered = filtered.filter(s => s.device_name);
