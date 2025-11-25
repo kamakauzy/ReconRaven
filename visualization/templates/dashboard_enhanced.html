@@ -97,6 +97,11 @@
         
         .stat-card:hover {
             transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        
+        .stat-card[title] {
+            cursor: help;
         }
         
         .stat-label {
@@ -492,16 +497,20 @@
             <div class="stat-label">Mode</div>
             <div class="stat-value" id="stat-mode">--</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card" style="border-left-color: var(--accent-secondary);" title="Total frequencies in baseline database (registered during initial scan)">
+            <div class="stat-label">📍 Baseline Database</div>
+            <div class="stat-value" id="stat-baseline-db">0</div>
+        </div>
+        <div class="stat-card" title="Total unique signals detected in this session">
             <div class="stat-label">Total Signals</div>
             <div class="stat-value" id="stat-active">0</div>
         </div>
-        <div class="stat-card" style="border-left-color: var(--danger);">
+        <div class="stat-card" style="border-left-color: var(--danger);" title="Signals >15 dB above baseline (anomalous activity)">
             <div class="stat-label">🚨 Anomalies</div>
             <div class="stat-value" id="stat-anomalies">0</div>
         </div>
-        <div class="stat-card" style="border-left-color: var(--success);">
-            <div class="stat-label">✅ Baseline</div>
+        <div class="stat-card" style="border-left-color: var(--success);" title="Signals matching baseline database (<5 dB variance)">
+            <div class="stat-label">✅ Baseline Hits</div>
             <div class="stat-value" id="stat-baseline-signals">0</div>
         </div>
         <div class="stat-card">
@@ -741,9 +750,10 @@
         function updateDashboard(data) {
             // Update stats
             document.getElementById('stat-mode').textContent = data.mode.toUpperCase();
+            document.getElementById('stat-baseline-db').textContent = data.baseline_count || 0;
             document.getElementById('stat-active').textContent = data.active_count || 0;
             
-            // Calculate anomalies vs baseline
+            // Calculate anomalies vs baseline hits
             const signals = data.anomalies || [];
             const anomalyCount = signals.filter(s => s.is_anomaly || s.delta_db > 15).length;
             const baselineCount = signals.filter(s => s.is_baseline || (!s.is_anomaly && s.delta_db < 5)).length;
