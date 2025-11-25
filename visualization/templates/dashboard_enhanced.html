@@ -623,16 +623,44 @@
     <!-- Analysis Tab -->
     <div class="tab-content" id="tab-analysis">
         <div class="panel">
-            <h2>Identified Devices</h2>
+            <h2>🔍 Identified Devices</h2>
+            <p style="margin-bottom: 15px; opacity: 0.8;">
+                Signals that have been successfully fingerprinted and identified through AI/ML analysis.
+            </p>
             <div class="signal-grid" id="devices-grid">
                 <p style="opacity: 0.5;">Loading device data...</p>
             </div>
         </div>
 
         <div class="panel">
-            <h2>Detection Timeline</h2>
+            <h2>📊 Detection Timeline</h2>
+            <p style="margin-bottom: 15px; opacity: 0.8;">
+                Frequency of signal detections over time. Helps identify patterns and periodic transmissions.
+            </p>
             <div class="chart-container">
                 <canvas id="timelineChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h2>📈 Analysis Stats</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Device Types</div>
+                    <div class="stat-value" id="stat-device-types">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Avg Confidence</div>
+                    <div class="stat-value" id="stat-avg-confidence">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Most Active Band</div>
+                    <div class="stat-value" id="stat-active-band">--</div>
+                </div>
+            </div>
+            <div class="info-message" style="margin-top: 15px;">
+                <strong>Future Features:</strong> Temporal correlation analysis, behavioral anomaly detection, 
+                device network mapping, and predictive pattern recognition.
             </div>
         </div>
     </div>
@@ -845,6 +873,19 @@
                     </div>
                 `;
             }).join('');
+            
+            // Update analysis stats
+            const deviceTypes = new Set(devices.map(d => d.device_type).filter(t => t));
+            const avgConfidence = devices.reduce((sum, d) => sum + (d.device_confidence || 0), 0) / devices.length;
+            const bandCounts = {};
+            devices.forEach(d => {
+                bandCounts[d.band] = (bandCounts[d.band] || 0) + 1;
+            });
+            const mostActiveBand = Object.entries(bandCounts).sort((a, b) => b[1] - a[1])[0];
+            
+            document.getElementById('stat-device-types').textContent = deviceTypes.size;
+            document.getElementById('stat-avg-confidence').textContent = (avgConfidence * 100).toFixed(0) + '%';
+            document.getElementById('stat-active-band').textContent = mostActiveBand ? mostActiveBand[0] : '--';
         }
 
         // Filter signals
@@ -1123,15 +1164,6 @@
             localStorage.setItem('theme', document.body.classList.contains('light-theme') ? 'light' : 'dark');
         }
 
-        // Tab switching
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            event.target.classList.add('active');
-            document.getElementById(`tab-${tabName}`).classList.add('active');
-        }
-
         // Load saved theme
         if (localStorage.getItem('theme') === 'light') {
             document.body.classList.add('light-theme');
@@ -1140,11 +1172,19 @@
         // Waterfall simulation with realistic signal peaks
         function initWaterfall() {
             const canvas = document.getElementById('waterfallCanvas');
-            if (!canvas) return;
+            if (!canvas) {
+                console.error('Waterfall canvas not found!');
+                return;
+            }
             
+            console.log('Initializing waterfall display...');
             const ctx = canvas.getContext('2d');
-            canvas.width = canvas.offsetWidth;
-            canvas.height = canvas.offsetHeight;
+            
+            // Set canvas size to match container
+            canvas.width = canvas.parentElement.offsetWidth;
+            canvas.height = 400;
+            
+            console.log('Canvas size:', canvas.width, 'x', canvas.height);
 
             // Signal peaks at specific frequencies (simulating our detected signals)
             const signalPeaks = [
@@ -1161,6 +1201,8 @@
                 waterfallData.push(new Array(canvas.width).fill(0));
             }
 
+            console.log('Starting waterfall animation...');
+            
             setInterval(() => {
                 // Shift existing data down
                 waterfallData.unshift(new Array(canvas.width).fill(0));
@@ -1227,7 +1269,26 @@
             }, 50); // Update every 50ms
         }
 
-        setTimeout(initWaterfall, 1000);
+        // Initialize waterfall when tab is shown
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            
+            // Initialize waterfall when switching to spectrum tab
+            if (tabName === 'spectrum') {
+                setTimeout(initWaterfall, 100);
+            }
+        }
+        
+        // Also try to init on page load
+        setTimeout(() => {
+            if (document.getElementById('tab-spectrum').classList.contains('active')) {
+                initWaterfall();
+            }
+        }, 1500);
         
         // Direction Finding Compass
         function drawCompass(bearings) {
