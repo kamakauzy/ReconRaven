@@ -658,8 +658,13 @@
             // Update charts
             updateChartData(data);
             
-            // Update bearings/DF
-            updateBearings(data.bearings || []);
+            // Update bearings/DF (ensure it's called)
+            if (data.bearings && data.bearings.length > 0) {
+                updateBearings(data.bearings);
+            } else {
+                // Initialize empty compass even if no bearings
+                setTimeout(() => updateBearings([]), 100);
+            }
         }
 
         // Update SDR grid
@@ -1053,7 +1058,12 @@
         // Direction Finding Compass
         function drawCompass(bearings) {
             const canvas = document.getElementById('compassCanvas');
-            if (!canvas) return;
+            if (!canvas) {
+                console.warn('Compass canvas not found');
+                return;
+            }
+            
+            console.log('Drawing compass with bearings:', bearings);
             
             const ctx = canvas.getContext('2d');
             const centerX = canvas.width / 2;
@@ -1096,6 +1106,7 @@
             
             // Draw bearings as arrows
             if (bearings && bearings.length > 0) {
+                console.log('Drawing', bearings.length, 'bearing arrows');
                 bearings.forEach((bearing, idx) => {
                     const angle = (bearing.bearing - 90) * Math.PI / 180;
                     const x = centerX + Math.cos(angle) * (radius - 20);
@@ -1125,13 +1136,21 @@
                     );
                     ctx.stroke();
                 });
+            } else {
+                console.log('No bearings to draw');
             }
         }
         
         function updateBearings(bearings) {
+            console.log('updateBearings called with:', bearings);
             drawCompass(bearings);
             
             const list = document.getElementById('bearings-list');
+            if (!list) {
+                console.warn('Bearings list element not found');
+                return;
+            }
+            
             if (!bearings || bearings.length === 0) {
                 list.innerHTML = '<p style="opacity: 0.5;">No bearing data available</p>';
                 return;
