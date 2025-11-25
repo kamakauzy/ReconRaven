@@ -37,6 +37,9 @@ class SDRDashboardServer:
         self.port = self.config.get('port', 5000)
         self.debug = self.config.get('debug', False)
         
+        # Demo mode flag
+        self.demo_mode = self.config.get('demo_mode', False)
+        
         # Platform state
         self.platform_state = {
             'mode': 'unknown',
@@ -63,12 +66,18 @@ class SDRDashboardServer:
         def index():
             """Main dashboard page."""
             from flask import make_response
-            response = make_response(render_template('dashboard.html'))
+            # Use enhanced dashboard with demo data
+            response = make_response(render_template('dashboard_enhanced.html'))
             # Force browser to never cache this page
             response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
             response.headers['Pragma'] = 'no-cache'
             response.headers['Expires'] = '0'
             return response
+        
+        @self.app.route('/api/demo-data')
+        def get_demo_data_endpoint():
+            """Get demo data for UI testing."""
+            return jsonify(self.get_demo_data())
         
         @self.app.route('/api/status')
         def get_status():
@@ -560,6 +569,127 @@ class SDRDashboardServer:
         elif 902e6 <= freq_hz <= 928e6:
             return 'ISM915'
         return 'Unknown'
+    
+    def get_demo_data(self):
+        """Generate realistic demo data based on actual testing."""
+        import random
+        from datetime import datetime, timedelta
+        
+        demo_signals = []
+        base_time = datetime.now()
+        
+        # ISM 915 MHz signals (like we actually detected)
+        for i, freq in enumerate([907.8e6, 907.9e6, 915.2e6, 921.5e6, 926.1e6]):
+            demo_signals.append({
+                'id': i + 1,
+                'frequency_hz': freq,
+                'band': 'ISM915',
+                'power_dbm': random.uniform(-10, -4),
+                'baseline_power_dbm': random.uniform(-25, -20),
+                'delta_db': random.uniform(12, 18),
+                'is_anomaly': True,
+                'recorded': True,
+                'recording_file': f'ISM915_{freq/1e6:.1f}MHz_test.npy',
+                'device_name': random.choice(['Garage Door Opener', 'Wireless Sensor', 'Security System', 'Unknown ISM Device']),
+                'device_type': 'Remote Control',
+                'device_confidence': random.uniform(0.7, 0.95),
+                'detected_at': (base_time - timedelta(minutes=random.randint(1, 60))).isoformat(),
+                'detection_count': random.randint(5, 50)
+            })
+        
+        # 2m Amateur Band signals
+        for i, freq in enumerate([146.520e6, 146.562e6, 147.420e6, 147.540e6], start=len(demo_signals)):
+            demo_signals.append({
+                'id': i + 1,
+                'frequency_hz': freq,
+                'band': '2m',
+                'power_dbm': random.uniform(-35, -25),
+                'baseline_power_dbm': random.uniform(-75, -65),
+                'delta_db': random.uniform(30, 45),
+                'is_anomaly': True,
+                'recorded': True,
+                'recording_file': f'2m_{freq/1e6:.3f}MHz_voice.wav',
+                'device_name': 'Amateur Radio FM',
+                'device_type': 'Voice Transmission',
+                'device_confidence': random.uniform(0.85, 0.98),
+                'detected_at': (base_time - timedelta(minutes=random.randint(1, 30))).isoformat(),
+                'detection_count': random.randint(2, 15)
+            })
+        
+        # 70cm signals
+        for i, freq in enumerate([446.000e6, 446.500e6, 433.920e6], start=len(demo_signals)):
+            demo_signals.append({
+                'id': i + 1,
+                'frequency_hz': freq,
+                'band': '70cm' if freq > 440e6 else 'ISM433',
+                'power_dbm': random.uniform(-40, -30),
+                'baseline_power_dbm': random.uniform(-70, -60),
+                'delta_db': random.uniform(20, 35),
+                'is_anomaly': True,
+                'recorded': random.choice([True, False]),
+                'recording_file': f'70cm_{freq/1e6:.3f}MHz.npy' if random.random() > 0.5 else None,
+                'device_name': random.choice(['FRS Radio', 'Walkie-Talkie', 'Remote Control', None]),
+                'device_type': random.choice(['Voice', 'Digital', 'FSK', None]),
+                'device_confidence': random.uniform(0.6, 0.9) if random.random() > 0.3 else None,
+                'detected_at': (base_time - timedelta(minutes=random.randint(1, 120))).isoformat(),
+                'detection_count': random.randint(1, 8)
+            })
+        
+        # Generate SDR assignments
+        demo_sdr_assignments = [
+            {
+                'index': 0,
+                'freq_count': 224,
+                'bands': ['2m: 144.00 - 147.90 MHz (14 freqs)', 
+                         '70cm: 420.20 - 449.90 MHz (123 freqs)',
+                         'ISM915: 902.10 - 927.90 MHz (87 freqs)'],
+                'status': 'active',
+                'current_freq': 146.520e6,
+                'signal_strength': random.uniform(-50, -30)
+            },
+            {
+                'index': 1,
+                'freq_count': 223,
+                'bands': ['2m: 144.10 - 147.70 MHz (13 freqs)',
+                         '70cm: 420.00 - 449.70 MHz (124 freqs)',
+                         'ISM915: 902.20 - 927.70 MHz (86 freqs)'],
+                'status': 'active',
+                'current_freq': 907.9e6,
+                'signal_strength': random.uniform(-10, -4)
+            },
+            {
+                'index': 2,
+                'freq_count': 223,
+                'bands': ['2m: 144.20 - 147.80 MHz (13 freqs)',
+                         '70cm: 420.10 - 449.80 MHz (123 freqs)',
+                         'ISM915: 902.00 - 927.80 MHz (87 freqs)'],
+                'status': 'active',
+                'current_freq': 433.920e6,
+                'signal_strength': random.uniform(-45, -35)
+            }
+        ]
+        
+        return {
+            'mode': 'concurrent',
+            'status': 'monitoring',
+            'scanning': True,
+            'sdr_count': 3,
+            'active_count': len([s for s in demo_signals if s['detection_count'] > 5]),
+            'anomaly_count': len(demo_signals),
+            'recording_count': len([s for s in demo_signals if s['recorded']]),
+            'device_count': len([s for s in demo_signals if s.get('device_name')]),
+            'baseline_count': 653,
+            'anomalies': demo_signals,
+            'identified_devices': [s for s in demo_signals if s.get('device_name')],
+            'sdr_assignments': demo_sdr_assignments,
+            'gps': {
+                'latitude': 40.7128,
+                'longitude': -74.0060,
+                'altitude': 10.5,
+                'satellites': 8,
+                'fix_quality': 'GPS'
+            }
+        }
     
     def run(self):
         """Run the web server."""

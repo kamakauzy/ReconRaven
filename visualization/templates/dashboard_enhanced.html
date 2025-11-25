@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReconRaven SIGINT Platform - Enhanced</title>
+    <script src="/static/js/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2a2a2a;
+            --bg-tertiary: #333;
+            --accent-primary: #667eea;
+            --accent-secondary: #764ba2;
+            --text-primary: #e0e0e0;
+            --text-secondary: #aaa;
+            --success: #4CAF50;
+            --warning: #FF9800;
+            --danger: #ff4444;
+            --band-2m: #4A90E2;
+            --band-70cm: #50C878;
+            --band-ism: #FFD700;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            padding: 15px;
+            line-height: 1.6;
+        }
+        
+        body.light-theme {
+            --bg-primary: #f5f5f5;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #e0e0e0;
+            --text-primary: #1a1a1a;
+            --text-secondary: #555;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .header h1 {
+            color: white;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .theme-toggle {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .theme-toggle:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: var(--bg-secondary);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-primary);
+            transition: transform 0.2s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--accent-primary);
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--bg-tertiary);
+            padding-bottom: 10px;
+            overflow-x: auto;
+        }
+        
+        .tab {
+            background: var(--bg-secondary);
+            border: none;
+            color: var(--text-secondary);
+            padding: 10px 20px;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        
+        .tab:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        
+        .tab.active {
+            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .panel {
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        .panel h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: var(--accent-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .sdr-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+        }
+        
+        .sdr-card {
+            background: var(--bg-tertiary);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid var(--success);
+            position: relative;
+        }
+        
+        .sdr-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .sdr-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--accent-primary);
+        }
+        
+        .sdr-status {
+            background: var(--success);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .sdr-freq {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .power-meter {
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        
+        .power-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success), var(--warning), var(--danger));
+            transition: width 0.3s;
+        }
+        
+        .signal-grid {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .signal-card {
+            background: var(--bg-tertiary);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        
+        .signal-card:hover {
+            background: #3a3a3a;
+            transform: translateX(5px);
+        }
+        
+        .signal-card.pinned {
+            border-left-color: var(--warning);
+        }
+        
+        .signal-card.band-2m { border-left-color: var(--band-2m); }
+        .signal-card.band-70cm { border-left-color: var(--band-70cm); }
+        .signal-card.band-ism { border-left-color: var(--band-ism); }
+        
+        .signal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .signal-freq {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--accent-primary);
+        }
+        
+        .signal-band {
+            background: var(--bg-secondary);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .signal-details {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+        
+        .signal-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--bg-secondary);
+        }
+        
+        .btn {
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            background: var(--accent-secondary);
+            transform: translateY(-1px);
+        }
+        
+        .btn-small {
+            padding: 4px 10px;
+            font-size: 11px;
+        }
+        
+        .btn-success { background: var(--success); }
+        .btn-warning { background: var(--warning); }
+        .btn-danger { background: var(--danger); }
+        
+        .filter-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .search-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+        
+        .filter-chip {
+            background: var(--bg-tertiary);
+            border: 1px solid #444;
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        
+        .filter-chip:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border-color: var(--accent-primary);
+        }
+        
+        .filter-chip.active {
+            background: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 15px;
+        }
+        
+        .waterfall {
+            width: 100%;
+            height: 400px;
+            background: #000;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .waterfall canvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .export-menu {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: var(--bg-secondary);
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 28px;
+            cursor: pointer;
+        }
+        
+        .waveform {
+            width: 100%;
+            height: 120px;
+            background: #000;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 { font-size: 18px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .stat-value { font-size: 20px; }
+            .sdr-grid { grid-template-columns: 1fr; }
+            .tabs { font-size: 12px; }
+        }
+        
+        .demo-badge {
+            background: var(--warning);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>
+            <span>ReconRaven SIGINT</span>
+            <span class="demo-badge" id="demo-indicator" style="display: none;">DEMO MODE</span>
+        </h1>
+        <button class="theme-toggle" onclick="toggleTheme()">Toggle Theme</button>
+    </div>
+
+    <div class="stats-grid" id="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Mode</div>
+            <div class="stat-value" id="stat-mode">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Active Signals</div>
+            <div class="stat-value" id="stat-active">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Anomalies</div>
+            <div class="stat-value" id="stat-anomalies">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Recordings</div>
+            <div class="stat-value" id="stat-recordings">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Identified</div>
+            <div class="stat-value" id="stat-identified">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Baseline Freqs</div>
+            <div class="stat-value" id="stat-baseline">0</div>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('overview')">Overview</button>
+        <button class="tab" onclick="switchTab('signals')">Signals</button>
+        <button class="tab" onclick="switchTab('spectrum')">Spectrum</button>
+        <button class="tab" onclick="switchTab('analysis')">Analysis</button>
+        <button class="tab" onclick="switchTab('export')">Export</button>
+    </div>
+
+    <!-- Overview Tab -->
+    <div class="tab-content active" id="tab-overview">
+        <div class="panel">
+            <h2>SDR Status</h2>
+            <div class="sdr-grid" id="sdr-grid">
+                <p style="opacity: 0.5;">Loading SDR data...</p>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Signal Activity Chart</h2>
+            <div class="chart-container">
+                <canvas id="activityChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Signals Tab -->
+    <div class="tab-content" id="tab-signals">
+        <div class="panel">
+            <h2>Signal List</h2>
+            <div class="filter-bar">
+                <input type="text" class="search-input" placeholder="Search by frequency..." id="signal-search" oninput="filterSignals()">
+                <button class="filter-chip" data-filter="all" onclick="setFilter('all')">All</button>
+                <button class="filter-chip" data-filter="2m" onclick="setFilter('2m')">2m Band</button>
+                <button class="filter-chip" data-filter="70cm" onclick="setFilter('70cm')">70cm Band</button>
+                <button class="filter-chip" data-filter="ism" onclick="setFilter('ism')">ISM Bands</button>
+                <button class="filter-chip" data-filter="recorded" onclick="setFilter('recorded')">Recorded</button>
+                <button class="filter-chip" data-filter="identified" onclick="setFilter('identified')">Identified</button>
+            </div>
+            <div class="signal-grid" id="signal-grid">
+                <p style="opacity: 0.5;">Loading signals...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Spectrum Tab -->
+    <div class="tab-content" id="tab-spectrum">
+        <div class="panel">
+            <h2>Live Waterfall Display</h2>
+            <div class="waterfall">
+                <canvas id="waterfallCanvas"></canvas>
+            </div>
+            <p style="margin-top: 10px; font-size: 13px; opacity: 0.7;">
+                Real-time spectrum waterfall visualization (demo mode shows simulated data)
+            </p>
+        </div>
+
+        <div class="panel">
+            <h2>Power Distribution</h2>
+            <div class="chart-container">
+                <canvas id="powerChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis Tab -->
+    <div class="tab-content" id="tab-analysis">
+        <div class="panel">
+            <h2>Identified Devices</h2>
+            <div class="signal-grid" id="devices-grid">
+                <p style="opacity: 0.5;">Loading device data...</p>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Detection Timeline</h2>
+            <div class="chart-container">
+                <canvas id="timelineChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Tab -->
+    <div class="tab-content" id="tab-export">
+        <div class="panel">
+            <h2>Export Data</h2>
+            <p style="margin-bottom: 15px; opacity: 0.8;">
+                Export signal data in various formats for analysis or reporting.
+            </p>
+            <div class="export-menu">
+                <button class="btn" onclick="exportData('json')">Export as JSON</button>
+                <button class="btn" onclick="exportData('csv')">Export as CSV</button>
+                <button class="btn" onclick="exportData('pdf')">Generate PDF Report</button>
+            </div>
+            
+            <h2 style="margin-top: 30px;">Copy Frequency List</h2>
+            <p style="margin-bottom: 15px; opacity: 0.8;">
+                Copy detected frequencies to clipboard for use in other tools.
+            </p>
+            <button class="btn" onclick="copyFrequencies()">Copy All Frequencies</button>
+            <button class="btn" onclick="copyFrequencies('identified')">Copy Identified Only</button>
+        </div>
+    </div>
+
+    <!-- Signal Detail Modal -->
+    <div class="modal" id="signal-modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <h2 id="modal-title">Signal Details</h2>
+            <div id="modal-body">
+                <!-- Content populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let currentData = null;
+        let currentFilter = 'all';
+        let pinnedSignals = new Set();
+        let charts = {};
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDemoData();
+            initCharts();
+            setInterval(updateCharts, 5000);
+        });
+
+        // Load demo data
+        function loadDemoData() {
+            document.getElementById('demo-indicator').style.display = 'inline-block';
+            fetch('/api/demo-data')
+                .then(res => res.json())
+                .then(data => {
+                    currentData = data;
+                    updateDashboard(data);
+                })
+                .catch(err => {
+                    console.error('Failed to load demo data:', err);
+                });
+        }
+
+        // Update dashboard
+        function updateDashboard(data) {
+            // Update stats
+            document.getElementById('stat-mode').textContent = data.mode.toUpperCase();
+            document.getElementById('stat-active').textContent = data.active_count || 0;
+            document.getElementById('stat-anomalies').textContent = data.anomaly_count || 0;
+            document.getElementById('stat-recordings').textContent = data.recording_count || 0;
+            document.getElementById('stat-identified').textContent = data.device_count || 0;
+            document.getElementById('stat-baseline').textContent = data.baseline_count || 0;
+
+            // Update SDR grid
+            updateSDRGrid(data.sdr_assignments || []);
+
+            // Update signals
+            updateSignalGrid(data.anomalies || []);
+
+            // Update devices
+            updateDevicesGrid(data.identified_devices || []);
+
+            // Update charts
+            updateChartData(data);
+        }
+
+        // Update SDR grid
+        function updateSDRGrid(sdrs) {
+            const grid = document.getElementById('sdr-grid');
+            if (!sdrs || sdrs.length === 0) {
+                grid.innerHTML = '<p style="opacity: 0.5;">No SDRs detected</p>';
+                return;
+            }
+
+            grid.innerHTML = sdrs.map(sdr => {
+                const powerPercent = ((sdr.signal_strength + 100) / 100) * 100;
+                return `
+                    <div class="sdr-card">
+                        <div class="sdr-header">
+                            <div class="sdr-title">SDR #${sdr.index}</div>
+                            <div class="sdr-status">${sdr.status.toUpperCase()}</div>
+                        </div>
+                        <div class="sdr-freq">${(sdr.current_freq / 1e6).toFixed(3)} MHz</div>
+                        <div class="signal-details">${sdr.freq_count} frequencies assigned</div>
+                        <div class="power-meter">
+                            <div class="power-fill" style="width: ${powerPercent}%"></div>
+                        </div>
+                        <div style="margin-top: 8px; font-size: 12px; opacity: 0.7;">
+                            Power: ${sdr.signal_strength.toFixed(1)} dBm
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Update signal grid
+        function updateSignalGrid(signals) {
+            const grid = document.getElementById('signal-grid');
+            if (!signals || signals.length === 0) {
+                grid.innerHTML = '<p style="opacity: 0.5;">No signals detected</p>';
+                return;
+            }
+
+            const filtered = filterSignalsList(signals);
+            
+            grid.innerHTML = filtered.map(signal => {
+                const isPinned = pinnedSignals.has(signal.id);
+                const bandClass = `band-${signal.band.toLowerCase().replace('ism', 'ism')}`;
+                
+                return `
+                    <div class="signal-card ${bandClass} ${isPinned ? 'pinned' : ''}" onclick="showSignalDetail(${signal.id})">
+                        <div class="signal-header">
+                            <div class="signal-freq">${(signal.frequency_hz / 1e6).toFixed(4)} MHz</div>
+                            <div class="signal-band">${signal.band}</div>
+                        </div>
+                        <div class="signal-details">
+                            <div>Power: ${signal.power_dbm.toFixed(1)} dBm (Δ ${signal.delta_db.toFixed(1)} dB)</div>
+                            ${signal.device_name ? `<div>Device: ${signal.device_name} (${(signal.device_confidence * 100).toFixed(0)}%)</div>` : ''}
+                            <div>Detected: ${new Date(signal.detected_at).toLocaleString()}</div>
+                        </div>
+                        <div class="signal-actions" onclick="event.stopPropagation()">
+                            <button class="btn btn-small" onclick="togglePin(${signal.id})">${isPinned ? 'Unpin' : 'Pin'}</button>
+                            ${signal.recorded ? `<button class="btn btn-small btn-success" onclick="playRecording(${signal.id})">Play</button>` : ''}
+                            <button class="btn btn-small btn-warning" onclick="analyzeSignal(${signal.id})">Analyze</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Update devices grid
+        function updateDevicesGrid(devices) {
+            const grid = document.getElementById('devices-grid');
+            if (!devices || devices.length === 0) {
+                grid.innerHTML = '<p style="opacity: 0.5;">No devices identified</p>';
+                return;
+            }
+
+            grid.innerHTML = devices.map(device => {
+                const bandClass = `band-${device.band.toLowerCase().replace('ism', 'ism')}`;
+                return `
+                    <div class="signal-card ${bandClass}">
+                        <div class="signal-header">
+                            <div class="signal-freq">${device.device_name || 'Unknown Device'}</div>
+                            <div class="signal-band">${(device.device_confidence * 100).toFixed(0)}%</div>
+                        </div>
+                        <div class="signal-details">
+                            <div>Frequency: ${(device.frequency_hz / 1e6).toFixed(4)} MHz</div>
+                            <div>Type: ${device.device_type || 'Unknown'}</div>
+                            <div>Detections: ${device.detection_count}</div>
+                            <div>Last seen: ${new Date(device.detected_at).toLocaleString()}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Filter signals
+        function filterSignalsList(signals) {
+            let filtered = signals;
+
+            // Apply search
+            const search = document.getElementById('signal-search').value.toLowerCase();
+            if (search) {
+                filtered = filtered.filter(s => 
+                    (s.frequency_hz / 1e6).toFixed(4).includes(search) ||
+                    s.band.toLowerCase().includes(search) ||
+                    (s.device_name && s.device_name.toLowerCase().includes(search))
+                );
+            }
+
+            // Apply filter
+            if (currentFilter !== 'all') {
+                if (currentFilter === 'recorded') {
+                    filtered = filtered.filter(s => s.recorded);
+                } else if (currentFilter === 'identified') {
+                    filtered = filtered.filter(s => s.device_name);
+                } else {
+                    filtered = filtered.filter(s => s.band.toLowerCase().includes(currentFilter));
+                }
+            }
+
+            // Sort pinned first
+            filtered.sort((a, b) => {
+                const aPin = pinnedSignals.has(a.id);
+                const bPin = pinnedSignals.has(b.id);
+                if (aPin && !bPin) return -1;
+                if (!aPin && bPin) return 1;
+                return b.power_dbm - a.power_dbm;
+            });
+
+            return filtered;
+        }
+
+        function filterSignals() {
+            if (currentData) {
+                updateSignalGrid(currentData.anomalies || []);
+            }
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-chip').forEach(chip => {
+                chip.classList.toggle('active', chip.dataset.filter === filter);
+            });
+            filterSignals();
+        }
+
+        function togglePin(id) {
+            if (pinnedSignals.has(id)) {
+                pinnedSignals.delete(id);
+            } else {
+                pinnedSignals.add(id);
+            }
+            filterSignals();
+        }
+
+        function showSignalDetail(id) {
+            const signal = currentData.anomalies.find(s => s.id === id);
+            if (!signal) return;
+
+            const modal = document.getElementById('signal-modal');
+            const title = document.getElementById('modal-title');
+            const body = document.getElementById('modal-body');
+
+            title.textContent = `${(signal.frequency_hz / 1e6).toFixed(4)} MHz - ${signal.band}`;
+            body.innerHTML = `
+                <div style="margin: 20px 0;">
+                    <h3>Signal Information</h3>
+                    <p><strong>Power:</strong> ${signal.power_dbm.toFixed(1)} dBm</p>
+                    <p><strong>Baseline:</strong> ${signal.baseline_power_dbm.toFixed(1)} dBm</p>
+                    <p><strong>Delta:</strong> +${signal.delta_db.toFixed(1)} dB</p>
+                    <p><strong>Detections:</strong> ${signal.detection_count}</p>
+                    <p><strong>First Detected:</strong> ${new Date(signal.detected_at).toLocaleString()}</p>
+                </div>
+                ${signal.device_name ? `
+                <div style="margin: 20px 0;">
+                    <h3>Device Identification</h3>
+                    <p><strong>Name:</strong> ${signal.device_name}</p>
+                    <p><strong>Type:</strong> ${signal.device_type}</p>
+                    <p><strong>Confidence:</strong> ${(signal.device_confidence * 100).toFixed(1)}%</p>
+                </div>
+                ` : ''}
+                ${signal.recorded ? `
+                <div style="margin: 20px 0;">
+                    <h3>Recording</h3>
+                    <p><strong>File:</strong> ${signal.recording_file}</p>
+                    <div class="waveform" style="background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));"></div>
+                    <button class="btn" onclick="playRecording(${signal.id})">Play Recording</button>
+                </div>
+                ` : ''}
+            `;
+
+            modal.classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('signal-modal').classList.remove('active');
+        }
+
+        function playRecording(id) {
+            alert(`Playing recording for signal ID ${id}`);
+        }
+
+        function analyzeSignal(id) {
+            alert(`Analyzing signal ID ${id}`);
+        }
+
+        // Initialize charts
+        function initCharts() {
+            const commonOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                }
+            };
+
+            // Activity chart
+            charts.activity = new Chart(document.getElementById('activityChart'), {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Signal Power',
+                        data: [],
+                        borderColor: '#667eea',
+                        tension: 0.4
+                    }]
+                },
+                options: commonOptions
+            });
+
+            // Power distribution chart
+            charts.power = new Chart(document.getElementById('powerChart'), {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Power (dBm)',
+                        data: [],
+                        backgroundColor: '#667eea'
+                    }]
+                },
+                options: commonOptions
+            });
+
+            // Timeline chart
+            charts.timeline = new Chart(document.getElementById('timelineChart'), {
+                type: 'scatter',
+                data: {
+                    datasets: []
+                },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        x: { type: 'time' },
+                        y: { title: { display: true, text: 'Frequency (MHz)' } }
+                    }
+                }
+            });
+        }
+
+        // Update chart data
+        function updateChartData(data) {
+            if (!data || !data.anomalies) return;
+
+            // Activity chart - last 10 signals
+            const recent = data.anomalies.slice(0, 10).reverse();
+            charts.activity.data.labels = recent.map(s => new Date(s.detected_at).toLocaleTimeString());
+            charts.activity.data.datasets[0].data = recent.map(s => s.power_dbm);
+            charts.activity.update();
+
+            // Power distribution
+            charts.power.data.labels = data.anomalies.map(s => (s.frequency_hz / 1e6).toFixed(2));
+            charts.power.data.datasets[0].data = data.anomalies.map(s => s.power_dbm);
+            charts.power.update();
+
+            // Timeline
+            charts.timeline.data.datasets = [{
+                label: 'Detections',
+                data: data.anomalies.map(s => ({
+                    x: new Date(s.detected_at),
+                    y: s.frequency_hz / 1e6
+                })),
+                backgroundColor: '#667eea'
+            }];
+            charts.timeline.update();
+        }
+
+        function updateCharts() {
+            if (currentData) {
+                updateChartData(currentData);
+            }
+        }
+
+        // Export functions
+        function exportData(format) {
+            if (!currentData || !currentData.anomalies) {
+                alert('No data to export');
+                return;
+            }
+
+            if (format === 'json') {
+                const json = JSON.stringify(currentData.anomalies, null, 2);
+                downloadFile(json, 'reconraven_export.json', 'application/json');
+            } else if (format === 'csv') {
+                const headers = ['Frequency (MHz)', 'Band', 'Power (dBm)', 'Delta (dB)', 'Device', 'Confidence', 'Detected At'];
+                const rows = currentData.anomalies.map(s => [
+                    (s.frequency_hz / 1e6).toFixed(4),
+                    s.band,
+                    s.power_dbm.toFixed(1),
+                    s.delta_db.toFixed(1),
+                    s.device_name || 'Unknown',
+                    s.device_confidence ? (s.device_confidence * 100).toFixed(0) + '%' : 'N/A',
+                    new Date(s.detected_at).toISOString()
+                ]);
+                const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+                downloadFile(csv, 'reconraven_export.csv', 'text/csv');
+            } else if (format === 'pdf') {
+                alert('PDF export functionality coming soon!');
+            }
+        }
+
+        function copyFrequencies(filter) {
+            if (!currentData || !currentData.anomalies) {
+                alert('No data to copy');
+                return;
+            }
+
+            let signals = currentData.anomalies;
+            if (filter === 'identified') {
+                signals = signals.filter(s => s.device_name);
+            }
+
+            const freqs = signals.map(s => (s.frequency_hz / 1e6).toFixed(4)).join('\n');
+            navigator.clipboard.writeText(freqs).then(() => {
+                alert(`Copied ${signals.length} frequencies to clipboard!`);
+            });
+        }
+
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Theme toggle
+        function toggleTheme() {
+            document.body.classList.toggle('light-theme');
+            localStorage.setItem('theme', document.body.classList.contains('light-theme') ? 'light' : 'dark');
+        }
+
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+        }
+
+        // Load saved theme
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light-theme');
+        }
+
+        // Waterfall simulation
+        function initWaterfall() {
+            const canvas = document.getElementById('waterfallCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+
+            let yOffset = 0;
+            setInterval(() => {
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                ctx.putImageData(imageData, 0, 1);
+                
+                // Draw new line at top
+                for (let x = 0; x < canvas.width; x++) {
+                    const intensity = Math.random() * 255;
+                    ctx.fillStyle = `rgb(${intensity}, 0, ${255 - intensity})`;
+                    ctx.fillRect(x, 0, 1, 1);
+                }
+            }, 50);
+        }
+
+        setTimeout(initWaterfall, 1000);
+    </script>
+</body>
+</html>
+
