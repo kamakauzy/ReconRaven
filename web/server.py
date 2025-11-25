@@ -635,7 +635,7 @@ class SDRDashboardServer:
                 'detection_count': random.randint(1, 8)
             })
         
-        # Generate SDR assignments
+        # Generate SDR assignments (4 SDRs for DF mode)
         demo_sdr_assignments = [
             {
                 'index': 0,
@@ -666,14 +666,46 @@ class SDRDashboardServer:
                 'status': 'active',
                 'current_freq': 433.920e6,
                 'signal_strength': random.uniform(-45, -35)
+            },
+            {
+                'index': 3,
+                'freq_count': 210,
+                'bands': ['2m: 144.30 - 147.60 MHz (12 freqs)',
+                         '70cm: 420.30 - 449.60 MHz (120 freqs)',
+                         'ISM915: 902.30 - 927.60 MHz (78 freqs)'],
+                'status': 'active',
+                'current_freq': 146.562e6,
+                'signal_strength': random.uniform(-40, -25)
+            }
+        ]
+        
+        # Generate bearing data for DF visualization
+        demo_bearings = [
+            {
+                'frequency_hz': 907.8e6,
+                'bearing': 45.0,
+                'confidence': 0.85,
+                'timestamp': (base_time - timedelta(minutes=2)).isoformat()
+            },
+            {
+                'frequency_hz': 146.520e6,
+                'bearing': 135.0,
+                'confidence': 0.92,
+                'timestamp': (base_time - timedelta(minutes=5)).isoformat()
+            },
+            {
+                'frequency_hz': 433.920e6,
+                'bearing': 270.0,
+                'confidence': 0.78,
+                'timestamp': (base_time - timedelta(minutes=8)).isoformat()
             }
         ]
         
         return {
-            'mode': 'concurrent',
+            'mode': 'df',  # Direction Finding mode with 4 SDRs
             'status': 'monitoring',
             'scanning': True,
-            'sdr_count': 3,
+            'sdr_count': 4,
             'active_count': len([s for s in demo_signals if s['detection_count'] > 5]),
             'anomaly_count': len(demo_signals),
             'recording_count': len([s for s in demo_signals if s['recorded']]),
@@ -682,6 +714,7 @@ class SDRDashboardServer:
             'anomalies': demo_signals,
             'identified_devices': [s for s in demo_signals if s.get('device_name')],
             'sdr_assignments': demo_sdr_assignments,
+            'bearings': demo_bearings,
             'gps': {
                 'latitude': 40.7128,
                 'longitude': -74.0060,

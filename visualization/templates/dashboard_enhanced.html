@@ -490,14 +490,29 @@
     <!-- Overview Tab -->
     <div class="tab-content active" id="tab-overview">
         <div class="panel">
-            <h2>SDR Status</h2>
+            <h2>📡 SDR Status</h2>
             <div class="sdr-grid" id="sdr-grid">
                 <p style="opacity: 0.5;">Loading SDR data...</p>
             </div>
         </div>
 
         <div class="panel">
-            <h2>Signal Activity Chart</h2>
+            <h2>🎯 Direction Finding</h2>
+            <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 250px;">
+                    <canvas id="compassCanvas" width="250" height="250"></canvas>
+                </div>
+                <div style="flex: 1; min-width: 300px;">
+                    <h3 style="margin-bottom: 15px;">Recent Bearings</h3>
+                    <div id="bearings-list" style="font-size: 14px;">
+                        <p style="opacity: 0.5;">No bearing data available</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>📊 Signal Activity Chart</h2>
             <div class="chart-container">
                 <canvas id="activityChart"></canvas>
             </div>
@@ -642,6 +657,9 @@
 
             // Update charts
             updateChartData(data);
+            
+            // Update bearings/DF
+            updateBearings(data.bearings || []);
         }
 
         // Update SDR grid
@@ -1031,6 +1049,103 @@
         }
 
         setTimeout(initWaterfall, 1000);
+        
+        // Direction Finding Compass
+        function drawCompass(bearings) {
+            const canvas = document.getElementById('compassCanvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = 100;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw compass circle
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.strokeStyle = '#667eea';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            // Draw N, S, E, W markers
+            ctx.fillStyle = '#e0e0e0';
+            ctx.font = 'bold 16px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('N', centerX, centerY - radius - 10);
+            ctx.fillText('S', centerX, centerY + radius + 20);
+            ctx.fillText('E', centerX + radius + 15, centerY + 5);
+            ctx.fillText('W', centerX - radius - 15, centerY + 5);
+            
+            // Draw degree markers
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 360; i += 30) {
+                const angle = (i - 90) * Math.PI / 180;
+                const x1 = centerX + Math.cos(angle) * (radius - 10);
+                const y1 = centerY + Math.sin(angle) * (radius - 10);
+                const x2 = centerX + Math.cos(angle) * radius;
+                const y2 = centerY + Math.sin(angle) * radius;
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+            }
+            
+            // Draw bearings as arrows
+            if (bearings && bearings.length > 0) {
+                bearings.forEach((bearing, idx) => {
+                    const angle = (bearing.bearing - 90) * Math.PI / 180;
+                    const x = centerX + Math.cos(angle) * (radius - 20);
+                    const y = centerY + Math.sin(angle) * (radius - 20);
+                    
+                    // Draw arrow
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, centerY);
+                    ctx.lineTo(x, y);
+                    ctx.strokeStyle = idx === 0 ? '#ff4444' : '#FF9800';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                    
+                    // Draw arrowhead
+                    const arrowSize = 10;
+                    const arrowAngle = 0.5;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(
+                        x - arrowSize * Math.cos(angle - arrowAngle),
+                        y - arrowSize * Math.sin(angle - arrowAngle)
+                    );
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(
+                        x - arrowSize * Math.cos(angle + arrowAngle),
+                        y - arrowSize * Math.sin(angle + arrowAngle)
+                    );
+                    ctx.stroke();
+                });
+            }
+        }
+        
+        function updateBearings(bearings) {
+            drawCompass(bearings);
+            
+            const list = document.getElementById('bearings-list');
+            if (!bearings || bearings.length === 0) {
+                list.innerHTML = '<p style="opacity: 0.5;">No bearing data available</p>';
+                return;
+            }
+            
+            list.innerHTML = bearings.map(b => `
+                <div style="background: #333; padding: 10px; margin-bottom: 8px; border-radius: 6px; border-left: 3px solid #667eea;">
+                    <div style="font-weight: bold;">${(b.frequency_hz / 1e6).toFixed(4)} MHz</div>
+                    <div style="font-size: 13px; opacity: 0.8; margin-top: 4px;">
+                        Bearing: ${b.bearing.toFixed(1)}° | Confidence: ${(b.confidence * 100).toFixed(0)}%
+                    </div>
+                </div>
+            `).join('');
+        }
     </script>
 </body>
 </html>
