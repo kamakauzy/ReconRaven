@@ -578,7 +578,7 @@ class SDRDashboardServer:
         demo_signals = []
         base_time = datetime.now()
         
-        # ISM 915 MHz signals (like we actually detected)
+        # ISM 915 MHz signals (like we actually detected) - ANOMALIES
         for i, freq in enumerate([907.8e6, 907.9e6, 915.2e6, 921.5e6, 926.1e6]):
             demo_signals.append({
                 'id': i + 1,
@@ -588,6 +588,7 @@ class SDRDashboardServer:
                 'baseline_power_dbm': random.uniform(-25, -20),
                 'delta_db': random.uniform(12, 18),
                 'is_anomaly': True,
+                'is_baseline': False,
                 'recorded': True,
                 'recording_file': f'ISM915_{freq/1e6:.1f}MHz_test.npy',
                 'device_name': random.choice(['Garage Door Opener', 'Wireless Sensor', 'Security System', 'Unknown ISM Device']),
@@ -597,7 +598,7 @@ class SDRDashboardServer:
                 'detection_count': random.randint(5, 50)
             })
         
-        # 2m Amateur Band signals
+        # 2m Amateur Band signals - ANOMALIES
         for i, freq in enumerate([146.520e6, 146.562e6, 147.420e6, 147.540e6], start=len(demo_signals)):
             demo_signals.append({
                 'id': i + 1,
@@ -607,6 +608,7 @@ class SDRDashboardServer:
                 'baseline_power_dbm': random.uniform(-75, -65),
                 'delta_db': random.uniform(30, 45),
                 'is_anomaly': True,
+                'is_baseline': False,
                 'recorded': True,
                 'recording_file': f'2m_{freq/1e6:.3f}MHz_voice.wav',
                 'device_name': 'Amateur Radio FM',
@@ -616,7 +618,7 @@ class SDRDashboardServer:
                 'detection_count': random.randint(2, 15)
             })
         
-        # 70cm signals
+        # 70cm signals - ANOMALIES
         for i, freq in enumerate([446.000e6, 446.500e6, 433.920e6], start=len(demo_signals)):
             demo_signals.append({
                 'id': i + 1,
@@ -626,6 +628,7 @@ class SDRDashboardServer:
                 'baseline_power_dbm': random.uniform(-70, -60),
                 'delta_db': random.uniform(20, 35),
                 'is_anomaly': True,
+                'is_baseline': False,
                 'recorded': random.choice([True, False]),
                 'recording_file': f'70cm_{freq/1e6:.3f}MHz.npy' if random.random() > 0.5 else None,
                 'device_name': random.choice(['FRS Radio', 'Walkie-Talkie', 'Remote Control', None]),
@@ -633,6 +636,44 @@ class SDRDashboardServer:
                 'device_confidence': random.uniform(0.6, 0.9) if random.random() > 0.3 else None,
                 'detected_at': (base_time - timedelta(minutes=random.randint(1, 120))).isoformat(),
                 'detection_count': random.randint(1, 8)
+            })
+        
+        # BASELINE SIGNALS - Normal background noise and expected transmissions
+        baseline_freqs = [
+            (144.390e6, '2m'),      # APRS frequency
+            (145.800e6, '2m'),      # Common repeater input
+            (146.940e6, '2m'),      # Repeater output
+            (432.100e6, '70cm'),    # Satellite downlink
+            (435.000e6, '70cm'),    # ISS downlink
+            (441.000e6, '70cm'),    # Common repeater
+            (902.500e6, 'ISM915'),  # Background ISM
+            (904.200e6, 'ISM915'),  # Weather station
+            (910.000e6, 'ISM915'),  # Ambient ISM
+            (924.500e6, 'ISM915'),  # TPMS sensors
+            (433.075e6, 'ISM433'),  # Weather sensors
+            (433.920e6, 'ISM433'),  # Background remote
+        ]
+        
+        for i, (freq, band) in enumerate(baseline_freqs, start=len(demo_signals)):
+            baseline_power = random.uniform(-75, -65)
+            current_power = baseline_power + random.uniform(-3, 3)  # Within normal variance
+            
+            demo_signals.append({
+                'id': i + 1,
+                'frequency_hz': freq,
+                'band': band,
+                'power_dbm': current_power,
+                'baseline_power_dbm': baseline_power,
+                'delta_db': abs(current_power - baseline_power),
+                'is_anomaly': False,
+                'is_baseline': True,
+                'recorded': False,
+                'recording_file': None,
+                'device_name': None,
+                'device_type': None,
+                'device_confidence': None,
+                'detected_at': (base_time - timedelta(minutes=random.randint(5, 180))).isoformat(),
+                'detection_count': random.randint(50, 500)  # High count = consistent baseline
             })
         
         # Generate SDR assignments (4 SDRs for DF mode)
