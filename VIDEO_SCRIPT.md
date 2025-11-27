@@ -178,3 +178,7 @@ If you want to go longer, add:
 - **RF environment troubleshooting** (why noise matters)
 - **Future roadmap** (DMR, P25, trunking, mobile app)
 
+
+
+
+

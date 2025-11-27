@@ -9,6 +9,7 @@ import argparse
 import sys
 import os
 import time
+import numpy as np
 from database import get_db
 
 def cmd_scan(args):
@@ -382,7 +383,175 @@ def cmd_test(args):
             return 1
         return 0 if test_band_scan(args.band) else 1
     
+    elif args.mode == 'df-cal':
+        return cmd_df_calibrate(args)
+    
     return 1
+
+def cmd_df_calibrate(args):
+    """Calibrate DF array"""
+    from rtlsdr import RtlSdr
+    from direction_finding.array_sync import SDRArraySync
+    import yaml
+    
+    print("="*70)
+    print("DIRECTION FINDING ARRAY CALIBRATION")
+    print("="*70)
+    
+    # Detect SDRs
+    try:
+        num_sdrs = RtlSdr.get_device_count()
+        print(f"\nDetected SDRs: {num_sdrs}")
+        
+        if num_sdrs < 2:
+            print("ERROR: Need at least 2 SDRs for DF calibration!")
+            print("Please connect multiple RTL-SDR devices.")
+            return 1
+        
+        if num_sdrs < 4:
+            print(f"WARNING: Only {num_sdrs} SDRs detected.")
+            print("For best DF performance, use 4 SDRs in a square/circular array.")
+            response = input("Continue with calibration? (y/n): ")
+            if response.lower() != 'y':
+                return 1
+    
+    except Exception as e:
+        print(f"ERROR: Could not detect SDRs: {e}")
+        return 1
+    
+    # Load hardware config
+    try:
+        with open('config/hardware.yaml', 'r') as f:
+            hw_config = yaml.safe_load(f)
+        df_config = hw_config.get('df_array', {})
+        df_config['num_elements'] = num_sdrs
+    except Exception as e:
+        print(f"WARNING: Could not load hardware.yaml: {e}")
+        df_config = {'num_elements': num_sdrs}
+    
+    # Get calibration parameters
+    cal_freq = args.freq or df_config.get('calibration', {}).get('cal_frequency_hz', 146.52e6)
+    cal_freq_mhz = cal_freq / 1e6 if cal_freq > 1e6 else cal_freq
+    cal_freq_hz = cal_freq_mhz * 1e6
+    
+    known_bearing = args.bearing
+    
+    print(f"\nCalibration Settings:")
+    print(f"  Number of SDRs: {num_sdrs}")
+    print(f"  Calibration Frequency: {cal_freq_mhz:.3f} MHz")
+    print(f"  Antenna Type: {df_config.get('antenna_type', 'omnidirectional')}")
+    print(f"  Array Spacing: {df_config.get('spacing_m', 0.5)} meters")
+    
+    if known_bearing is not None:
+        print(f"  Known Bearing: {known_bearing}°")
+        print("\n  USING KNOWN BEARING MODE:")
+        print("  Place a transmitter at the specified bearing before continuing.")
+        print("  This provides the most accurate calibration.")
+    else:
+        print("\n  USING AMBIENT NOISE MODE:")
+        print("  Calibration will use ambient RF or a broadcast signal.")
+        print("  For best results, tune to a strong local FM broadcast or")
+        print("  amateur repeater.")
+    
+    input("\nPress Enter when ready to calibrate...")
+    
+    # Initialize SDR controller (simplified for calibration)
+    class SimpleSDRController:
+        def __init__(self, num_sdrs):
+            self.sdrs = [RtlSdr(i) for i in range(num_sdrs)]
+            for sdr in self.sdrs:
+                sdr.sample_rate = 2.4e6
+                sdr.gain = 'auto'
+        
+        def set_frequency(self, freq_hz):
+            for sdr in self.sdrs:
+                sdr.center_freq = freq_hz
+        
+        def read_samples_sync(self, num_samples):
+            return [sdr.read_samples(num_samples) for sdr in self.sdrs]
+        
+        def close(self):
+            for sdr in self.sdrs:
+                sdr.close()
+    
+    try:
+        print("\nInitializing SDRs...")
+        sdr_controller = SimpleSDRController(num_sdrs)
+        
+        print("Creating array sync object...")
+        array_sync = SDRArraySync(sdr_controller, df_config)
+        
+        print(f"\nCalibrating at {cal_freq_mhz:.3f} MHz...")
+        print("This will take 10-15 seconds...")
+        
+        success = array_sync.calibrate_phase(
+            frequency_hz=cal_freq_hz,
+            num_samples=20000,
+            known_bearing=known_bearing,
+            save_to_db=True
+        )
+        
+        if success:
+            print("\n" + "="*70)
+            print("CALIBRATION SUCCESSFUL!")
+            print("="*70)
+            
+            # Get calibration from database
+            from database import get_db
+            db = get_db()
+            cal = db.get_active_df_calibration()
+            
+            if cal:
+                print(f"\nCalibration saved to database (ID: {cal['id']})")
+                print(f"  Method: {cal['calibration_method']}")
+                print(f"  Coherence: {cal['coherence_score']:.3f} (>0.7 is good)")
+                print(f"  SNR: {cal['snr_db']:.1f} dB")
+                print(f"\nPhase Offsets (radians):")
+                for i, offset in enumerate(cal['phase_offsets']):
+                    print(f"  SDR #{i}: {offset:+.4f} rad ({np.rad2deg(offset):+.1f}°)")
+                
+                # Quality assessment
+                if cal['coherence_score'] >= 0.8:
+                    print("\n✓ EXCELLENT coherence - Array is well synchronized")
+                elif cal['coherence_score'] >= 0.7:
+                    print("\n✓ GOOD coherence - Array should work well for DF")
+                else:
+                    print("\n⚠ WARNING: Low coherence - Check antenna connections and spacing")
+                
+                if cal['snr_db'] >= 15:
+                    print("✓ STRONG signal - Calibration very reliable")
+                elif cal['snr_db'] >= 10:
+                    print("✓ GOOD signal - Calibration reliable")
+                else:
+                    print("⚠ WARNING: Weak signal - Consider recalibrating with stronger source")
+            
+            print("\nThe array is now calibrated and ready for direction finding!")
+            print("Start scanning with DF enabled:")
+            print("  python reconraven.py scan --dashboard")
+            
+            return 0
+        else:
+            print("\n" + "="*70)
+            print("CALIBRATION FAILED")
+            print("="*70)
+            print("\nPossible issues:")
+            print("  - SDRs not receiving signal")
+            print("  - Antennas not connected")
+            print("  - Frequency has no signal (try FM broadcast)")
+            print("  - SDRs too close together (RF coupling)")
+            return 1
+    
+    except Exception as e:
+        print(f"\nERROR during calibration: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
+    
+    finally:
+        try:
+            sdr_controller.close()
+        except:
+            pass
 
 def main():
     """Main CLI entry point"""
@@ -420,6 +589,12 @@ Examples:
   
   # Scan band for signals
   reconraven.py test rf --band 2m
+  
+  # Calibrate DF array (auto mode)
+  reconraven.py test df-cal --freq 146.52
+  
+  # Calibrate DF array with known bearing
+  reconraven.py test df-cal --freq 146.52 --bearing 45
   
   # Setup location
   reconraven.py setup --state AL --city Huntsville
@@ -475,11 +650,12 @@ Examples:
     
     # Test command (diagnostics)
     test_parser = subparsers.add_parser('test', help='Run diagnostic tests')
-    test_parser.add_argument('mode', choices=['sdr', 'rf', 'noise', 'freq'], 
-                            help='Test mode: sdr=detect SDRs, rf=scan band, noise=check noise floor, freq=test specific frequency')
-    test_parser.add_argument('--freq', type=float, help='Frequency in MHz (for freq mode)')
+    test_parser.add_argument('mode', choices=['sdr', 'rf', 'noise', 'freq', 'df-cal'], 
+                            help='Test mode: sdr=detect SDRs, rf=scan band, noise=check noise floor, freq=test specific frequency, df-cal=calibrate DF array')
+    test_parser.add_argument('--freq', type=float, help='Frequency in MHz (for freq/df-cal mode)')
     test_parser.add_argument('--band', choices=['2m', '70cm', '433', '915'], help='Band to scan (for rf mode)')
     test_parser.add_argument('--duration', type=int, default=30, help='Test duration in seconds')
+    test_parser.add_argument('--bearing', type=float, help='Known bearing in degrees (for df-cal with reference transmitter)')
     
     args = parser.parse_args()
     

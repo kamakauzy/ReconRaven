@@ -82,11 +82,40 @@ class ReconRavenDB:
             )
         ''')
         
+        # DF Array Calibration table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS df_calibration (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                num_sdrs INTEGER NOT NULL,
+                calibration_freq_hz REAL NOT NULL,
+                reference_sdr INTEGER DEFAULT 0,
+                
+                -- Phase offsets for each SDR (JSON array)
+                phase_offsets TEXT NOT NULL,
+                
+                -- Array geometry (JSON)
+                array_geometry TEXT,
+                antenna_type TEXT DEFAULT 'omnidirectional',
+                element_spacing_m REAL DEFAULT 0.5,
+                
+                -- Calibration quality metrics
+                coherence_score REAL,
+                snr_db REAL,
+                
+                -- Metadata
+                calibration_method TEXT,
+                notes TEXT,
+                is_active BOOLEAN DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
         # Create indexes
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_signals_freq ON signals(frequency_hz)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_signals_anomaly ON signals(is_anomaly)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_signals_time ON signals(detected_at)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_baseline_freq ON baseline(frequency_hz)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_df_cal_active ON df_calibration(is_active)')
         
         self.conn.commit()
     
@@ -217,6 +246,80 @@ class ReconRavenDB:
             WHERE frequency_hz = ?
         ''', (freq,))
         self.conn.commit()
+    
+    # ========== DF CALIBRATION MANAGEMENT ==========
+    
+    def save_df_calibration(self, num_sdrs: int, calibration_freq_hz: float,
+                           phase_offsets: List[float], array_geometry: Dict = None,
+                           antenna_type: str = 'omnidirectional',
+                           element_spacing_m: float = 0.5,
+                           coherence_score: float = None, snr_db: float = None,
+                           calibration_method: str = None, notes: str = None):
+        """Save DF array calibration data"""
+        cursor = self.conn.cursor()
+        
+        # Mark all previous calibrations as inactive
+        cursor.execute('UPDATE df_calibration SET is_active = 0')
+        
+        # Insert new calibration
+        cursor.execute('''
+            INSERT INTO df_calibration 
+            (num_sdrs, calibration_freq_hz, phase_offsets, array_geometry,
+             antenna_type, element_spacing_m, coherence_score, snr_db,
+             calibration_method, notes, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        ''', (
+            num_sdrs,
+            calibration_freq_hz,
+            json.dumps(phase_offsets),
+            json.dumps(array_geometry) if array_geometry else None,
+            antenna_type,
+            element_spacing_m,
+            coherence_score,
+            snr_db,
+            calibration_method,
+            notes
+        ))
+        
+        self.conn.commit()
+        return cursor.lastrowid
+    
+    def get_active_df_calibration(self) -> Optional[Dict]:
+        """Get currently active DF calibration"""
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            SELECT * FROM df_calibration 
+            WHERE is_active = 1 
+            ORDER BY created_at DESC 
+            LIMIT 1
+        ''')
+        row = cursor.fetchone()
+        if row:
+            cal = dict(row)
+            cal['phase_offsets'] = json.loads(cal['phase_offsets'])
+            if cal['array_geometry']:
+                cal['array_geometry'] = json.loads(cal['array_geometry'])
+            return cal
+        return None
+    
+    def get_df_calibration_history(self, limit: int = 10) -> List[Dict]:
+        """Get DF calibration history"""
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            SELECT * FROM df_calibration 
+            ORDER BY created_at DESC 
+            LIMIT ?
+        ''', (limit,))
+        
+        calibrations = []
+        for row in cursor.fetchall():
+            cal = dict(row)
+            cal['phase_offsets'] = json.loads(cal['phase_offsets'])
+            if cal['array_geometry']:
+                cal['array_geometry'] = json.loads(cal['array_geometry'])
+            calibrations.append(cal)
+        
+        return calibrations
     
     # ========== RECORDINGS (SIMPLE) ==========
     

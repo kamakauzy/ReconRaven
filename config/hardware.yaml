@@ -24,11 +24,23 @@ df_array:
   spacing_m: 0.5                 # Element spacing (0.5m for UHF)
   reference_element: 0           # Reference SDR index
   
+  # Antenna configuration
+  antenna_type: "v_dipole_120deg"  # Options: "omnidirectional", "v_dipole_120deg", "dipole", "monopole"
+  antenna_notes: |
+    V-dipole 120° configuration provides:
+    - Broad frequency coverage (2m and 70cm bands)
+    - Consistent phase center for accurate DF
+    - 3D printed mount for repeatable geometry
+    - Recommendation: Use 3D printed mounts (MyMiniFactory #133341)
+  
   # Phase calibration
   calibration:
     use_noise_cal: true          # Use noise for initial phase calibration
-    cal_frequency_hz: 434000000  # Calibration frequency
+    cal_frequency_hz: 146520000  # Calibration frequency (146.52 MHz simplex)
     cal_samples: 10000           # Samples for calibration
+    auto_calibrate: true         # Auto-calibrate on first DF operation
+    min_snr_db: 10.0             # Minimum SNR for valid calibration
+    min_coherence: 0.7           # Minimum coherence score (0.0-1.0)
     
   # MUSIC algorithm parameters
   music:
@@ -43,6 +55,13 @@ df_array:
     - [0.5, 0.0]                 # Element 1
     - [0.5, 0.5]                 # Element 2
     - [0.0, 0.5]                 # Element 3
+  
+  # V-dipole specific parameters (if using V-dipole antennas)
+  v_dipole:
+    angle_deg: 120               # V-dipole included angle
+    element_length_m: 0.5        # Dipole element length (λ/4 for 146 MHz)
+    impedance_ohm: 50            # Feed impedance
+    polarization: "mixed"        # Mixed polarization for V-dipole
 
 # GPS configuration
 gps:
