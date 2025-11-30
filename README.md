@@ -72,25 +72,31 @@ ReconRaven is a dual-mode SDR platform that works as both a mobile scanning rig 
 You'll need one of these configurations:
 
 ### Mobile Mode (Backpack Recon)
-- Raspberry Pi 5 (4GB+ recommended)
+- Raspberry Pi 5 (8GB+ recommended, 16GB for touchscreen UI)
 - 1x RTL-SDR V4 
 - Dual-band antenna (Nagoya NA-771 or similar)
 - 20000mAh USB-C power bank
 - USB GPS module (optional but recommended)
-- Cost: ~$200
+- Cost: ~$220
 
-### Mobile Multi Mode (Faster Scanning)
-- Same as mobile but with 2-4 SDRs
-- Scans multiple bands in parallel
-- Cost: ~$300-400
+### Touchscreen Portable System
+- Raspberry Pi 5 (16GB required for GUI + 4 SDRs)
+- Official 7" touchscreen display (800x480)
+- SmartiPi Touch 2 case (integrates Pi + display)
+- 4x RTL-SDR V4 dongles
+- 4x Nagoya NA-771 antennas
+- RSHTECH 4-port powered USB hub
+- VK-162 USB GPS dongle
+- 256GB microSD (A2 speed class)
+- High-capacity power bank (25,000mAh+)
+- Cost: ~$620
 
 ### Direction Finding Mode (Stationary)
-- Everything from mobile mode
-- 3 additional RTL-SDR V4 dongles (4 total)
-- 4x matched antennas
-- 28.8MHz clock sync kit
-- Tripod or mount for array
-- Cost: ~$670 all-in
+- Touchscreen portable system (above)
+- V-dipole antenna mounts (3D printed)
+- 0.5m square array frame
+- DF calibration (MUSIC algorithm built-in)
+- Cost: ~$650 (with 3D printed antennas)
 
 **Full parts list with links in the Hardware section below.**
 
@@ -542,39 +548,42 @@ python reconraven.py db import
 
 ## Hardware Details
 
-### Recommended Build (Full Capability)
+### Recommended Build (Portable Touchscreen SIGINT Platform)
 
 | Part | Qty | Price | Notes |
 |------|-----|-------|-------|
-| Raspberry Pi 5 (4GB) with case & cooler | 1 | $85 | iRasptek kit recommended |
-| RTL-SDR Blog V4 | 4 | $39 ea | $156 total for 4 |
-| Nagoya NA-771 antenna | 4 | $21 ea | $84 total, get authentic |
-| Anker 7-port USB 3.0 hub (powered) | 1 | $40 | Prevents power issues |
-| GPS Module (NEO-6M) | 1 | $11 | For geo-tagging |
-| SanDisk 64GB microSD | 1 | $15 | Fast card recommended |
-| Anker PowerCore 20000 PD | 1 | $45 | 8+ hour runtime |
-| 28.8MHz clock sync kit | 1 | $25 | For DF mode (optional) |
-| **Total** | | **~$670** | Full DF-capable system |
+| Raspberry Pi 5 (16GB) | 1 | $132 | 16GB for GUI + 4 SDRs |
+| Official 7" Touchscreen | 1 | $83 | 800x480 capacitive touch |
+| SmartiPi Touch 2 Case | 1 | $43 | Integrates Pi + display |
+| CanaKit 45W USB-C PSU | 1 | $16 | Powers Pi + display |
+| RTL-SDR Blog V4 | 4 | $40 ea | $160 total for 4 SDRs |
+| Nagoya NA-771 antenna | 4 | $21 ea | $84 total, dual-band |
+| RSHTECH 4-Port Powered Hub | 1 | $18 | 5V/4A for SDRs |
+| USB to Barrel Cable (2pk) | 1 | $5 | Hub battery power |
+| VK-162 USB GPS Dongle | 1 | $25 | Geo-tagging + timing |
+| 256GB microSD (A2) | 1 | $25 | OS + recordings |
+| Power bank (20K+ mAh) | 1 | $30 | 2-4hr field runtime |
+| **Total** | | **~$621** | Complete portable system |
 
-### Budget Build (Mobile Only)
+### Budget Build (Mobile Single-SDR)
 
 | Part | Qty | Price |
 |------|-----|-------|
-| Raspberry Pi 5 kit | 1 | $85 |
-| RTL-SDR Blog V4 | 1 | $39 |
+| Raspberry Pi 5 (8GB) | 1 | $80 |
+| RTL-SDR Blog V4 | 1 | $40 |
 | Nagoya NA-771 | 1 | $21 |
-| USB hub | 1 | $20 |
-| GPS module | 1 | $11 |
-| MicroSD card | 1 | $15 |
+| USB GPS dongle | 1 | $25 |
+| MicroSD card | 1 | $25 |
 | Power bank | 1 | $30 |
-| **Total** | | **~$220** |
+| **Total** | | **~$221** |
 
 ### Assembly Notes
 
 - **Mobile build:** 30 minutes. Plug stuff in, install software, done.
-- **DF array:** Add 1 hour for clock sync soldering and array mounting.
-- **Clock sync:** Requires basic soldering. Tutorials available online (KerberosSDR method works).
-- **Array geometry:** 0.5m spacing in circular or linear array. Calibrate with known source.
+- **Touchscreen portable:** 2 hours assembly + software setup. Integrated case with Pi 5, display, GPS, and 4 SDRs.
+- **DF array:** Add 1 hour for antenna mounting and calibration. No clock sync needed (software phase correction).
+- **Array geometry:** 0.5m spacing recommended. 3D print V-dipole mounts or use omnidirectional antennas.
+- **GPS:** USB GPS dongle plugs into Pi's native USB port (not hub). Works with SmartiPi case.
 
 ---
 

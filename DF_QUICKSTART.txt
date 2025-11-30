@@ -1,0 +1,149 @@
+DIRECTION FINDING (DF) ARRAY - QUICK START GUIDE
+================================================
+
+WHAT'S NEW:
+----------
+ReconRaven now supports multi-SDR Direction Finding using the MUSIC algorithm!
+
+THE 3D PRINTED V-DIPOLE FITS PERFECTLY:
+---------------------------------------
+- 120deg V-dipole design provides optimal phase characteristics
+- Works across 2m (144-148 MHz) and 70cm (420-450 MHz) bands
+- 3D print 4 mounts: https://www.myminifactory.com/object/3d-print-120-degree-v-dipole-guide-133341
+- Mount on 0.5m square array for best results
+
+HARDWARE NEEDED:
+---------------
+- 4x RTL-SDR V4 dongles
+- 4x V-dipole antennas (3D printed mounts)
+- Powered USB hub
+- Array frame (PVC/wood, 0.5m spacing)
+
+QUICK SETUP:
+-----------
+1. Build array frame with 0.5m spacing (square configuration)
+2. Mount 4 V-dipole antennas
+3. Connect 4 SDRs (label them #0, #1, #2, #3)
+4. Plug into powered USB hub
+
+CALIBRATION:
+-----------
+OPTION 1: With Known Bearing (Most Accurate)
+  - Place transmitter 50-100m away at known compass bearing
+  - Run: python reconraven.py test df-cal --freq 146.52 --bearing 45
+  - Replace 45 with actual bearing in degrees
+
+OPTION 2: Ambient Noise (Convenient)
+  - Tune to strong local FM/repeater
+  - Run: python reconraven.py test df-cal --freq 146.52
+
+WHAT TO EXPECT:
+--------------
+Calibration output shows:
+  - Phase offsets for each SDR (radians)
+  - Coherence score (>0.7 is good, >0.8 excellent)
+  - SNR (>10 dB acceptable, >15 dB excellent)
+
+USING DF MODE:
+-------------
+Once calibrated, start scanning:
+  python reconraven.py scan --dashboard
+
+Dashboard will show:
+  - Compass with bearing arrows
+  - Frequency of detected signals
+  - Confidence score for each bearing
+  - Recent bearings list
+
+EXPECTED ACCURACY:
+-----------------
+With proper calibration:
+  - Bearing error: +/-5deg typical
+  - Range: 360deg azimuth coverage
+  - Confidence: 0.7-0.95 for strong signals
+
+TROUBLESHOOTING:
+---------------
+Low coherence (<0.7)?
+  -> Check all RF connections
+  -> Ensure antennas are identical
+  -> Verify spacing is accurate
+
+Bearings off by ~90deg?
+  -> Check array orientation in config/hardware.yaml
+  -> Verify element positions
+
+180deg ambiguity?
+  -> Use square array instead of linear
+
+FULL DOCUMENTATION:
+------------------
+See docs/DF_SETUP_GUIDE.md for complete details:
+  - Array geometry options
+  - Element spacing calculations
+  - Calibration methods
+  - Troubleshooting guide
+  - Triangulation techniques
+
+CONFIGURATION:
+-------------
+Edit config/hardware.yaml to customize:
+  - Array geometry (square/circular/linear)
+  - Element positions
+  - Antenna type
+  - Calibration parameters
+
+COMMANDS:
+--------
+Detect SDRs:        python reconraven.py test sdr
+Calibrate array:    python reconraven.py test df-cal --freq 146.52
+View calibrations:  python reconraven.py db stats
+Start scanning:     python reconraven.py scan --dashboard
+
+EXAMPLE OUTPUT:
+--------------
+$ python reconraven.py test df-cal --freq 146.52 --bearing 45
+
+Detected SDRs: 4
+Calibration Frequency: 146.520 MHz
+Known Bearing: 45deg
+
+Calibrating at 146.520 MHz...
+This will take 10-15 seconds...
+
+CALIBRATION SUCCESSFUL!
+Method: Cross-correlation with known bearing 45deg
+Coherence: 0.87 (>0.7 is good)
+SNR: 23.4 dB
+
+Phase Offsets (radians):
+  SDR #0: +0.0000 rad (+0.0deg)   [Reference]
+  SDR #1: -0.2341 rad (-13.4deg)
+  SDR #2: +0.1532 rad (+8.8deg)
+  SDR #3: -0.0921 rad (-5.3deg)
+
+[EXCELLENT] coherence - Array is well synchronized
+[STRONG] signal - Calibration very reliable
+
+The array is now calibrated and ready for direction finding!
+
+WHY IT MATTERS:
+--------------
+With DF capability, you can:
+  [OK] Locate rogue transmitters
+  [OK] Track drone control links
+  [OK] Find interference sources
+  [OK] Hunt for specific signals
+  [OK] Map RF environment
+  [OK] Triangulate signal sources
+
+NEXT STEPS:
+----------
+1. Print 4x V-dipole mounts
+2. Assemble array frame
+3. Run calibration
+4. Start scanning with DF enabled
+5. Watch bearings appear on dashboard!
+
+Questions? See docs/DF_SETUP_GUIDE.md
+
