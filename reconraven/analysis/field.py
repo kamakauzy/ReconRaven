@@ -33,8 +33,8 @@ class FieldAnalyzer:
         try:
             with open('device_signatures.json') as f:
                 return json.load(f)
-        except:
-            logger.info('Warning: Could not load device_signatures.json')
+        except Exception as e:
+            logger.info(f'Warning: Could not load device_signatures.json: {e}')
             return {}
 
     def analyze_signal(self, npy_file):

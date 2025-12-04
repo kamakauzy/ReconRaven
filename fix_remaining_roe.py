@@ -182,18 +182,18 @@ def main():
         # Fix datetime issues
         if 'DTZ005' in str(violations[file_path]) and fix_datetime_utc(file_path):
             changes_made = True
-            print(f"✓ Fixed datetime in {file_path}")
+            print(f"Fixed datetime in {file_path}")
 
         # Fix pathlib issues
         if any(x in str(violations[file_path]) for x in ['PTH', 'os.path', 'os.makedirs', 'os.remove']):
             if fix_pathlib_operations(file_path):
                 changes_made = True
-                print(f"✓ Fixed pathlib in {file_path}")
+                print(f"Fixed pathlib in {file_path}")
 
         # Fix verbose logging
         if 'TRY401' in str(violations[file_path]) and fix_verbose_logging(file_path):
             changes_made = True
-            print(f"✓ Fixed logging in {file_path}")
+            print(f"Fixed logging in {file_path}")
 
         if changes_made:
             fixed_files.append(file_path)

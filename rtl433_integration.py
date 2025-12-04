@@ -26,7 +26,7 @@ class RTL433Integration:
                 [self.rtl433_path, '-h'], capture_output=True, timeout=5, check=False
             )
             return result.returncode == 0
-        except:
+        except Exception:
             return False
 
     def convert_npy_to_cu8(self, npy_file, cu8_file):
@@ -93,7 +93,7 @@ class RTL433Integration:
                     try:
                         device = json.loads(line)
                         devices.append(device)
-                    except:
+                    except Exception:
                         pass
 
             # Clean up .cu8 file

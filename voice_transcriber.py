@@ -140,7 +140,8 @@ class VoiceTranscriber:
                 frames = wav.getnframes()
                 rate = wav.getframerate()
                 return frames / float(rate)
-        except:
+        except Exception as e:
+            logger.warning(f"Could not get audio duration: {e}")
             return 0.0
 
     def _calculate_confidence(self, result: dict) -> float:
@@ -160,7 +161,8 @@ class VoiceTranscriber:
                     confidences.append(conf)
 
             return sum(confidences) / len(confidences) if confidences else 0.8
-        except:
+        except Exception as e:
+            logger.warning(f"Could not calculate confidence: {e}")
             return 0.8  # Default confidence
 
     def search_transcripts(
