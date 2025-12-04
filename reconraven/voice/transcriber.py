@@ -40,7 +40,7 @@ class VoiceTranscriber(DebugHelper):
             import whisper
 
             self.whisper = whisper
-            self.log_info(f'Whisper installed, using model: {self.model_size}')
+            print(f'Whisper installed, using model: {self.model_size}')
         except ImportError:
             self.log_warning('Whisper not installed. Install with: pip install openai-whisper')
             self.whisper = None
@@ -48,9 +48,9 @@ class VoiceTranscriber(DebugHelper):
     def _load_model(self):
         """Lazy load Whisper model (only when needed)"""
         if self.model is None and self.whisper:
-            self.log_info(f'Loading Whisper {self.model_size} model...')
+            print(f'Loading Whisper {self.model_size} model...')
             self.model = self.whisper.load_model(self.model_size)
-            self.log_info('Model loaded successfully')
+            print('Model loaded successfully')
 
     def transcribe_file(self, audio_file: str, language: Optional[str] = None) -> Dict:
         """Transcribe an audio file
@@ -77,7 +77,7 @@ class VoiceTranscriber(DebugHelper):
         try:
             self._load_model()
 
-            self.log_info(f'Transcribing: {audio_file}')
+            print(f'Transcribing: {audio_file}')
 
             # Transcribe with Whisper
             result = self.model.transcribe(
@@ -102,12 +102,12 @@ class VoiceTranscriber(DebugHelper):
                 'transcribed_at': datetime.now().isoformat(),
             }
 
-            self.log_info(f"Transcription complete: '{transcript['text'][:100]}...'")
+            print(f"Transcription complete: '{transcript['text'][:100]}...'")
 
             return transcript
 
         except Exception as e:
-            self.log_error(f'Transcription error: {e}')
+            print(f'Transcription error: {e}')
             return {'error': str(e)}
 
     def transcribe_batch(
@@ -255,7 +255,7 @@ class VoiceTranscriber(DebugHelper):
                         ]
                     )
 
-        self.log_info(f'Exported {len(transcripts)} transcripts to {output_file}')
+        print(f'Exported {len(transcripts)} transcripts to {output_file}')
 
     def _format_timestamp(self, seconds: float) -> str:
         """Format timestamp for SRT (HH:MM:SS,mmm)"""
@@ -300,23 +300,23 @@ if __name__ == '__main__':
 
     if args.file:
         # Single file transcription
-        self.log_info(f'\nTranscribing: {args.file}')
+        print(f'\nTranscribing: {args.file}')
         result = transcriber.transcribe_file(args.file, language=args.language)
 
         if 'error' in result:
-            self.log_error(f"Error: {result['error']}")
+            print(f"Error: {result['error']}")
         else:
-            self.log_info(f"\n{'='*70}")
-            self.log_info('TRANSCRIPTION')
-            self.log_info(f"{'='*70}")
-            self.log_info(f"Language: {result['language']}")
-            self.log_info(f"Duration: {result['duration']:.1f}s")
-            self.log_info(f"Confidence: {result['confidence']*100:.1f}%")
-            self.log_info(f"\n{result['text']}\n")
+            print(f"\n{'='*70}")
+            print('TRANSCRIPTION')
+            print(f"{'='*70}")
+            print(f"Language: {result['language']}")
+            print(f"Duration: {result['duration']:.1f}s")
+            print(f"Confidence: {result['confidence']*100:.1f}%")
+            print(f"\n{result['text']}\n")
 
             if args.output:
                 transcriber.export_transcripts([result], args.output, format=args.format)
-                self.log_info(f'Saved to: {args.output}')
+                print(f'Saved to: {args.output}')
 
     elif args.batch:
         # Batch transcription
@@ -324,25 +324,25 @@ if __name__ == '__main__':
 
         audio_files = glob.glob(os.path.join(args.batch, '*.wav'))
 
-        self.log_info(f'\nFound {len(audio_files)} audio files')
-        self.log_info(f'Using model: {args.model}')
-        self.log_debug('Starting batch transcription...\n')
+        print(f'\nFound {len(audio_files)} audio files')
+        print(f'Using model: {args.model}')
+        print('Starting batch transcription...\n')
 
         def progress(current, total, filename):
-            self.log_info(f'[{current}/{total}] {os.path.basename(filename)}')
+            print(f'[{current}/{total}] {os.path.basename(filename)}')
 
         results = transcriber.transcribe_batch(audio_files, progress_callback=progress)
 
         # Count successful transcriptions
         successful = sum(1 for r in results.values() if 'error' not in r)
-        self.log_info(f'\nCompleted: {successful}/{len(results)} successful')
+        print(f'\nCompleted: {successful}/{len(results)} successful')
 
         if args.output:
             transcripts_list = [
                 {**v, 'filename': k} for k, v in results.items() if 'error' not in v
             ]
             transcriber.export_transcripts(transcripts_list, args.output, format=args.format)
-            self.log_info(f'Saved to: {args.output}')
+            print(f'Saved to: {args.output}')
 
     else:
         parser.print_help()

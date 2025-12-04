@@ -12,6 +12,9 @@ import numpy as np
 
 from reconraven.core.debug_helper import DebugHelper
 
+# Module-level logger for standalone functions
+logger = logging.getLogger(__name__)
+
 
 try:
     from rtlsdr import RtlSdr
@@ -19,7 +22,7 @@ try:
     RTLSDR_AVAILABLE = True
 except ImportError:
     RTLSDR_AVAILABLE = False
-    logging.warning('pyrtlsdr not available - running in simulation mode')
+    logger.warning('pyrtlsdr not available - running in simulation mode')
 
 
 class OperatingMode(Enum):
@@ -41,7 +44,7 @@ def detect_sdr_devices() -> int:
         Number of RTL-SDR devices found
     """
     if not RTLSDR_AVAILABLE:
-        self.log_warning('RTL-SDR library not available, returning 0 devices')
+        logger.warning('RTL-SDR library not available, returning 0 devices')
         return 0
 
     try:
@@ -64,12 +67,12 @@ def detect_sdr_devices() -> int:
                         except ValueError:
                             pass
 
-        self.log_info(f'Detected {count} RTL-SDR device(s)')
+        logger.info(f'Detected {count} RTL-SDR device(s)')
         return count
 
     except FileNotFoundError:
         # rtl_test not found, try pyrtlsdr detection
-        self.log_warning('rtl_test not found, using pyrtlsdr detection')
+        logger.warning('rtl_test not found, using pyrtlsdr detection')
         try:
             # Try to enumerate devices
             count = 0
@@ -81,18 +84,18 @@ def detect_sdr_devices() -> int:
                 except Exception:
                     break
 
-            self.log_info(f'Detected {count} RTL-SDR device(s) via pyrtlsdr')
+            logger.info(f'Detected {count} RTL-SDR device(s) via pyrtlsdr')
             return count
 
         except Exception as e:
-            self.log_error(f'Error detecting SDR devices: {e}')
+            logger.error(f'Error detecting SDR devices: {e}')
             return 0
 
     except subprocess.TimeoutExpired:
-        self.log_error('Timeout detecting SDR devices')
+        logger.error('Timeout detecting SDR devices')
         return 0
     except Exception as e:
-        self.log_error(f'Error detecting SDR devices: {e}')
+        logger.error(f'Error detecting SDR devices: {e}')
         return 0
 
 
@@ -105,15 +108,15 @@ def detect_sdr_mode() -> OperatingMode:
     num_devices = detect_sdr_devices()
 
     if num_devices == 0:
-        self.log_warning('No SDR devices detected')
+        logger.warning('No SDR devices detected')
         return OperatingMode.UNKNOWN
     if num_devices == 1:
-        self.log_info('Single SDR detected - MOBILE mode')
+        logger.info('Single SDR detected - MOBILE mode')
         return OperatingMode.MOBILE
     if num_devices >= 4:
-        self.log_info(f'{num_devices} SDRs detected - PARALLEL_SCAN mode (DF available)')
+        logger.info(f'{num_devices} SDRs detected - PARALLEL_SCAN mode (DF available)')
         return OperatingMode.PARALLEL_SCAN
-    self.log_warning(
+    logger.warning(
         f'{num_devices} SDRs detected - insufficient for parallel/DF (need 4), using MOBILE mode'
     )
     return OperatingMode.MOBILE

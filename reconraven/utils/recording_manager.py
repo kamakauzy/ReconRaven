@@ -210,7 +210,7 @@ def cleanup_old_recordings(db, days_old=7):
                 saved_mb += size_mb
                 cleaned += 1
 
-    self.log_info(f'[Bulk Cleanup] Deleted {cleaned} old recordings, saved {saved_mb:.1f}MB')
+    print(f'[Bulk Cleanup] Deleted {cleaned} old recordings, saved {saved_mb:.1f}MB')
     return cleaned, saved_mb
 
 
@@ -221,4 +221,4 @@ if __name__ == '__main__':
 
     # Run bulk cleanup
     cleaned, saved = cleanup_old_recordings(db, days_old=7)
-    self.log_info(f'\nTotal: {cleaned} files, {saved:.1f}MB freed')
+    print(f'\nTotal: {cleaned} files, {saved:.1f}MB freed')

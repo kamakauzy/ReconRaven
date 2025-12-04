@@ -185,14 +185,14 @@ if __name__ == '__main__':
         (121.5e6, 'Aviation emergency'),
     ]
 
-    self.log_info('\n' + '=' * 70)
-    self.log_info('VOICE SIGNAL DETECTION TEST')
-    self.log_info('=' * 70)
+    print('\n' + '=' * 70)
+    print('VOICE SIGNAL DETECTION TEST')
+    print('=' * 70)
 
     for freq_hz, description in test_frequencies:
         should_monitor = detector.should_monitor_for_voice(freq_hz)
         mode = detector.get_optimal_voice_mode(freq_hz)
 
-        self.log_info(f'\n{freq_hz/1e6:.4f} MHz - {description}')
-        self.log_info(f"  Monitor for voice: {'YES' if should_monitor else 'NO'}")
-        self.log_info(f'  Optimal mode: {mode}')
+        print(f'\n{freq_hz/1e6:.4f} MHz - {description}')
+        print(f"  Monitor for voice: {'YES' if should_monitor else 'NO'}")
+        print(f'  Optimal mode: {mode}')
