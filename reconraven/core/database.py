@@ -6,7 +6,7 @@ All data in minimal tables, complexity moved to frontend
 
 import json
 import sqlite3
-from typing import Dict, List, Optional
+from typing import Optional
 
 
 class ReconRavenDB:
@@ -30,27 +30,27 @@ class ReconRavenDB:
                 frequency_hz REAL NOT NULL,
                 band TEXT NOT NULL,
                 power_dbm REAL NOT NULL,
-                
+
                 -- Baseline comparison
                 baseline_power_dbm REAL,
                 delta_db REAL,
                 is_anomaly BOOLEAN DEFAULT 1,
                 is_baseline BOOLEAN DEFAULT 0,
-                
+
                 -- Recording info (if recorded)
                 recording_file TEXT,
-                
+
                 -- Device identification (if identified)
                 device_name TEXT,
                 device_type TEXT,
                 manufacturer TEXT,
-                
+
                 -- Analysis results (if analyzed)
                 modulation TEXT,
                 bit_rate INTEGER,
                 confidence REAL,
                 analysis_data TEXT,
-                
+
                 -- Timestamps
                 detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -88,19 +88,19 @@ class ReconRavenDB:
                 num_sdrs INTEGER NOT NULL,
                 calibration_freq_hz REAL NOT NULL,
                 reference_sdr INTEGER DEFAULT 0,
-                
+
                 -- Phase offsets for each SDR (JSON array)
                 phase_offsets TEXT NOT NULL,
-                
+
                 -- Array geometry (JSON)
                 array_geometry TEXT,
                 antenna_type TEXT DEFAULT 'omnidirectional',
                 element_spacing_m REAL DEFAULT 0.5,
-                
+
                 -- Calibration quality metrics
                 coherence_score REAL,
                 snr_db REAL,
-                
+
                 -- Metadata
                 calibration_method TEXT,
                 notes TEXT,
@@ -136,7 +136,7 @@ class ReconRavenDB:
         )
         self.conn.commit()
 
-    def get_baseline(self, freq: float = None) -> Optional[Dict]:
+    def get_baseline(self, freq: Optional[float] = None) -> Optional[dict]:
         """Get baseline for a frequency, or all baselines if freq is None"""
         cursor = self.conn.cursor()
         if freq is not None:
@@ -147,7 +147,7 @@ class ReconRavenDB:
         cursor.execute('SELECT * FROM baseline ORDER BY frequency_hz')
         return [dict(row) for row in cursor.fetchall()]
 
-    def get_all_baseline(self) -> List[Dict]:
+    def get_all_baseline(self) -> list[dict]:
         """Get all baseline frequencies"""
         cursor = self.conn.cursor()
         cursor.execute('SELECT * FROM baseline ORDER BY frequency_hz')
@@ -160,9 +160,9 @@ class ReconRavenDB:
         freq: float,
         band: str,
         power: float,
-        baseline_power: float = None,
+        baseline_power: Optional[float] = None,
         is_anomaly: bool = True,
-        recording_file: str = None,
+        recording_file: Optional[str] = None,
         **kwargs,
     ) -> int:
         """Add a detected signal (flat, simple insert)"""
@@ -177,7 +177,7 @@ class ReconRavenDB:
             """
             INSERT INTO signals (
                 frequency_hz, band, power_dbm, baseline_power_dbm, delta_db,
-                is_anomaly, recording_file, device_name, device_type, 
+                is_anomaly, recording_file, device_name, device_type,
                 manufacturer, modulation, bit_rate, confidence
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
@@ -201,41 +201,41 @@ class ReconRavenDB:
         self.conn.commit()
         return cursor.lastrowid
 
-    def get_all_signals(self, limit: int = 1000) -> List[Dict]:
+    def get_all_signals(self, limit: int = 1000) -> list[dict]:
         """Get ALL signals (let frontend filter)"""
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            SELECT * FROM signals 
-            ORDER BY detected_at DESC 
+            SELECT * FROM signals
+            ORDER BY detected_at DESC
             LIMIT ?
         """,
             (limit,),
         )
         return [dict(row) for row in cursor.fetchall()]
 
-    def get_anomalies(self, limit: int = 100) -> List[Dict]:
+    def get_anomalies(self, limit: int = 100) -> list[dict]:
         """Get signals marked as anomalies"""
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            SELECT * FROM signals 
+            SELECT * FROM signals
             WHERE is_anomaly = 1 AND is_baseline = 0
-            ORDER BY detected_at DESC 
+            ORDER BY detected_at DESC
             LIMIT ?
         """,
             (limit,),
         )
         return [dict(row) for row in cursor.fetchall()]
 
-    def get_identified_signals(self, limit: int = 100) -> List[Dict]:
+    def get_identified_signals(self, limit: int = 100) -> list[dict]:
         """Get signals that have been identified (have device info)"""
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            SELECT * FROM signals 
+            SELECT * FROM signals
             WHERE device_name IS NOT NULL
-            ORDER BY detected_at DESC 
+            ORDER BY detected_at DESC
             LIMIT ?
         """,
             (limit,),
@@ -243,13 +243,13 @@ class ReconRavenDB:
         return [dict(row) for row in cursor.fetchall()]
 
     def update_signal_device(
-        self, signal_id: int, device_name: str, device_type: str = None, manufacturer: str = None
+        self, signal_id: int, device_name: str, device_type: Optional[str] = None, manufacturer: Optional[str] = None
     ):
         """Add device identification to a signal"""
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            UPDATE signals 
+            UPDATE signals
             SET device_name = ?, device_type = ?, manufacturer = ?
             WHERE id = ?
         """,
@@ -260,16 +260,16 @@ class ReconRavenDB:
     def update_signal_analysis(
         self,
         signal_id: int,
-        modulation: str = None,
-        bit_rate: int = None,
-        confidence: float = None,
-        analysis_data: str = None,
+        modulation: Optional[str] = None,
+        bit_rate: Optional[int] = None,
+        confidence: Optional[float] = None,
+        analysis_data: Optional[str] = None,
     ):
         """Add analysis results to a signal"""
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            UPDATE signals 
+            UPDATE signals
             SET modulation = ?, bit_rate = ?, confidence = ?, analysis_data = ?
             WHERE id = ?
         """,
@@ -283,7 +283,7 @@ class ReconRavenDB:
         # Mark all signals at this frequency as baseline
         cursor.execute(
             """
-            UPDATE signals 
+            UPDATE signals
             SET is_baseline = 1, is_anomaly = 0
             WHERE frequency_hz = ?
         """,
@@ -297,14 +297,14 @@ class ReconRavenDB:
         self,
         num_sdrs: int,
         calibration_freq_hz: float,
-        phase_offsets: List[float],
-        array_geometry: Dict = None,
+        phase_offsets: list[float],
+        array_geometry: Optional[dict] = None,
         antenna_type: str = 'omnidirectional',
         element_spacing_m: float = 0.5,
-        coherence_score: float = None,
-        snr_db: float = None,
-        calibration_method: str = None,
-        notes: str = None,
+        coherence_score: Optional[float] = None,
+        snr_db: Optional[float] = None,
+        calibration_method: Optional[str] = None,
+        notes: Optional[str] = None,
     ):
         """Save DF array calibration data"""
         cursor = self.conn.cursor()
@@ -315,7 +315,7 @@ class ReconRavenDB:
         # Insert new calibration
         cursor.execute(
             """
-            INSERT INTO df_calibration 
+            INSERT INTO df_calibration
             (num_sdrs, calibration_freq_hz, phase_offsets, array_geometry,
              antenna_type, element_spacing_m, coherence_score, snr_db,
              calibration_method, notes, is_active)
@@ -338,13 +338,13 @@ class ReconRavenDB:
         self.conn.commit()
         return cursor.lastrowid
 
-    def get_active_df_calibration(self) -> Optional[Dict]:
+    def get_active_df_calibration(self) -> Optional[dict]:
         """Get currently active DF calibration"""
         cursor = self.conn.cursor()
         cursor.execute("""
-            SELECT * FROM df_calibration 
-            WHERE is_active = 1 
-            ORDER BY created_at DESC 
+            SELECT * FROM df_calibration
+            WHERE is_active = 1
+            ORDER BY created_at DESC
             LIMIT 1
         """)
         row = cursor.fetchone()
@@ -356,13 +356,13 @@ class ReconRavenDB:
             return cal
         return None
 
-    def get_df_calibration_history(self, limit: int = 10) -> List[Dict]:
+    def get_df_calibration_history(self, limit: int = 10) -> list[dict]:
         """Get DF calibration history"""
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            SELECT * FROM df_calibration 
-            ORDER BY created_at DESC 
+            SELECT * FROM df_calibration
+            ORDER BY created_at DESC
             LIMIT ?
         """,
             (limit,),
@@ -380,7 +380,7 @@ class ReconRavenDB:
 
     # ========== RECORDINGS (SIMPLE) ==========
 
-    def add_recording(self, filename: str, freq: float, band: str, signal_id: int = None):
+    def add_recording(self, filename: str, freq: float, band: str, signal_id: Optional[int] = None):
         """Add recording metadata"""
         cursor = self.conn.cursor()
         try:
@@ -397,13 +397,13 @@ class ReconRavenDB:
             # Recording already exists
             return None
 
-    def get_recordings(self, limit: int = 100) -> List[Dict]:
+    def get_recordings(self, limit: int = 100) -> list[dict]:
         """Get all recordings"""
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            SELECT * FROM recordings 
-            ORDER BY created_at DESC 
+            SELECT * FROM recordings
+            ORDER BY created_at DESC
             LIMIT ?
         """,
             (limit,),
@@ -412,7 +412,7 @@ class ReconRavenDB:
 
     # ========== STATISTICS (SIMPLE COUNTS) ==========
 
-    def get_statistics(self) -> Dict[str, int]:
+    def get_statistics(self) -> dict[str, int]:
         """Get simple statistics"""
         cursor = self.conn.cursor()
 
@@ -446,11 +446,11 @@ class ReconRavenDB:
 
     # ========== LEGACY COMPATIBILITY ==========
 
-    def get_devices(self) -> List[Dict]:
+    def get_devices(self) -> list[dict]:
         """Get unique identified devices (for backwards compat)"""
         cursor = self.conn.cursor()
         cursor.execute("""
-            SELECT 
+            SELECT
                 frequency_hz,
                 device_name as name,
                 device_type,
@@ -467,7 +467,7 @@ class ReconRavenDB:
         """)
         return [dict(row) for row in cursor.fetchall()]
 
-    def get_all_transcripts(self) -> List[Dict]:
+    def get_all_transcripts(self) -> list[dict]:
         """Get all transcripts (stub for compatibility)"""
         # Transcripts not supported in simplified schema yet
         return []

@@ -25,7 +25,7 @@ class DigitalMode(Enum):
 class DigitalDemodulator(DebugHelper):
     """Demodulates digital signals using DSD."""
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: Optional[dict] = None):
         super().__init__(component_name='DigitalDemodulator')
         self.debug_enabled = True
         """Initialize digital demodulator."""
@@ -131,7 +131,7 @@ class DigitalDemodulator(DebugHelper):
                 try:
                     process.terminate()
                     process.wait(timeout=5)
-                except:
+                except Exception:
                     process.kill()
 
         self.dsd_process = None

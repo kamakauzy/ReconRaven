@@ -3,14 +3,14 @@ Bearing Map Visualization Module
 Creates compass plots showing signal bearings.
 """
 
-import matplotlib
+import matplotlib as mpl
 import numpy as np
 
 
-matplotlib.use('Agg')  # Non-interactive backend
+mpl.use('Agg')  # Non-interactive backend
 import base64
 import io
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import matplotlib.pyplot as plt
 
@@ -18,14 +18,14 @@ import matplotlib.pyplot as plt
 class BearingMapper:
     """Creates visual representations of signal bearings."""
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: Optional[dict] = None):
         """Initialize bearing mapper."""
         self.config = config or {}
         self.figure_size = (8, 8)
 
     def create_compass_plot(
         self,
-        bearings: List[Dict[str, Any]],
+        bearings: list[dict[str, Any]],
         title: str = 'Signal Bearings',
         save_path: Optional[str] = None,
     ) -> Optional[str]:
@@ -40,7 +40,7 @@ class BearingMapper:
             Path to saved figure or base64 encoded image
         """
         try:
-            fig, ax = plt.subplots(figsize=self.figure_size, subplot_kw=dict(projection='polar'))
+            fig, ax = plt.subplots(figsize=self.figure_size, subplot_kw={'projection': 'polar'})
 
             # Set up polar plot (0° = North, clockwise)
             ax.set_theta_zero_location('N')
@@ -79,7 +79,7 @@ class BearingMapper:
                     ha='center',
                     va='center',
                     fontsize=9,
-                    bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.7),
+                    bbox={'boxstyle': 'round', 'facecolor': 'wheat', 'alpha': 0.7},
                 )
 
             # Customize plot
@@ -163,7 +163,7 @@ class BearingMapper:
     def create_waterfall(
         self,
         data: np.ndarray,
-        extent: List[float],
+        extent: list[float],
         title: str = 'Waterfall',
         save_path: Optional[str] = None,
     ) -> Optional[str]:

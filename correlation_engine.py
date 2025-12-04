@@ -6,7 +6,6 @@ Detects temporal relationships, patterns, and behavioral profiles
 
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, List
 
 import numpy as np
 
@@ -21,7 +20,7 @@ class CorrelationEngine:
 
     # ========== TEMPORAL CORRELATION ==========
 
-    def find_temporal_correlations(self, time_window_seconds: int = 10) -> List[Dict]:
+    def find_temporal_correlations(self, time_window_seconds: int = 10) -> list[dict]:
         """Find signals that occur together within a time window
 
         Args:
@@ -35,7 +34,7 @@ class CorrelationEngine:
         # Get all signal detections with timestamps
         cursor.execute(
             """
-            SELECT 
+            SELECT
                 s1.frequency_hz as freq1,
                 s2.frequency_hz as freq2,
                 s1.detected_at as time1,
@@ -88,7 +87,7 @@ class CorrelationEngine:
         results.sort(key=lambda x: x['confidence'], reverse=True)
         return results
 
-    def find_sequential_patterns(self, max_sequence_length: int = 5) -> List[Dict]:
+    def find_sequential_patterns(self, max_sequence_length: int = 5) -> list[dict]:
         """Find repeated sequences of signals (A→B→C→...)
 
         Args:
@@ -147,7 +146,7 @@ class CorrelationEngine:
 
     # ========== BEHAVIORAL PROFILING ==========
 
-    def get_device_behavior_profile(self, frequency_hz: float) -> Dict:
+    def get_device_behavior_profile(self, frequency_hz: float) -> dict:
         """Build a behavioral profile for a specific frequency
 
         Returns:
@@ -158,7 +157,7 @@ class CorrelationEngine:
         # Get all detections for this frequency
         cursor.execute(
             """
-            SELECT 
+            SELECT
                 detected_at,
                 power_dbm,
                 delta_db
@@ -270,7 +269,7 @@ class CorrelationEngine:
 
     # ========== NETWORK MAPPING ==========
 
-    def build_device_network(self) -> Dict:
+    def build_device_network(self) -> dict:
         """Build a network graph of device relationships
 
         Returns:
@@ -345,7 +344,7 @@ class CorrelationEngine:
 
     # ========== ANOMALY DETECTION ==========
 
-    def detect_behavioral_anomalies(self) -> List[Dict]:
+    def detect_behavioral_anomalies(self) -> list[dict]:
         """Detect devices with unusual or changed behavior
 
         Returns:

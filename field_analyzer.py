@@ -191,7 +191,7 @@ class FieldAnalyzer:
         best_match = None
         best_score = 0
 
-        for sig_name, sig in self.signatures['device_signatures'].items():
+        for _sig_name, sig in self.signatures['device_signatures'].items():
             score = 0
 
             # Check frequency
@@ -288,7 +288,7 @@ class FieldAnalyzer:
             cursor = self.db.conn.cursor()
             cursor.execute(
                 """
-                INSERT INTO analysis_results 
+                INSERT INTO analysis_results
                 (recording_id, analysis_type, modulation, bit_rate, preambles, results_json, confidence)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """,

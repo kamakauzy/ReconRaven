@@ -8,7 +8,7 @@ import subprocess
 import threading
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Optional
 
 import numpy as np
 
@@ -29,7 +29,7 @@ class BandAssignment:
 class ParallelScanner(DebugHelper):
     """Parallel scanner using multiple SDRs for simultaneous band coverage."""
 
-    def __init__(self, sdr_controller, config: dict = None):
+    def __init__(self, sdr_controller, config: Optional[dict] = None):
         super().__init__(component_name='ParallelScanner')
         self.debug_enabled = True
         """Initialize parallel scanner.
@@ -48,7 +48,7 @@ class ParallelScanner(DebugHelper):
 
         self.log_info(f'Parallel scanner initialized with {self.num_sdrs} SDRs')
 
-    def _load_band_assignments(self) -> List[BandAssignment]:
+    def _load_band_assignments(self) -> list[BandAssignment]:
         """Load band assignments from configuration.
 
         Returns:
@@ -136,7 +136,7 @@ class ParallelScanner(DebugHelper):
         self.scan_threads = []
         self.log_info('Parallel scan stopped')
 
-    def _scan_worker(self, sdr_idx: int, bands: List[BandAssignment]):
+    def _scan_worker(self, sdr_idx: int, bands: list[BandAssignment]):
         """Worker thread for scanning assigned bands on one SDR.
 
         Args:
@@ -168,7 +168,7 @@ class ParallelScanner(DebugHelper):
 
         self.log_info(f'SDR{sdr_idx} worker stopped')
 
-    def _rtl_power_scan(self, sdr_idx: int, band: BandAssignment) -> List[Dict[str, Any]]:
+    def _rtl_power_scan(self, sdr_idx: int, band: BandAssignment) -> list[dict[str, Any]]:
         """Perform rtl_power scan on a band.
 
         Args:
@@ -213,7 +213,7 @@ class ParallelScanner(DebugHelper):
             self.log_error(f'Error in rtl_power scan: {e}')
             return []
 
-    def _parse_rtl_power_output(self, output: str, band: BandAssignment) -> List[Dict[str, Any]]:
+    def _parse_rtl_power_output(self, output: str, band: BandAssignment) -> list[dict[str, Any]]:
         """Parse rtl_power output and detect peaks.
 
         Args:
@@ -237,7 +237,7 @@ class ParallelScanner(DebugHelper):
 
                 # Extract frequency range and power values
                 freq_low = float(parts[2])
-                freq_high = float(parts[3])
+                float(parts[3])
                 freq_step = float(parts[4])
                 power_values = [float(p) for p in parts[6:]]
 
@@ -263,7 +263,7 @@ class ParallelScanner(DebugHelper):
 
         return signals
 
-    def _pyrtlsdr_scan(self, sdr_idx: int, band: BandAssignment) -> List[Dict[str, Any]]:
+    def _pyrtlsdr_scan(self, sdr_idx: int, band: BandAssignment) -> list[dict[str, Any]]:
         """Fallback scan using pyrtlsdr.
 
         Args:
@@ -327,7 +327,7 @@ class ParallelScanner(DebugHelper):
 
         return signals
 
-    def get_results(self, timeout: float = 0.1) -> List[Dict[str, Any]]:
+    def get_results(self, timeout: float = 0.1) -> list[dict[str, Any]]:
         """Get scan results from queue.
 
         Args:
@@ -347,7 +347,7 @@ class ParallelScanner(DebugHelper):
 
         return results
 
-    def get_coverage_status(self) -> Dict[str, Any]:
+    def get_coverage_status(self) -> dict[str, Any]:
         """Get status of parallel scan coverage.
 
         Returns:

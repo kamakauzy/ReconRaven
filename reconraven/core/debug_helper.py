@@ -116,10 +116,7 @@ class DebugHelper:
             return False
 
         # Check environment restrictions (no logs in editor/test unless explicitly allowed)
-        if os.getenv('RECONRAVEN_NO_LOGS'):
-            return False
-
-        return True
+        return not os.getenv('RECONRAVEN_NO_LOGS')
 
     def _get_caller_function(self) -> Optional[str]:
         """Get the name of the calling function"""

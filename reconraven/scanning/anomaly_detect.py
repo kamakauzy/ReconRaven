@@ -5,7 +5,7 @@ Detects signal anomalies that warrant deeper investigation or DF.
 
 import time
 from collections import defaultdict, deque
-from typing import Any, Dict, List
+from typing import Any, Optional
 
 import numpy as np
 
@@ -83,7 +83,7 @@ class SignalTracker:
 class AnomalyDetector(DebugHelper):
     """Detects anomalous signals that warrant investigation."""
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: Optional[dict] = None):
         super().__init__(component_name='AnomalyDetector')
         self.debug_enabled = True
         """Initialize anomaly detector.
@@ -97,8 +97,8 @@ class AnomalyDetector(DebugHelper):
         self.anomaly_count = 0
 
     def check_anomalies(
-        self, signals: List[Dict[str, Any]], enable_df_trigger: bool = True
-    ) -> List[Dict[str, Any]]:
+        self, signals: list[dict[str, Any]], enable_df_trigger: bool = True
+    ) -> list[dict[str, Any]]:
         """Check signals for anomalies.
 
         Args:
@@ -184,7 +184,7 @@ class AnomalyDetector(DebugHelper):
 
         return anomalies
 
-    def _detect_burst_pattern(self, signal: Dict[str, Any]) -> bool:
+    def _detect_burst_pattern(self, signal: dict[str, Any]) -> bool:
         """Detect if signal exhibits burst characteristics.
 
         Args:
@@ -215,7 +215,7 @@ class AnomalyDetector(DebugHelper):
 
         # Count nearby signals
         nearby_count = 0
-        for tracked_freq in self.tracker.signal_history.keys():
+        for tracked_freq in self.tracker.signal_history:
             if abs(tracked_freq - freq_key) < 100000:  # Within 100kHz
                 nearby_count += 1
 
@@ -243,7 +243,7 @@ class AnomalyDetector(DebugHelper):
 
         return False
 
-    def _calculate_priority(self, reasons: List[str], power_dbm: float) -> int:
+    def _calculate_priority(self, reasons: list[str], power_dbm: float) -> int:
         """Calculate anomaly priority score.
 
         Args:
@@ -272,7 +272,7 @@ class AnomalyDetector(DebugHelper):
 
         return priority
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get anomaly detection statistics.
 
         Returns:

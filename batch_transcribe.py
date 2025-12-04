@@ -80,7 +80,7 @@ def batch_transcribe_untranscribed():
             successful += 1
 
         except Exception as e:
-            logger.error(f'  Exception: {e}')
+            logger.exception(f'  Exception: {e}')
             failed += 1
 
     logger.info('\nBatch transcription complete:')

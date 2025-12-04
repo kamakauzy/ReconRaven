@@ -5,7 +5,8 @@ Loads YAML configuration files and provides centralized access.
 
 import logging
 import os
-from typing import Any, Dict, List
+from pathlib import Path
+from typing import Any, Optional
 
 import yaml
 
@@ -13,7 +14,7 @@ import yaml
 logger = logging.getLogger(__name__)
 
 # Default configuration paths
-CONFIG_DIR = os.path.join(os.path.dirname(__file__), 'config')
+CONFIG_DIR = os.path.join(Path(__file__).parent, 'config')
 BANDS_CONFIG = os.path.join(CONFIG_DIR, 'bands.yaml')
 DEMOD_CONFIG = os.path.join(CONFIG_DIR, 'demod_config.yaml')
 HARDWARE_CONFIG = os.path.join(CONFIG_DIR, 'hardware.yaml')
@@ -22,7 +23,7 @@ HARDWARE_CONFIG = os.path.join(CONFIG_DIR, 'hardware.yaml')
 class Config:
     """Central configuration manager for the SDR platform."""
 
-    def __init__(self, config_dir: str = None):
+    def __init__(self, config_dir: Optional[str] = None):
         """Initialize configuration manager.
 
         Args:
@@ -41,7 +42,7 @@ class Config:
         self.hardware_config = self._load_yaml(os.path.join(self.config_dir, 'hardware.yaml'))
         logger.info('Configuration loaded successfully')
 
-    def _load_yaml(self, filepath: str) -> Dict[str, Any]:
+    def _load_yaml(self, filepath: str) -> dict[str, Any]:
         """Load a YAML configuration file.
 
         Args:
@@ -51,7 +52,7 @@ class Config:
             Dictionary containing configuration data
         """
         try:
-            if os.path.exists(filepath):
+            if Path(filepath).exists():
                 with open(filepath) as f:
                     data = yaml.safe_load(f)
                     logger.info(f'Loaded configuration from {filepath}')
@@ -60,10 +61,10 @@ class Config:
                 logger.warning(f'Configuration file not found: {filepath}')
                 return {}
         except Exception as e:
-            logger.error(f'Error loading {filepath}: {e}')
+            logger.exception(f'Error loading {filepath}: {e}')
             return {}
 
-    def get_scan_bands(self) -> List[Dict[str, Any]]:
+    def get_scan_bands(self) -> list[dict[str, Any]]:
         """Get list of frequency bands to scan.
 
         Returns:
@@ -71,7 +72,7 @@ class Config:
         """
         return self.bands.get('scan_bands', [])
 
-    def get_drone_bands(self) -> List[Dict[str, Any]]:
+    def get_drone_bands(self) -> list[dict[str, Any]]:
         """Get list of known drone frequency bands.
 
         Returns:
@@ -103,7 +104,7 @@ class Config:
         """
         return self.hardware_config.get('sample_rate_hz', 2400000)
 
-    def get_array_config(self) -> Dict[str, Any]:
+    def get_array_config(self) -> dict[str, Any]:
         """Get direction finding array configuration.
 
         Returns:
@@ -111,7 +112,7 @@ class Config:
         """
         return self.hardware_config.get('df_array', {})
 
-    def get_gps_config(self) -> Dict[str, Any]:
+    def get_gps_config(self) -> dict[str, Any]:
         """Get GPS configuration.
 
         Returns:
@@ -119,7 +120,7 @@ class Config:
         """
         return self.hardware_config.get('gps', {})
 
-    def get_demod_config(self, mode: str) -> Dict[str, Any]:
+    def get_demod_config(self, mode: str) -> dict[str, Any]:
         """Get demodulation parameters for a specific mode.
 
         Args:
@@ -130,7 +131,7 @@ class Config:
         """
         return self.demod_params.get(mode, {})
 
-    def get_recording_config(self) -> Dict[str, Any]:
+    def get_recording_config(self) -> dict[str, Any]:
         """Get recording configuration.
 
         Returns:
@@ -143,7 +144,7 @@ class Config:
 _config = None
 
 
-def get_config(config_dir: str = None) -> Config:
+def get_config(config_dir: Optional[str] = None) -> Config:
     """Get or create global configuration instance.
 
     Args:

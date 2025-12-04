@@ -4,7 +4,8 @@ Provides browser-based dashboard for SDR platform.
 """
 
 import threading
-from typing import Any, Dict
+from pathlib import Path
+from typing import Any, Optional
 
 from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
@@ -16,7 +17,7 @@ from reconraven.core.debug_helper import DebugHelper
 class SDRDashboardServer(DebugHelper):
     """Web dashboard server for SDR platform."""
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: Optional[dict] = None):
         super().__init__(component_name='SDRDashboardServer')
         self.debug_enabled = True
         """Initialize dashboard server."""
@@ -159,14 +160,14 @@ class SDRDashboardServer(DebugHelper):
             import os
 
             recordings_dir = 'recordings/voice'
-            if not os.path.exists(recordings_dir):
+            if not Path(recordings_dir).exists():
                 return jsonify({'recordings': []})
 
             files = glob.glob(os.path.join(recordings_dir, '*.wav'))
             recordings = []
 
             for filepath in files:
-                filename = os.path.basename(filepath)
+                filename = Path(filepath).name
                 stat = os.stat(filepath)
                 recordings.append(
                     {
@@ -200,7 +201,7 @@ class SDRDashboardServer(DebugHelper):
             cursor = db.conn.cursor()
             cursor.execute(
                 """
-                SELECT 
+                SELECT
                     frequency_hz,
                     power_dbm,
                     is_anomaly,
@@ -239,7 +240,7 @@ class SDRDashboardServer(DebugHelper):
 
             from flask import send_from_directory
 
-            audio_dir = os.path.join(os.getcwd(), 'recordings', 'audio')
+            audio_dir = os.path.join(Path.cwd(), 'recordings', 'audio')
             return send_from_directory(audio_dir, filename)
 
     def _setup_socketio(self):
@@ -352,7 +353,7 @@ class SDRDashboardServer(DebugHelper):
             from database import get_db
 
             recording_file = data.get('recording_file')
-            frequency_hz = data.get('frequency_hz')
+            data.get('frequency_hz')
 
             if not recording_file:
                 emit('analysis_error', {'error': 'No recording file specified'})
@@ -366,7 +367,7 @@ class SDRDashboardServer(DebugHelper):
             # Run field_analyzer.py in subprocess
             try:
                 npy_path = os.path.join('recordings', 'audio', recording_file)
-                if not os.path.exists(npy_path):
+                if not Path(npy_path).exists():
                     emit('analysis_error', {'error': f'Recording file not found: {npy_path}'})
                     return
 
@@ -441,7 +442,7 @@ class SDRDashboardServer(DebugHelper):
 
             frequency_mhz = data.get('frequency_mhz')
             mode = data.get('mode', 'FM')
-            auto_record = data.get('auto_record', True)
+            data.get('auto_record', True)
 
             if not frequency_mhz:
                 emit('voice_status', {'status': 'error', 'message': 'No frequency specified'})
@@ -519,7 +520,7 @@ class SDRDashboardServer(DebugHelper):
                 {'message': f'Started scanning {band.upper()} band', 'success': True},
             )
 
-    def update_state(self, state_update: Dict[str, Any]):
+    def update_state(self, state_update: dict[str, Any]):
         """Update platform state and broadcast to clients - SIMPLIFIED"""
         # Just update what's provided
         self.platform_state.update(state_update)
@@ -547,7 +548,7 @@ class SDRDashboardServer(DebugHelper):
         # Broadcast to all connected clients
         self.socketio.emit('status_update', self.platform_state)
 
-    def add_signal(self, signal_data: Dict[str, Any]):
+    def add_signal(self, signal_data: dict[str, Any]):
         """Add detected signal to dashboard.
 
         Args:
@@ -561,7 +562,7 @@ class SDRDashboardServer(DebugHelper):
 
         self.socketio.emit('new_signal', signal_data)
 
-    def add_bearing(self, bearing_data: Dict[str, Any]):
+    def add_bearing(self, bearing_data: dict[str, Any]):
         """Add bearing data to dashboard.
 
         Args:
@@ -575,7 +576,7 @@ class SDRDashboardServer(DebugHelper):
 
         self.socketio.emit('new_bearing', bearing_data)
 
-    def update_gps(self, gps_data: Dict[str, Any]):
+    def update_gps(self, gps_data: dict[str, Any]):
         """Update GPS data on dashboard.
 
         Args:
@@ -599,10 +600,10 @@ class SDRDashboardServer(DebugHelper):
     def get_demo_data(self):
         """Generate realistic demo data based on actual testing."""
         import random
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
 
         demo_signals = []
-        base_time = datetime.now()
+        base_time = datetime.now(timezone.utc)
 
         # ISM 915 MHz signals (like we actually detected) - ANOMALIES
         for i, freq in enumerate([907.8e6, 907.9e6, 915.2e6, 921.5e6, 926.1e6]):
@@ -845,7 +846,7 @@ class SDRDashboardServer(DebugHelper):
         return server_thread
 
 
-def create_app(config: dict = None) -> SDRDashboardServer:
+def create_app(config: Optional[dict] = None) -> SDRDashboardServer:
     """Create dashboard server instance.
 
     Args:
@@ -857,7 +858,7 @@ def create_app(config: dict = None) -> SDRDashboardServer:
     return SDRDashboardServer(config)
 
 
-def start_server(config: dict = None) -> SDRDashboardServer:
+def start_server(config: Optional[dict] = None) -> SDRDashboardServer:
     """Start dashboard server.
 
     Args:

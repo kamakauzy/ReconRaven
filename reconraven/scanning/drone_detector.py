@@ -5,7 +5,7 @@ Pattern matching and fingerprinting for drone signals.
 
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import numpy as np
 
@@ -17,7 +17,7 @@ class DroneSignature:
     """Drone signal signature."""
 
     name: str
-    frequency_ranges: List[tuple]  # List of (start, end) tuples
+    frequency_ranges: list[tuple]  # List of (start, end) tuples
     pattern_type: str  # 'burst', 'chirp', 'hopping'
     min_duration_ms: Optional[float] = None
     max_duration_ms: Optional[float] = None
@@ -28,7 +28,7 @@ class DroneSignature:
 class DroneDetector(DebugHelper):
     """Detects and classifies drone signals."""
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: Optional[dict] = None):
         super().__init__(component_name='DroneDetector')
         self.debug_enabled = True
         """Initialize drone detector."""
@@ -36,9 +36,9 @@ class DroneDetector(DebugHelper):
         self.known_signatures = self._load_signatures()
         self.detection_history = []
 
-    def _load_signatures(self) -> List[DroneSignature]:
+    def _load_signatures(self) -> list[DroneSignature]:
         """Load known drone signatures."""
-        signatures = [
+        return [
             DroneSignature(
                 name='Generic 433MHz Telemetry',
                 frequency_ranges=[(433e6, 434.8e6)],
@@ -60,9 +60,8 @@ class DroneDetector(DebugHelper):
                 bandwidth_hz=125000,
             ),
         ]
-        return signatures
 
-    def analyze_signal(self, signal_hit, samples: np.ndarray = None) -> Optional[Dict[str, Any]]:
+    def analyze_signal(self, signal_hit, samples: np.ndarray = None) -> Optional[dict[str, Any]]:
         """Analyze a signal for drone characteristics."""
         freq = signal_hit.frequency_hz
         bandwidth = signal_hit.bandwidth_hz
@@ -98,7 +97,7 @@ class DroneDetector(DebugHelper):
 
         return None
 
-    def _freq_in_ranges(self, freq: float, ranges: List[tuple]) -> bool:
+    def _freq_in_ranges(self, freq: float, ranges: list[tuple]) -> bool:
         """Check if frequency is in any of the given ranges."""
         return any(start <= freq <= end for start, end in ranges)
 

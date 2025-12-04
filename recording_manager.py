@@ -113,7 +113,7 @@ class RecordingManager:
 
             decision = self.should_keep_recording(freq, band)
 
-            if decision == False:
+            if decision is False:
                 # ISM band - delete immediately
                 size_mb = os.path.getsize(filepath) / (1024 * 1024)
                 os.remove(filepath)
@@ -143,7 +143,7 @@ class RecordingManager:
                 logger.info(f"Keeping {recording['filename']} for manual review")
 
         except Exception as e:
-            logger.error(f'Cleanup error: {e}')
+            logger.exception(f'Cleanup error: {e}')
 
     def transcribe_voice_recording(self, recording_id, wav_filepath):
         """Auto-transcribe voice recording using Whisper"""
@@ -182,12 +182,12 @@ class RecordingManager:
                 logger.info('No speech detected in recording')
 
         except Exception as e:
-            logger.error(f'Transcription error: {e}')
+            logger.exception(f'Transcription error: {e}')
 
 
 def cleanup_old_recordings(db, days_old=7):
     """Bulk cleanup of old unanalyzed recordings"""
-    manager = RecordingManager(db)
+    RecordingManager(db)
 
     recordings = db.get_recordings()
     cleaned = 0

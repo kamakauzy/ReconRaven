@@ -9,7 +9,8 @@ import logging
 import os
 import wave
 from datetime import datetime
-from typing import Dict, List, Optional
+from pathlib import Path
+from typing import Optional
 
 from reconraven.core.debug_helper import DebugHelper
 
@@ -52,7 +53,7 @@ class VoiceTranscriber(DebugHelper):
             self.model = self.whisper.load_model(self.model_size)
             print('Model loaded successfully')
 
-    def transcribe_file(self, audio_file: str, language: Optional[str] = None) -> Dict:
+    def transcribe_file(self, audio_file: str, language: Optional[str] = None) -> dict:
         """Transcribe an audio file
 
         Args:
@@ -71,7 +72,7 @@ class VoiceTranscriber(DebugHelper):
         if not self.whisper:
             return {'error': 'Whisper not installed'}
 
-        if not os.path.exists(audio_file):
+        if not Path(audio_file).exists():
             return {'error': f'File not found: {audio_file}'}
 
         try:
@@ -111,8 +112,8 @@ class VoiceTranscriber(DebugHelper):
             return {'error': str(e)}
 
     def transcribe_batch(
-        self, audio_files: List[str], progress_callback: Optional[callable] = None
-    ) -> Dict[str, Dict]:
+        self, audio_files: list[str], progress_callback: Optional[callable] = None
+    ) -> dict[str, dict]:
         """Transcribe multiple files
 
         Args:
@@ -129,7 +130,7 @@ class VoiceTranscriber(DebugHelper):
             if progress_callback:
                 progress_callback(i, total, audio_file)
 
-            filename = os.path.basename(audio_file)
+            filename = Path(audio_file).name
             results[filename] = self.transcribe_file(audio_file)
 
         return results
@@ -141,10 +142,10 @@ class VoiceTranscriber(DebugHelper):
                 frames = wav.getnframes()
                 rate = wav.getframerate()
                 return frames / float(rate)
-        except:
+        except Exception:
             return 0.0
 
-    def _calculate_confidence(self, result: Dict) -> float:
+    def _calculate_confidence(self, result: dict) -> float:
         """Calculate average confidence from Whisper result"""
         try:
             segments = result.get('segments', [])
@@ -161,12 +162,12 @@ class VoiceTranscriber(DebugHelper):
                     confidences.append(conf)
 
             return sum(confidences) / len(confidences) if confidences else 0.8
-        except:
+        except Exception:
             return 0.8  # Default confidence
 
     def search_transcripts(
-        self, transcripts: List[Dict], keywords: List[str], case_sensitive: bool = False
-    ) -> List[Dict]:
+        self, transcripts: list[dict], keywords: list[str], case_sensitive: bool = False
+    ) -> list[dict]:
         """Search transcripts for keywords
 
         Args:
@@ -204,7 +205,7 @@ class VoiceTranscriber(DebugHelper):
 
         return matches
 
-    def export_transcripts(self, transcripts: List[Dict], output_file: str, format: str = 'json'):
+    def export_transcripts(self, transcripts: list[dict], output_file: str, format: str = 'json'):
         """Export transcripts to file
 
         Args:
@@ -329,7 +330,7 @@ if __name__ == '__main__':
         print('Starting batch transcription...\n')
 
         def progress(current, total, filename):
-            print(f'[{current}/{total}] {os.path.basename(filename)}')
+            print(f'[{current}/{total}] {Path(filename).name}')
 
         results = transcriber.transcribe_batch(audio_files, progress_callback=progress)
 

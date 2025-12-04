@@ -4,7 +4,7 @@ Voice Signal Detector
 Automatically detects voice transmissions and triggers recording
 """
 
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
 from scipy import signal
@@ -35,7 +35,7 @@ class VoiceDetector:
 
     def is_voice_signal(
         self, frequency_hz: float, power_dbm: float, iq_samples: Optional[np.ndarray] = None
-    ) -> Tuple[bool, float, str]:
+    ) -> tuple[bool, float, str]:
         """Determine if a signal is likely voice
 
         Args:
@@ -51,11 +51,9 @@ class VoiceDetector:
 
         # Check if frequency is in known voice band
         freq_mhz = frequency_hz / 1e6
-        in_voice_band = False
 
         for start, end in self.known_voice_bands:
             if start <= freq_mhz <= end:
-                in_voice_band = True
                 confidence += 0.3
 
                 # Guess mode based on band
@@ -91,7 +89,7 @@ class VoiceDetector:
 
         return is_voice, min(confidence, 1.0), mode_guess
 
-    def _detect_modulation(self, iq_samples: np.ndarray) -> Tuple[str, float]:
+    def _detect_modulation(self, iq_samples: np.ndarray) -> tuple[str, float]:
         """Detect modulation type from IQ samples"""
         try:
             # Calculate instantaneous frequency for FM detection
@@ -142,11 +140,7 @@ class VoiceDetector:
         """Quick check if we should monitor this frequency for voice"""
         freq_mhz = frequency_hz / 1e6
 
-        for start, end in self.known_voice_bands:
-            if start <= freq_mhz <= end:
-                return True
-
-        return False
+        return any(start <= freq_mhz <= end for start, end in self.known_voice_bands)
 
     def get_optimal_voice_mode(self, frequency_hz: float) -> str:
         """Get the optimal demodulation mode for a frequency"""

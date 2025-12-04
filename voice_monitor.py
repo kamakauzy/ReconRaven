@@ -8,7 +8,7 @@ import logging
 import os
 import time
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 from demodulation.analog import AnalogDemodulator, AnalogMode
 
@@ -124,7 +124,7 @@ class VoiceMonitor:
             return True
 
         except Exception as e:
-            logger.error(f'Error starting voice monitor: {e}')
+            logger.exception(f'Error starting voice monitor: {e}')
             return False
 
     def _audio_callback(self, audio_data: bytes):
@@ -232,8 +232,8 @@ class VoiceMonitor:
                     cursor = self.db.conn.cursor()
                     cursor.execute(
                         """
-                        SELECT DISTINCT frequency_hz 
-                        FROM devices 
+                        SELECT DISTINCT frequency_hz
+                        FROM devices
                         WHERE frequency_hz BETWEEN ? AND ?
                           AND (device_type LIKE '%repeater%' OR name LIKE '%repeater%')
                     """,
@@ -279,7 +279,7 @@ class VoiceMonitor:
             self.stop_monitoring()
 
     def monitor_multiple_frequencies(
-        self, frequencies_mhz: List[float], mode: str = 'FM', auto_record: bool = True
+        self, frequencies_mhz: list[float], mode: str = 'FM', auto_record: bool = True
     ):
         """Monitor multiple frequencies (requires multiple SDRs or rapid scanning)
 

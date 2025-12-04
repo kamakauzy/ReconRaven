@@ -3,7 +3,7 @@ Bearing Calculation Module
 Implements MUSIC algorithm for direction finding.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 import numpy as np
 
@@ -13,7 +13,7 @@ from reconraven.core.debug_helper import DebugHelper
 class BearingCalculator(DebugHelper):
     """Calculates bearings using MUSIC algorithm."""
 
-    def __init__(self, array_sync, config: dict = None):
+    def __init__(self, array_sync, config: Optional[dict] = None):
         super().__init__(component_name='BearingCalculator')
         self.debug_enabled = True
         """Initialize bearing calculator."""
@@ -24,7 +24,7 @@ class BearingCalculator(DebugHelper):
 
     def calculate_bearing(
         self, frequency_hz: float, num_samples: int = 16384
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[dict[str, Any]]:
         """Calculate bearing to signal source.
 
         Args:
@@ -70,7 +70,7 @@ class BearingCalculator(DebugHelper):
 
     def _music_algorithm(
         self, R: np.ndarray, array_positions: np.ndarray, frequency_hz: float
-    ) -> Tuple[Optional[float], float]:
+    ) -> tuple[Optional[float], float]:
         """MUSIC (Multiple Signal Classification) algorithm.
 
         Args:
@@ -91,7 +91,7 @@ class BearingCalculator(DebugHelper):
             eigenvectors = eigenvectors[:, idx]
 
             # Separate signal and noise subspaces
-            num_elements = len(eigenvalues)
+            len(eigenvalues)
             noise_subspace = eigenvectors[:, self.num_sources :]
 
             # Calculate wavelength
@@ -123,10 +123,7 @@ class BearingCalculator(DebugHelper):
             peak_value = spectrum[peak_idx]
             mean_value = np.mean(spectrum)
 
-            if mean_value > 0:
-                confidence = min(1.0, (peak_value / mean_value) / 10.0)
-            else:
-                confidence = 0.0
+            confidence = min(1.0, peak_value / mean_value / 10.0) if mean_value > 0 else 0.0
 
             return float(bearing), float(confidence)
 
@@ -170,8 +167,8 @@ class BearingCalculator(DebugHelper):
         return a
 
     def calculate_bearing_from_samples(
-        self, samples: List[np.ndarray], frequency_hz: float
-    ) -> Optional[Dict[str, Any]]:
+        self, samples: list[np.ndarray], frequency_hz: float
+    ) -> Optional[dict[str, Any]]:
         """Calculate bearing from pre-acquired samples.
 
         Args:

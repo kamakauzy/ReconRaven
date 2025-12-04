@@ -26,7 +26,7 @@ class AnalogMode(Enum):
 class AnalogDemodulator(DebugHelper):
     """Demodulates analog signals using rtl_fm."""
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: Optional[dict] = None):
         super().__init__(component_name='AnalogDemodulator')
         self.debug_enabled = True
         """Initialize analog demodulator.
@@ -144,7 +144,7 @@ class AnalogDemodulator(DebugHelper):
                         try:
                             self.audio_queue.get_nowait()
                             self.audio_queue.put_nowait(data)
-                        except:
+                        except Exception:
                             pass
 
                 except Exception as e:
@@ -162,7 +162,7 @@ class AnalogDemodulator(DebugHelper):
             try:
                 self.process.terminate()
                 self.process.wait(timeout=5)
-            except:
+            except Exception:
                 self.process.kill()
             self.process = None
 

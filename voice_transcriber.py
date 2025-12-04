@@ -9,7 +9,7 @@ import logging
 import os
 import wave
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Optional
 
 
 logger = logging.getLogger(__name__)
@@ -51,7 +51,7 @@ class VoiceTranscriber:
             self.model = self.whisper.load_model(self.model_size)
             logger.info('Model loaded successfully')
 
-    def transcribe_file(self, audio_file: str, language: Optional[str] = None) -> Dict:
+    def transcribe_file(self, audio_file: str, language: Optional[str] = None) -> dict:
         """Transcribe an audio file
 
         Args:
@@ -106,12 +106,12 @@ class VoiceTranscriber:
             return transcript
 
         except Exception as e:
-            logger.error(f'Transcription error: {e}')
+            logger.exception(f'Transcription error: {e}')
             return {'error': str(e)}
 
     def transcribe_batch(
-        self, audio_files: List[str], progress_callback: Optional[callable] = None
-    ) -> Dict[str, Dict]:
+        self, audio_files: list[str], progress_callback: Optional[callable] = None
+    ) -> dict[str, dict]:
         """Transcribe multiple files
 
         Args:
@@ -143,7 +143,7 @@ class VoiceTranscriber:
         except:
             return 0.0
 
-    def _calculate_confidence(self, result: Dict) -> float:
+    def _calculate_confidence(self, result: dict) -> float:
         """Calculate average confidence from Whisper result"""
         try:
             segments = result.get('segments', [])
@@ -164,8 +164,8 @@ class VoiceTranscriber:
             return 0.8  # Default confidence
 
     def search_transcripts(
-        self, transcripts: List[Dict], keywords: List[str], case_sensitive: bool = False
-    ) -> List[Dict]:
+        self, transcripts: list[dict], keywords: list[str], case_sensitive: bool = False
+    ) -> list[dict]:
         """Search transcripts for keywords
 
         Args:
@@ -203,7 +203,7 @@ class VoiceTranscriber:
 
         return matches
 
-    def export_transcripts(self, transcripts: List[Dict], output_file: str, format: str = 'json'):
+    def export_transcripts(self, transcripts: list[dict], output_file: str, format: str = 'json'):
         """Export transcripts to file
 
         Args:

@@ -3,9 +3,10 @@ Spectrum Scanner Module
 Performs FFT-based spectrum sweeps and signal detection.
 """
 
+import contextlib
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import numpy as np
 from scipy import signal
@@ -39,7 +40,7 @@ class SignalHit:
 class SpectrumScanner(DebugHelper):
     """FFT-based spectrum scanner for signal detection."""
 
-    def __init__(self, sdr_controller, config: dict = None):
+    def __init__(self, sdr_controller, config: Optional[dict] = None):
         super().__init__(component_name='SpectrumScanner')
         self.debug_enabled = True
         """Initialize spectrum scanner.
@@ -128,7 +129,7 @@ class SpectrumScanner(DebugHelper):
 
     def scan_frequency_range(
         self, start_hz: float, end_hz: float, step_hz: Optional[float] = None
-    ) -> List[SignalHit]:
+    ) -> list[SignalHit]:
         """Scan a frequency range and detect signals.
 
         Args:
@@ -187,7 +188,7 @@ class SpectrumScanner(DebugHelper):
         self.log_info(f'Scan complete: {len(detected_signals)} signals detected')
         return detected_signals
 
-    def _detect_peaks(self, psd: np.ndarray, center_freq: float) -> List[SignalHit]:
+    def _detect_peaks(self, psd: np.ndarray, center_freq: float) -> list[SignalHit]:
         """Detect signal peaks in power spectral density.
 
         Args:
@@ -283,10 +284,9 @@ class SpectrumScanner(DebugHelper):
         """
         # Higher power = higher confidence
         snr = signal_power - self.noise_floor_dbm
-        confidence = min(1.0, max(0.1, snr / 50.0))
-        return confidence
+        return min(1.0, max(0.1, snr / 50.0))
 
-    def scan_band_list(self, bands: List[Dict[str, Any]]) -> Dict[str, List[SignalHit]]:
+    def scan_band_list(self, bands: list[dict[str, Any]]) -> dict[str, list[SignalHit]]:
         """Scan multiple frequency bands.
 
         If multiple SDRs available (mobile_multi mode), distributes bands across SDRs.
@@ -322,7 +322,7 @@ class SpectrumScanner(DebugHelper):
 
         return results
 
-    def _scan_band_list_multi(self, bands: List[Dict[str, Any]]) -> Dict[str, List[SignalHit]]:
+    def _scan_band_list_multi(self, bands: list[dict[str, Any]]) -> dict[str, list[SignalHit]]:
         """Scan bands using multiple SDRs in mobile_multi mode.
 
         Each SDR scans a subset of bands sequentially, but all SDRs work simultaneously.
@@ -372,10 +372,8 @@ class SpectrumScanner(DebugHelper):
                 finally:
                     # Restore original frequency if needed
                     if original_freq and sdr_idx < len(self.sdr.sdrs):
-                        try:
+                        with contextlib.suppress(Exception):
                             self.sdr.sdrs[sdr_idx].center_freq = original_freq
-                        except:
-                            pass
 
         # Start worker threads
         threads = []
@@ -398,7 +396,7 @@ class SpectrumScanner(DebugHelper):
 
     def _scan_with_specific_sdr(
         self, sdr_idx: int, start_hz: float, end_hz: float
-    ) -> List[SignalHit]:
+    ) -> list[SignalHit]:
         """Scan using a specific SDR from the array.
 
         Args:
@@ -451,7 +449,7 @@ class SpectrumScanner(DebugHelper):
 
         return detected_signals
 
-    def quick_scan(self, frequencies: List[float], bandwidth: float = 100000) -> List[SignalHit]:
+    def quick_scan(self, frequencies: list[float], bandwidth: float = 100000) -> list[SignalHit]:
         """Quickly scan specific frequencies.
 
         Args:

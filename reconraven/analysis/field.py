@@ -5,12 +5,12 @@ Integrates: Binary decoding, rtl_433, device signatures, manufacturer identifica
 """
 
 import logging
+from pathlib import Path
 
 
 logger = logging.getLogger(__name__)
 
 import json
-import os
 import sys
 
 import numpy as np
@@ -196,7 +196,7 @@ class FieldAnalyzer:
         best_match = None
         best_score = 0
 
-        for sig_name, sig in self.signatures['device_signatures'].items():
+        for _sig_name, sig in self.signatures['device_signatures'].items():
             score = 0
 
             # Check frequency
@@ -264,7 +264,7 @@ class FieldAnalyzer:
         """Save analysis results to database"""
         try:
             # Get recording ID from filename
-            filename = os.path.basename(npy_file)
+            filename = Path(npy_file).name
             recordings = self.db.get_recordings()
             recording_id = None
 
@@ -293,7 +293,7 @@ class FieldAnalyzer:
             cursor = self.db.conn.cursor()
             cursor.execute(
                 """
-                INSERT INTO analysis_results 
+                INSERT INTO analysis_results
                 (recording_id, analysis_type, modulation, bit_rate, preambles, results_json, confidence)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """,

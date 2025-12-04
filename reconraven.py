@@ -6,6 +6,7 @@ All-in-one tool for scanning, analysis, and database management.
 """
 
 import argparse
+import contextlib
 import os
 import sys
 import time
@@ -86,6 +87,7 @@ def cmd_voice(args):
             # Transcription logic here
 
         return 0
+    return None
 
 
 def cmd_analyze_extended(args):
@@ -162,6 +164,7 @@ def cmd_analyze_extended(args):
         print(f'Confidence: {results.get("confidence", 0):.2%}')
 
         return 0
+    return None
 
 
 def cmd_recording(args):
@@ -170,7 +173,7 @@ def cmd_recording(args):
     from reconraven.utils.recording_manager import RecordingManager
 
     db = get_db()
-    manager = RecordingManager(db)
+    RecordingManager(db)
 
     if args.recording_action == 'list':
         # List recordings
@@ -200,6 +203,7 @@ def cmd_recording(args):
     if args.recording_action == 'cleanup':
         # Call existing cleanup logic
         return cmd_cleanup(args)
+    return None
 
 
 def cmd_scan(args):
@@ -312,15 +316,15 @@ def cmd_analyze(args):
         print('=' * 70)
 
         # Run analysis based on type
-        if args.type == 'all' or args.type == 'ism':
+        if args.type in ('all', 'ism'):
             print('\n[ISM Analysis]')
             subprocess.run([sys.executable, 'ism_analyzer.py', filepath], check=False)
 
-        if args.type == 'all' or args.type == 'remote':
+        if args.type in ('all', 'remote'):
             print('\n[Remote Decoder]')
             subprocess.run([sys.executable, 'decode_remote.py', filepath], check=False)
 
-        if args.type == 'all' or args.type == 'protocol':
+        if args.type in ('all', 'protocol'):
             print('\n[Protocol Analysis]')
             subprocess.run([sys.executable, 'urh_analyze.py', filepath], check=False)
 
@@ -771,10 +775,8 @@ def cmd_df_calibrate(args):
         return 1
 
     finally:
-        try:
+        with contextlib.suppress(Exception):
             sdr_controller.close()
-        except:
-            pass
 
 
 def main():
@@ -786,40 +788,40 @@ def main():
 Examples:
   # Start scanning with dashboard
   reconraven.py scan --dashboard
-  
+
   # Quick scan (baseline only)
   reconraven.py scan --quick
-  
+
   # Analyze all recordings
   reconraven.py analyze --all
-  
+
   # Analyze specific file
   reconraven.py analyze --file recording.npy --type ism
-  
+
   # Start dashboard only
   reconraven.py dashboard
-  
+
   # Database stats
   reconraven.py db stats
-  
+
   # Test SDR detection
   reconraven.py test sdr
-  
+
   # Test noise floor
   reconraven.py test noise
-  
+
   # Monitor specific frequency
   reconraven.py test freq --freq 146.52 --duration 60
-  
+
   # Scan band for signals
   reconraven.py test rf --band 2m
-  
+
   # Calibrate DF array (auto mode)
   reconraven.py test df-cal --freq 146.52
-  
+
   # Calibrate DF array with known bearing
   reconraven.py test df-cal --freq 146.52 --bearing 45
-  
+
   # Setup location
   reconraven.py setup --state AL --city Huntsville
         """,

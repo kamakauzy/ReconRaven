@@ -6,11 +6,12 @@ Manages RTL-SDR devices, auto-detects mode, and provides hardware abstraction.
 import logging
 import subprocess
 from enum import Enum
-from typing import List
+from typing import Optional
 
 import numpy as np
 
 from reconraven.core.debug_helper import DebugHelper
+
 
 # Module-level logger for standalone functions
 logger = logging.getLogger(__name__)
@@ -88,14 +89,14 @@ def detect_sdr_devices() -> int:
             return count
 
         except Exception as e:
-            logger.error(f'Error detecting SDR devices: {e}')
+            logger.exception(f'Error detecting SDR devices: {e}')
             return 0
 
     except subprocess.TimeoutExpired:
-        logger.error('Timeout detecting SDR devices')
+        logger.exception('Timeout detecting SDR devices')
         return 0
     except Exception as e:
-        logger.error(f'Error detecting SDR devices: {e}')
+        logger.exception(f'Error detecting SDR devices: {e}')
         return 0
 
 
@@ -125,7 +126,7 @@ def detect_sdr_mode() -> OperatingMode:
 class SDRController(DebugHelper):
     """Controller for RTL-SDR hardware with mode management."""
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: Optional[dict] = None):
         super().__init__(component_name='SDRController')
         self.debug_enabled = True
         """Initialize SDR controller.
@@ -135,7 +136,7 @@ class SDRController(DebugHelper):
         """
         self.config = config or {}
         self.mode = OperatingMode.UNKNOWN
-        self.sdrs: List[RtlSdr] = []
+        self.sdrs: list[RtlSdr] = []
         self.is_initialized = False
 
         # Default SDR parameters
@@ -213,7 +214,7 @@ class SDRController(DebugHelper):
                 self.log_warning(f'Could not set gain (using auto): {e}')
                 try:
                     sdr.gain = 'auto'
-                except:
+                except Exception as e:
                     pass  # Some drivers don't support auto either
 
             self.sdrs = [sdr]
@@ -301,7 +302,7 @@ class SDRController(DebugHelper):
         self.gain = gain
         self.log_debug(f'Set gain to {gain}')
 
-    def read_samples(self, num_samples: int = 256 * 1024) -> List[np.ndarray]:
+    def read_samples(self, num_samples: int = 256 * 1024) -> list[np.ndarray]:
         """Read samples from all SDRs.
 
         Args:
@@ -327,7 +328,7 @@ class SDRController(DebugHelper):
 
         return samples
 
-    def read_samples_sync(self, num_samples: int = 256 * 1024) -> List[np.ndarray]:
+    def read_samples_sync(self, num_samples: int = 256 * 1024) -> list[np.ndarray]:
         """Read phase-synchronized samples from all SDRs (for DF mode).
 
         Note: True phase coherence requires external clock synchronization.

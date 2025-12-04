@@ -7,7 +7,7 @@ Real-time monitoring and recording of voice transmissions (FM/AM/DMR/P25)
 import os
 import time
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 from reconraven.core.database import get_db
 from reconraven.core.debug_helper import DebugHelper
@@ -230,8 +230,8 @@ class VoiceMonitor(DebugHelper):
                     cursor = self.db.conn.cursor()
                     cursor.execute(
                         """
-                        SELECT DISTINCT frequency_hz 
-                        FROM devices 
+                        SELECT DISTINCT frequency_hz
+                        FROM devices
                         WHERE frequency_hz BETWEEN ? AND ?
                           AND (device_type LIKE '%repeater%' OR name LIKE '%repeater%')
                     """,
@@ -277,7 +277,7 @@ class VoiceMonitor(DebugHelper):
             self.stop_monitoring()
 
     def monitor_multiple_frequencies(
-        self, frequencies_mhz: List[float], mode: str = 'FM', auto_record: bool = True
+        self, frequencies_mhz: list[float], mode: str = 'FM', auto_record: bool = True
     ):
         """Monitor multiple frequencies (requires multiple SDRs or rapid scanning)
 

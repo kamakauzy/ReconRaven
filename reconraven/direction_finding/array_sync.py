@@ -3,7 +3,7 @@ SDR Array Synchronization Module
 Manages phase-coherent sampling for direction finding.
 """
 
-from typing import List
+from typing import Optional
 
 import numpy as np
 
@@ -13,7 +13,7 @@ from reconraven.core.debug_helper import DebugHelper
 class SDRArraySync(DebugHelper):
     """Manages synchronization of multiple SDRs for direction finding."""
 
-    def __init__(self, sdr_controller, config: dict = None):
+    def __init__(self, sdr_controller, config: Optional[dict] = None):
         super().__init__(component_name='SDRArraySync')
         self.debug_enabled = True
         """Initialize array synchronization."""
@@ -57,7 +57,7 @@ class SDRArraySync(DebugHelper):
         self,
         frequency_hz: float,
         num_samples: int = 10000,
-        known_bearing: float = None,
+        known_bearing: Optional[float] = None,
         save_to_db: bool = True,
     ) -> bool:
         """Calibrate phase offsets between array elements.
@@ -175,9 +175,8 @@ class SDRArraySync(DebugHelper):
         peak_idx = np.argmax(np.abs(cross_corr))
 
         # Phase at peak is the phase offset
-        phase_offset = np.angle(cross_corr[peak_idx])
+        return np.angle(cross_corr[peak_idx])
 
-        return phase_offset
 
     def _calculate_snr(self, samples: np.ndarray) -> float:
         """Calculate signal-to-noise ratio.
@@ -198,14 +197,10 @@ class SDRArraySync(DebugHelper):
         sorted_spectrum = np.sort(spectrum)
         noise_power = np.median(sorted_spectrum[: len(sorted_spectrum) // 2])
 
-        if noise_power > 0:
-            snr_db = 10 * np.log10(signal_power / noise_power)
-        else:
-            snr_db = 0.0
+        return 10 * np.log10(signal_power / noise_power) if noise_power > 0 else 0.0
 
-        return snr_db
 
-    def _calculate_coherence(self, samples: List[np.ndarray]) -> float:
+    def _calculate_coherence(self, samples: list[np.ndarray]) -> float:
         """Calculate array coherence (0.0-1.0).
 
         Higher values indicate better synchronization.
@@ -244,7 +239,7 @@ class SDRArraySync(DebugHelper):
 
     def acquire_coherent_samples(
         self, frequency_hz: float, num_samples: int = 16384
-    ) -> List[np.ndarray]:
+    ) -> list[np.ndarray]:
         """Acquire phase-coherent samples from all array elements.
 
         Args:
@@ -277,7 +272,7 @@ class SDRArraySync(DebugHelper):
         return corrected_samples
 
     def get_covariance_matrix(
-        self, samples: List[np.ndarray], num_snapshots: int = 100
+        self, samples: list[np.ndarray], num_snapshots: int = 100
     ) -> np.ndarray:
         """Calculate spatial covariance matrix for MUSIC algorithm.
 

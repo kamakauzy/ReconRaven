@@ -8,8 +8,8 @@ import logging
 import os
 import time
 import wave
-from datetime import datetime
-from typing import Any, Dict, Optional
+from datetime import datetime, timezone
+from typing import Any, Optional
 
 import numpy as np
 
@@ -28,7 +28,7 @@ except ImportError:
 class GPSInterface:
     """Interface for GPS data acquisition."""
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: Optional[dict] = None):
         """Initialize GPS interface."""
         self.config = config or {}
         self.connected = False
@@ -42,7 +42,7 @@ class GPSInterface:
             except Exception as e:
                 self.log_warning(f'Could not connect to GPS: {e}')
 
-    def get_position(self) -> Optional[Dict[str, Any]]:
+    def get_position(self) -> Optional[dict[str, Any]]:
         """Get current GPS position.
 
         Returns:
@@ -102,7 +102,7 @@ class GPSInterface:
 class SignalLogger(DebugHelper):
     """Records signal data with GPS timestamps."""
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: Optional[dict] = None):
         super().__init__(component_name='SignalLogger')
         self.debug_enabled = True
         """Initialize signal logger."""
@@ -114,7 +114,7 @@ class SignalLogger(DebugHelper):
         os.makedirs(self.output_dir, exist_ok=True)
 
     def log_signal_detection(
-        self, signal_hit, bearing: Optional[Dict] = None, metadata: Optional[Dict] = None
+        self, signal_hit, bearing: Optional[dict] = None, metadata: Optional[dict] = None
     ) -> str:
         """Log a signal detection event.
 
@@ -126,7 +126,7 @@ class SignalLogger(DebugHelper):
         Returns:
             Path to log file
         """
-        timestamp = datetime.now()
+        timestamp = datetime.now(timezone.utc)
         filename = f"signal_{timestamp.strftime('%Y%m%d_%H%M%S')}.json"
         filepath = os.path.join(self.output_dir, filename)
 
@@ -173,7 +173,7 @@ class SignalLogger(DebugHelper):
         Returns:
             Path to recording file
         """
-        timestamp = datetime.now()
+        timestamp = datetime.now(timezone.utc)
         filename = f"iq_{int(frequency_hz/1e6)}MHz_{timestamp.strftime('%Y%m%d_%H%M%S')}.dat"
         filepath = os.path.join(self.output_dir, filename)
 
@@ -221,7 +221,7 @@ class SignalLogger(DebugHelper):
         Returns:
             Path to WAV file
         """
-        timestamp = datetime.now()
+        timestamp = datetime.now(timezone.utc)
         filename = (
             f"audio_{int(frequency_hz/1e6)}MHz_{mode}_{timestamp.strftime('%Y%m%d_%H%M%S')}.wav"
         )
@@ -256,7 +256,7 @@ class SignalLogger(DebugHelper):
             self.log_error(f'Error recording audio: {e}')
             return ''
 
-    def create_session_log(self, session_data: Dict[str, Any]) -> str:
+    def create_session_log(self, session_data: dict[str, Any]) -> str:
         """Create a session summary log.
 
         Args:
@@ -265,7 +265,7 @@ class SignalLogger(DebugHelper):
         Returns:
             Path to session log file
         """
-        timestamp = datetime.now()
+        timestamp = datetime.now(timezone.utc)
         filename = f"session_{timestamp.strftime('%Y%m%d_%H%M%S')}.json"
         filepath = os.path.join(self.output_dir, filename)
 
@@ -286,7 +286,7 @@ class SignalLogger(DebugHelper):
             self.log_error(f'Error creating session log: {e}')
             return ''
 
-    def get_gps_position(self) -> Optional[Dict[str, Any]]:
+    def get_gps_position(self) -> Optional[dict[str, Any]]:
         """Get current GPS position.
 
         Returns:

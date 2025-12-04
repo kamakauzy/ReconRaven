@@ -4,13 +4,13 @@ Advanced Scanner with Demodulation & Recording
 Can decode analog signals (FM/AM) and record ham/433 MHz traffic
 """
 
-import os
 import signal
 import sys
 import threading
 import time
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
+from pathlib import Path
 
 import numpy as np
 from rtlsdr import RtlSdr
@@ -52,10 +52,10 @@ class AdvancedScanner(DebugHelper):
         self.voice_transcriber = None  # Lazy load when needed
 
         # Output directories
-        self.output_dir = 'recordings'
-        os.makedirs(self.output_dir, exist_ok=True)
-        os.makedirs(f'{self.output_dir}/audio', exist_ok=True)
-        os.makedirs(f'{self.output_dir}/logs', exist_ok=True)
+        self.output_dir = Path('recordings')
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        (self.output_dir / 'audio').mkdir(parents=True, exist_ok=True)
+        (self.output_dir / 'logs').mkdir(parents=True, exist_ok=True)
 
         # Register cleanup handlers
         import atexit
@@ -259,8 +259,7 @@ class AdvancedScanner(DebugHelper):
             active_sdr.center_freq = freq
             time.sleep(0.03)  # Faster scanning
             samples = active_sdr.read_samples(128 * 1024)
-            power = 10 * np.log10(np.mean(np.abs(samples) ** 2))
-            return power
+            return 10 * np.log10(np.mean(np.abs(samples) ** 2))
         except Exception:
             return None
 
@@ -308,7 +307,7 @@ class AdvancedScanner(DebugHelper):
 
     def record_signal(self, freq, duration=3):
         """Record raw IQ samples"""
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
         band = self.get_band_name(freq)
         signal_type = self.signal_types.get(band, 'FM')
 
@@ -366,14 +365,15 @@ class AdvancedScanner(DebugHelper):
             # Save as numpy array
             np.save(iq_file, samples)
 
-            size = os.path.getsize(iq_file) / (1024 * 1024)  # MB
+            iq_path = Path(iq_file)
+            size = iq_path.stat().st_size / (1024 * 1024)  # MB
             print(f'SUCCESS! IQ recording saved: {iq_file}')
             print(f'File size: {size:.1f} MB')
             print('To replay: Use GQRX, URH, or Inspectrum')
 
             # Add to database
             try:
-                filename = os.path.basename(iq_file)
+                filename = iq_path.name
                 self.db.add_recording(
                     filename=filename, freq=freq, band=band, duration=duration, file_size_mb=size
                 )
@@ -389,7 +389,7 @@ class AdvancedScanner(DebugHelper):
             with open(log_file, 'a') as f:
                 f.write(f'{timestamp},{freq},{band},{signal_type},iq_complete,{size:.1f}MB\n')
 
-            return os.path.basename(iq_file)  # Return filename
+            return iq_path.name  # Return filename
 
         except Exception as e:
             print(f'RECORDING ERROR: {e}')
@@ -559,7 +559,7 @@ class AdvancedScanner(DebugHelper):
                                 }
                             )
 
-                        signal_id = self.db.add_signal(
+                        self.db.add_signal(
                             freq=sig['freq'],
                             band=sig['band'],
                             power=sig['power'],
@@ -577,7 +577,7 @@ class AdvancedScanner(DebugHelper):
                                 'power_dbm': sig['power'],
                                 'baseline_power_dbm': sig['baseline'],
                                 'delta_db': sig['delta'],
-                                'detected_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                'detected_at': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
                                 'filename': recording_file,
                             }
 

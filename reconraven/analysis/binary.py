@@ -78,10 +78,7 @@ class BinaryDecoder:
         envelope = np.abs(self.samples)
 
         # Smooth envelope
-        if self.symbol_rate:
-            window_size = int(self.sample_rate / (self.symbol_rate * 4))
-        else:
-            window_size = 100
+        window_size = int(self.sample_rate / (self.symbol_rate * 4)) if self.symbol_rate else 100
 
         envelope_smooth = np.convolve(envelope, np.ones(window_size) / window_size, mode='same')
 
@@ -113,10 +110,7 @@ class BinaryDecoder:
         inst_freq = np.diff(phase)
 
         # Smooth
-        if self.symbol_rate:
-            window_size = int(self.sample_rate / (self.symbol_rate * 4))
-        else:
-            window_size = 100
+        window_size = int(self.sample_rate / (self.symbol_rate * 4)) if self.symbol_rate else 100
 
         inst_freq_smooth = np.convolve(inst_freq, np.ones(window_size) / window_size, mode='same')
 
@@ -220,7 +214,7 @@ class BinaryDecoder:
 
     def _describe_preamble(self, pattern):
         """Describe what a preamble pattern is"""
-        if pattern == '10101010' or pattern == '01010101':
+        if pattern in ('10101010', '01010101'):
             return 'Standard sync/preamble'
         if pattern == '11110000':
             return 'Keeloq garage door opener'

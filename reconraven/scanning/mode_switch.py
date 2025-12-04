@@ -163,11 +163,7 @@ class ModeSwitcher(DebugHelper):
             return False
 
         freq = self.sdr.sdrs[0].center_freq
-        for sdr in self.sdr.sdrs[1:]:
-            if abs(sdr.center_freq - freq) > 1000:  # Within 1kHz
-                return False
-
-        return True
+        return all(abs(sdr.center_freq - freq) <= 1000 for sdr in self.sdr.sdrs[1:])
 
     def get_status(self) -> dict:
         """Get mode switcher status.

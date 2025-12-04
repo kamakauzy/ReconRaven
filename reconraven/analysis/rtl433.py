@@ -5,12 +5,12 @@ Bridges ReconRaven with rtl_433 for automatic device identification
 """
 
 import logging
+from pathlib import Path
 
 
 logger = logging.getLogger(__name__)
 
 import json
-import os
 import subprocess
 import sys
 
@@ -58,7 +58,7 @@ class RTL433Integration:
         # Write to file
         iq_interleaved.tofile(cu8_file)
 
-        logger.info(f'Converted: {cu8_file} ({os.path.getsize(cu8_file) / 1024 / 1024:.1f} MB)')
+        logger.info(f'Converted: {cu8_file} ({Path(cu8_file).stat().st_size / 1024 / 1024:.1f} MB)')
         return cu8_file
 
     def analyze_recording(self, npy_file, output_json=None):
@@ -102,8 +102,8 @@ class RTL433Integration:
                         pass
 
             # Clean up .cu8 file
-            if os.path.exists(cu8_file):
-                os.remove(cu8_file)
+            if Path(cu8_file).exists():
+                Path(cu8_file).unlink()
 
             if devices:
                 logger.info(f'\nFound {len(devices)} device(s)!')

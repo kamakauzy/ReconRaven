@@ -254,8 +254,7 @@ class AdvancedScanner:
             active_sdr.center_freq = freq
             time.sleep(0.03)  # Faster scanning
             samples = active_sdr.read_samples(128 * 1024)
-            power = 10 * np.log10(np.mean(np.abs(samples) ** 2))
-            return power
+            return 10 * np.log10(np.mean(np.abs(samples) ** 2))
         except Exception:
             return None
 
@@ -554,7 +553,7 @@ class AdvancedScanner:
                                 }
                             )
 
-                        signal_id = self.db.add_signal(
+                        self.db.add_signal(
                             freq=sig['freq'],
                             band=sig['band'],
                             power=sig['power'],
