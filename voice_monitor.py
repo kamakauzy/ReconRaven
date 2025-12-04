@@ -121,8 +121,8 @@ class VoiceMonitor:
 
             return True
 
-        except Exception as e:
-            logger.exception(f'Error starting voice monitor: {e}')
+        except Exception:
+            logger.exception('Error starting voice monitor')
             return False
 
     def _audio_callback(self, audio_data: bytes):

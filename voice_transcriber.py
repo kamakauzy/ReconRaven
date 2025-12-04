@@ -106,7 +106,7 @@ class VoiceTranscriber:
             return transcript
 
         except Exception as e:
-            logger.exception(f'Transcription error: {e}')
+            logger.exception('Transcription error')
             return {'error': str(e)}
 
     def transcribe_batch(

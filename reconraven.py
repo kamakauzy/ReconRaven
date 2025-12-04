@@ -572,7 +572,7 @@ def cmd_test(args):
     sys.path.insert(0, str(Path(__file__).parent / 'tests'))
 
     try:
-        from test_hardware import test_sdr_detection, test_sdr_initialization
+        from test_hardware import test_sdr_detection
         from test_rf_environment import test_band_scan, test_frequency_monitoring, test_noise_floor
     except ImportError as e:
         print(f'ERROR: Could not import test modules: {e}')

@@ -6,7 +6,6 @@ Also handles voice signal transcription
 """
 
 import logging
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -143,8 +142,8 @@ class RecordingManager:
                 # Keep for manual review
                 logger.info(f"Keeping {recording['filename']} for manual review")
 
-        except Exception as e:
-            logger.exception(f'Cleanup error: {e}')
+        except Exception:
+            logger.exception('Cleanup error')
 
     def transcribe_voice_recording(self, recording_id, wav_filepath):
         """Auto-transcribe voice recording using Whisper"""
@@ -182,8 +181,8 @@ class RecordingManager:
             else:
                 logger.info('No speech detected in recording')
 
-        except Exception as e:
-            logger.exception(f'Transcription error: {e}')
+        except Exception:
+            logger.exception('Transcription error')
 
 
 def cleanup_old_recordings(db, days_old=7):
@@ -205,7 +204,7 @@ def cleanup_old_recordings(db, days_old=7):
         if datetime.now(timezone.utc) - captured > timedelta(days=days_old):
             # Old and unanalyzed - probably not important
             filepath = f"recordings/audio/{rec['filename']}"
-            if os.path.exists(filepath):
+            if Path(filepath).exists():
                 size_mb = Path(filepath).stat().st_size / (1024 * 1024)
                 Path(filepath).unlink()
                 saved_mb += size_mb

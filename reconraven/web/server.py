@@ -447,12 +447,6 @@ class SDRDashboardServer(DebugHelper):
             # TODO: Implement voice monitoring
             emit('voice_status', {'status': 'monitoring', 'frequency': frequency_mhz, 'mode': mode})
 
-        @self.socketio.on('stop_voice_monitor')
-        def handle_stop_voice_monitor():
-            """Stop voice monitoring."""
-            # TODO: Implement stop voice monitoring
-            emit('voice_status', {'status': 'idle'})
-
         @self.socketio.on('request_transcripts')
         def handle_request_transcripts(data):
             """Get all transcripts from database."""
