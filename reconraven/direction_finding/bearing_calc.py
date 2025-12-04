@@ -43,13 +43,13 @@ class BearingCalculator(DebugHelper):
                 return None
 
             # Calculate covariance matrix
-            R = self.array_sync.get_covariance_matrix(samples)
+            cov_matrix = self.array_sync.get_covariance_matrix(samples)
 
             # Get array geometry
             array_positions = self.array_sync.get_array_geometry()
 
             # Run MUSIC algorithm
-            bearing, confidence = self._music_algorithm(R, array_positions, frequency_hz)
+            bearing, confidence = self._music_algorithm(cov_matrix, array_positions, frequency_hz)
 
             if bearing is not None:
                 result = {
@@ -69,7 +69,7 @@ class BearingCalculator(DebugHelper):
         return None
 
     def _music_algorithm(
-        self, R: np.ndarray, array_positions: np.ndarray, frequency_hz: float
+        self, cov_matrix: np.ndarray, array_positions: np.ndarray, frequency_hz: float
     ) -> tuple[Optional[float], float]:
         """MUSIC (Multiple Signal Classification) algorithm.
 
@@ -83,7 +83,7 @@ class BearingCalculator(DebugHelper):
         """
         try:
             # Eigenvalue decomposition
-            eigenvalues, eigenvectors = np.linalg.eigh(R)
+            eigenvalues, eigenvectors = np.linalg.eigh(cov_matrix)
 
             # Sort by eigenvalue (descending)
             idx = eigenvalues.argsort()[::-1]
@@ -179,10 +179,10 @@ class BearingCalculator(DebugHelper):
             Dictionary with bearing information
         """
         try:
-            R = self.array_sync.get_covariance_matrix(samples)
+            cov_matrix = self.array_sync.get_covariance_matrix(samples)
             array_positions = self.array_sync.get_array_geometry()
 
-            bearing, confidence = self._music_algorithm(R, array_positions, frequency_hz)
+            bearing, confidence = self._music_algorithm(cov_matrix, array_positions, frequency_hz)
 
             if bearing is not None:
                 return {

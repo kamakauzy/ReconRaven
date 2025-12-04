@@ -448,7 +448,7 @@ class SDRDashboardServer(DebugHelper):
             emit('voice_status', {'status': 'monitoring', 'frequency': frequency_mhz, 'mode': mode})
 
         @self.socketio.on('request_transcripts')
-        def handle_request_transcripts(data):
+        def handle_request_transcripts(_data):
             """Get all transcripts from database."""
             from database import get_db
 

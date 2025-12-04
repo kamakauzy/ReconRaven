@@ -289,7 +289,7 @@ class SDRArraySync(DebugHelper):
         snapshot_length = len(samples[0]) // num_snapshots
 
         # Initialize covariance matrix
-        R = np.zeros((num_elements, num_elements), dtype=complex)
+        cov_matrix = np.zeros((num_elements, num_elements), dtype=complex)
 
         # Calculate covariance over snapshots
         for snapshot in range(num_snapshots):
@@ -302,12 +302,12 @@ class SDRArraySync(DebugHelper):
             )
 
             # Add to covariance matrix
-            R += np.outer(snapshot_vector, snapshot_vector.conj())
+            cov_matrix += np.outer(snapshot_vector, snapshot_vector.conj())
 
         # Normalize
-        R /= num_snapshots
+        cov_matrix /= num_snapshots
 
-        return R
+        return cov_matrix
 
     def get_array_geometry(self) -> np.ndarray:
         """Get array element positions.

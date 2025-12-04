@@ -34,7 +34,7 @@ class RecordingManager(DebugHelper):
                 self.log_warning(f'Could not load transcriber: {e}')
         return self.voice_transcriber
 
-    def should_keep_recording(self, frequency_hz, band):
+    def should_keep_recording(self, _frequency_hz, band):
         """Determine if recording should be kept based on band/type"""
         # ISM bands - delete after analysis (short bursts, no replay value)
         ism_bands = ['ISM433', 'ISM915']
@@ -94,7 +94,7 @@ class RecordingManager(DebugHelper):
             self.log_error(f'[WAV] Error converting to audio: {e}')
             return None
 
-    def cleanup_after_analysis(self, recording_id, analysis_results):
+    def cleanup_after_analysis(self, recording_id, _analysis_results):
         """Clean up recording based on analysis results and band
         Also transcribes voice signals if detected
         """

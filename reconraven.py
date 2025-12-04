@@ -449,14 +449,14 @@ def cmd_db(args):
     return 0
 
 
-def cmd_setup(args):
+def cmd_setup(_args):
     """Setup location-specific frequencies"""
     print('ERROR: Setup functionality being redesigned.')
     print('For now, baseline frequencies are auto-built during first scan.')
     return 1
 
 
-def cmd_play(args):
+def cmd_play(_args):
     """Play/convert IQ recording"""
     print('ERROR: Play functionality removed.')
     print('Use external tools like inspectrum or URH to view .npy IQ files.')

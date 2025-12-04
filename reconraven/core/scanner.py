@@ -791,7 +791,7 @@ class AdvancedScanner(DebugHelper):
         except KeyboardInterrupt:
             print(f'\n\nStopped after {scan_num} scans')
 
-    def _signal_handler(self, signum, frame):
+    def _signal_handler(self, signum, _frame):
         """Handle signals for graceful shutdown"""
         print(f'\n[CLEANUP] Received signal {signum}, cleaning up...')
         self.cleanup()
