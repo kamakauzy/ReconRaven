@@ -4,6 +4,11 @@ Binary Decoder Module
 Extracts clean binary data from IQ samples for protocol analysis
 """
 
+import logging
+
+
+logger = logging.getLogger(__name__)
+
 import sys
 
 import numpy as np
@@ -67,7 +72,7 @@ class BinaryDecoder:
 
     def decode_ook(self):
         """Decode OOK/ASK to binary"""
-        print('Decoding OOK/ASK signal...')
+        logger.info('Decoding OOK/ASK signal...')
 
         # Get amplitude envelope
         envelope = np.abs(self.samples)
@@ -101,7 +106,7 @@ class BinaryDecoder:
 
     def decode_fsk(self):
         """Decode FSK to binary"""
-        print('Decoding FSK signal...')
+        logger.info('Decoding FSK signal...')
 
         # Calculate instantaneous frequency
         phase = np.unwrap(np.angle(self.samples))
@@ -151,14 +156,14 @@ class BinaryDecoder:
         """Main decode function - returns binary array"""
         # Detect modulation
         mod = self.detect_modulation_type()
-        print(f'Detected modulation: {mod}')
+        logger.info(f'Detected modulation: {mod}')
 
         # Estimate symbol rate
         rate = self.estimate_symbol_rate()
         if rate:
-            print(f'Symbol rate: {rate:.0f} baud')
+            logger.info(f'Symbol rate: {rate:.0f} baud')
         else:
-            print('Symbol rate: Unknown (using default)')
+            logger.info('Symbol rate: Unknown (using default)')
 
         # Decode based on modulation
         if mod == 'OOK/ASK':
@@ -166,11 +171,11 @@ class BinaryDecoder:
         elif mod == 'FSK':
             bits = self.decode_fsk()
         else:
-            print('Unknown modulation - cannot decode')
+            logger.info('Unknown modulation - cannot decode')
             return None
 
         if bits is not None:
-            print(f'Decoded {len(bits)} bits')
+            logger.info(f'Decoded {len(bits)} bits')
             return bits
 
         return None
@@ -226,9 +231,9 @@ class BinaryDecoder:
 
 def decode_file(filepath):
     """Decode a recording file"""
-    print(f'\nLoading: {filepath}')
+    logger.info(f'\nLoading: {filepath}')
     samples = np.load(filepath)
-    print(f'Loaded {len(samples):,} samples')
+    logger.info(f'Loaded {len(samples):,} samples')
 
     # Use first 5 seconds for faster processing
     samples = samples[: int(2.4e6 * 5)]
@@ -237,41 +242,43 @@ def decode_file(filepath):
     bits = decoder.decode_to_binary()
 
     if bits is not None and len(bits) > 0:
-        print('\n' + '=' * 70)
-        print('BINARY DECODE RESULTS')
-        print('=' * 70)
+        logger.info('\n' + '=' * 70)
+        logger.info('BINARY DECODE RESULTS')
+        logger.info('=' * 70)
 
         # Show first 1000 bits
         display_bits = bits[: min(1000, len(bits))]
 
-        print('\nBit stream (first 1000 bits):')
+        logger.info('\nBit stream (first 1000 bits):')
         bit_string = ''.join(map(str, display_bits))
         for i in range(0, len(bit_string), 64):
-            print(f'  {bit_string[i:i+64]}')
+            logger.info(f'  {bit_string[i:i+64]}')
 
         # Convert to hex
-        print('\nHex representation:')
+        logger.info('\nHex representation:')
         hex_str = decoder.bits_to_hex(display_bits)
         words = hex_str.split()
         for i in range(0, len(words), 16):
-            print(f"  {' '.join(words[i:i+16])}")
+            logger.info(f"  {' '.join(words[i:i+16])}")
 
         # Find preambles
-        print('\nPreamble search:')
+        logger.info('\nPreamble search:')
         preambles = decoder.find_preamble(bits)
         if preambles:
             for p in preambles:
-                print(f"  Found: {p['pattern']} at position {p['position']} - {p['description']}")
+                logger.info(
+                    f"  Found: {p['pattern']} at position {p['position']} - {p['description']}"
+                )
         else:
-            print('  No known preambles found')
+            logger.info('  No known preambles found')
 
         # Statistics
-        print('\nStatistics:')
+        logger.info('\nStatistics:')
         ones = np.sum(bits)
         zeros = len(bits) - ones
-        print(f'  Total bits: {len(bits)}')
-        print(f'  Ones: {ones} ({ones/len(bits)*100:.1f}%)')
-        print(f'  Zeros: {zeros} ({zeros/len(bits)*100:.1f}%)')
+        logger.info(f'  Total bits: {len(bits)}')
+        logger.info(f'  Ones: {ones} ({ones/len(bits)*100:.1f}%)')
+        logger.info(f'  Zeros: {zeros} ({zeros/len(bits)*100:.1f}%)')
 
         # Save to file
         output_file = filepath.replace('.npy', '_decoded.txt')
@@ -291,7 +298,7 @@ def decode_file(filepath):
             for i in range(0, len(bit_string), 64):
                 f.write(bit_string[i : i + 64] + '\n')
 
-        print(f'\nFull decode saved to: {output_file}')
+        logger.info(f'\nFull decode saved to: {output_file}')
 
         return bits, decoder
 
@@ -300,7 +307,7 @@ def decode_file(filepath):
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print('Usage: python binary_decoder.py <file.npy>')
+        logger.info('Usage: python binary_decoder.py <file.npy>')
         sys.exit(1)
 
     decode_file(sys.argv[1])

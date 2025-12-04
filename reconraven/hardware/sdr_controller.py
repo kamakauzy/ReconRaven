@@ -10,6 +10,8 @@ from typing import List
 
 import numpy as np
 
+from reconraven.core.debug_helper import DebugHelper
+
 
 try:
     from rtlsdr import RtlSdr
@@ -18,8 +20,6 @@ try:
 except ImportError:
     RTLSDR_AVAILABLE = False
     logging.warning('pyrtlsdr not available - running in simulation mode')
-
-logger = logging.getLogger(__name__)
 
 
 class OperatingMode(Enum):
@@ -41,7 +41,7 @@ def detect_sdr_devices() -> int:
         Number of RTL-SDR devices found
     """
     if not RTLSDR_AVAILABLE:
-        logger.warning('RTL-SDR library not available, returning 0 devices')
+        self.log_warning('RTL-SDR library not available, returning 0 devices')
         return 0
 
     try:
@@ -64,12 +64,12 @@ def detect_sdr_devices() -> int:
                         except ValueError:
                             pass
 
-        logger.info(f'Detected {count} RTL-SDR device(s)')
+        self.log_info(f'Detected {count} RTL-SDR device(s)')
         return count
 
     except FileNotFoundError:
         # rtl_test not found, try pyrtlsdr detection
-        logger.warning('rtl_test not found, using pyrtlsdr detection')
+        self.log_warning('rtl_test not found, using pyrtlsdr detection')
         try:
             # Try to enumerate devices
             count = 0
@@ -81,18 +81,18 @@ def detect_sdr_devices() -> int:
                 except Exception:
                     break
 
-            logger.info(f'Detected {count} RTL-SDR device(s) via pyrtlsdr')
+            self.log_info(f'Detected {count} RTL-SDR device(s) via pyrtlsdr')
             return count
 
         except Exception as e:
-            logger.error(f'Error detecting SDR devices: {e}')
+            self.log_error(f'Error detecting SDR devices: {e}')
             return 0
 
     except subprocess.TimeoutExpired:
-        logger.error('Timeout detecting SDR devices')
+        self.log_error('Timeout detecting SDR devices')
         return 0
     except Exception as e:
-        logger.error(f'Error detecting SDR devices: {e}')
+        self.log_error(f'Error detecting SDR devices: {e}')
         return 0
 
 
@@ -105,24 +105,26 @@ def detect_sdr_mode() -> OperatingMode:
     num_devices = detect_sdr_devices()
 
     if num_devices == 0:
-        logger.warning('No SDR devices detected')
+        self.log_warning('No SDR devices detected')
         return OperatingMode.UNKNOWN
     if num_devices == 1:
-        logger.info('Single SDR detected - MOBILE mode')
+        self.log_info('Single SDR detected - MOBILE mode')
         return OperatingMode.MOBILE
     if num_devices >= 4:
-        logger.info(f'{num_devices} SDRs detected - PARALLEL_SCAN mode (DF available)')
+        self.log_info(f'{num_devices} SDRs detected - PARALLEL_SCAN mode (DF available)')
         return OperatingMode.PARALLEL_SCAN
-    logger.warning(
+    self.log_warning(
         f'{num_devices} SDRs detected - insufficient for parallel/DF (need 4), using MOBILE mode'
     )
     return OperatingMode.MOBILE
 
 
-class SDRController:
+class SDRController(DebugHelper):
     """Controller for RTL-SDR hardware with mode management."""
 
     def __init__(self, config: dict = None):
+        super().__init__(component_name='SDRController')
+        self.debug_enabled = True
         """Initialize SDR controller.
 
         Args:
@@ -150,7 +152,7 @@ class SDRController:
             self.mode = detect_sdr_mode()
 
             if self.mode == OperatingMode.UNKNOWN:
-                logger.error('No SDR devices available')
+                self.log_error('No SDR devices available')
                 return False
 
             # Initialize SDRs based on mode
@@ -163,7 +165,7 @@ class SDRController:
             return success
 
         except Exception as e:
-            logger.error(f'Error initializing SDR hardware: {e}')
+            self.log_error(f'Error initializing SDR hardware: {e}')
             return False
 
     def _init_single_sdr(self) -> bool:
@@ -173,7 +175,7 @@ class SDRController:
             True if successful
         """
         if not RTLSDR_AVAILABLE:
-            logger.error('RTL-SDR library not available')
+            self.log_error('RTL-SDR library not available')
             return False
 
         try:
@@ -183,20 +185,20 @@ class SDRController:
             try:
                 sdr.sample_rate = self.sample_rate
             except Exception as e:
-                logger.warning(f'Could not set sample_rate (trying default): {e}')
+                self.log_warning(f'Could not set sample_rate (trying default): {e}')
                 sdr.sample_rate = 2.048e6  # Default
 
             try:
                 sdr.center_freq = self.center_freq
             except Exception as e:
-                logger.warning(f'Could not set center_freq (trying default): {e}')
+                self.log_warning(f'Could not set center_freq (trying default): {e}')
                 sdr.center_freq = 100e6  # Default to 100 MHz
 
             # Try to set frequency correction (may fail on some Windows setups)
             try:
                 sdr.freq_correction = self.ppm_error
             except Exception as e:
-                logger.warning(f'Could not set freq_correction (non-critical): {e}')
+                self.log_warning(f'Could not set freq_correction (non-critical): {e}')
 
             # Set gain with error handling
             try:
@@ -205,18 +207,18 @@ class SDRController:
                 else:
                     sdr.gain = float(self.gain)
             except Exception as e:
-                logger.warning(f'Could not set gain (using auto): {e}')
+                self.log_warning(f'Could not set gain (using auto): {e}')
                 try:
                     sdr.gain = 'auto'
                 except:
                     pass  # Some drivers don't support auto either
 
             self.sdrs = [sdr]
-            logger.info(f'Initialized single SDR: {sdr.sample_rate} Hz, {sdr.center_freq} Hz')
+            self.log_info(f'Initialized single SDR: {sdr.sample_rate} Hz, {sdr.center_freq} Hz')
             return True
 
         except Exception as e:
-            logger.error(f'Error initializing SDR: {e}')
+            self.log_error(f'Error initializing SDR: {e}')
             return False
 
     def _init_df_array(self) -> bool:
@@ -226,14 +228,14 @@ class SDRController:
             True if successful
         """
         if not RTLSDR_AVAILABLE:
-            logger.error('RTL-SDR library not available')
+            self.log_error('RTL-SDR library not available')
             return False
 
         try:
             num_devices = detect_sdr_devices()
 
             if num_devices < 4:
-                logger.error(f'Insufficient SDRs for DF mode: {num_devices} < 4')
+                self.log_error(f'Insufficient SDRs for DF mode: {num_devices} < 4')
                 return False
 
             # Initialize 4 SDRs for the array
@@ -251,13 +253,13 @@ class SDRController:
                     sdr.gain = float(self.gain)
 
                 self.sdrs.append(sdr)
-                logger.info(f'Initialized SDR {i} for DF array')
+                self.log_info(f'Initialized SDR {i} for DF array')
 
-            logger.info(f'DF array initialized with {len(self.sdrs)} SDRs')
+            self.log_info(f'DF array initialized with {len(self.sdrs)} SDRs')
             return True
 
         except Exception as e:
-            logger.error(f'Error initializing DF array: {e}')
+            self.log_error(f'Error initializing DF array: {e}')
             return False
 
     def set_frequency(self, freq_hz: int):
@@ -269,7 +271,7 @@ class SDRController:
         for sdr in self.sdrs:
             sdr.center_freq = freq_hz
         self.center_freq = freq_hz
-        logger.debug(f'Set frequency to {freq_hz} Hz')
+        self.log_debug(f'Set frequency to {freq_hz} Hz')
 
     def set_sample_rate(self, rate_hz: int):
         """Set sample rate for all SDRs.
@@ -280,7 +282,7 @@ class SDRController:
         for sdr in self.sdrs:
             sdr.sample_rate = rate_hz
         self.sample_rate = rate_hz
-        logger.debug(f'Set sample rate to {rate_hz} Hz')
+        self.log_debug(f'Set sample rate to {rate_hz} Hz')
 
     def set_gain(self, gain):
         """Set gain for all SDRs.
@@ -294,7 +296,7 @@ class SDRController:
             else:
                 sdr.gain = float(gain)
         self.gain = gain
-        logger.debug(f'Set gain to {gain}')
+        self.log_debug(f'Set gain to {gain}')
 
     def read_samples(self, num_samples: int = 256 * 1024) -> List[np.ndarray]:
         """Read samples from all SDRs.
@@ -308,7 +310,7 @@ class SDRController:
         import numpy as np
 
         if not self.is_initialized:
-            logger.error('SDR not initialized')
+            self.log_error('SDR not initialized')
             return []
 
         samples = []
@@ -317,7 +319,7 @@ class SDRController:
                 data = sdr.read_samples(num_samples)
                 samples.append(data)
             except Exception as e:
-                logger.error(f'Error reading from SDR {i}: {e}')
+                self.log_error(f'Error reading from SDR {i}: {e}')
                 samples.append(np.array([]))
 
         return samples
@@ -343,13 +345,13 @@ class SDRController:
         for i, sdr in enumerate(self.sdrs):
             try:
                 sdr.close()
-                logger.debug(f'Closed SDR {i}')
+                self.log_debug(f'Closed SDR {i}')
             except Exception as e:
-                logger.error(f'Error closing SDR {i}: {e}')
+                self.log_error(f'Error closing SDR {i}: {e}')
 
         self.sdrs = []
         self.is_initialized = False
-        logger.info('All SDRs closed')
+        self.log_info('All SDRs closed')
 
     def __enter__(self):
         """Context manager entry."""

@@ -3,15 +3,13 @@ Drone Detection Module
 Pattern matching and fingerprinting for drone signals.
 """
 
-import logging
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-
-logger = logging.getLogger(__name__)
+from reconraven.core.debug_helper import DebugHelper
 
 
 @dataclass
@@ -27,10 +25,12 @@ class DroneSignature:
     hop_rate_hz: Optional[float] = None
 
 
-class DroneDetector:
+class DroneDetector(DebugHelper):
     """Detects and classifies drone signals."""
 
     def __init__(self, config: dict = None):
+        super().__init__(component_name='DroneDetector')
+        self.debug_enabled = True
         """Initialize drone detector."""
         self.config = config or {}
         self.known_signatures = self._load_signatures()
@@ -93,7 +93,7 @@ class DroneDetector:
                 'power_dbm': signal_hit.power_dbm,
             }
             self.detection_history.append(result)
-            logger.info(f"Drone detected: {best_match['signature']} at {freq/1e6:.3f} MHz")
+            self.log_info(f"Drone detected: {best_match['signature']} at {freq/1e6:.3f} MHz")
             return result
 
         return None
@@ -126,5 +126,5 @@ class DroneDetector:
                 if num_bursts > 0:
                     return min(1.0, num_bursts / 10.0)
         except Exception as e:
-            logger.error(f'Error analyzing pattern: {e}')
+            self.log_error(f'Error analyzing pattern: {e}')
         return 0.0

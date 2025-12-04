@@ -3,13 +3,11 @@ Mode Switching Module
 Handles dynamic switching between parallel scan and DF modes.
 """
 
-import logging
 import time
 from enum import Enum
 from typing import Optional
 
-
-logger = logging.getLogger(__name__)
+from reconraven.core.debug_helper import DebugHelper
 
 
 class SwitchMode(Enum):
@@ -20,10 +18,12 @@ class SwitchMode(Enum):
     DF_MODE = 'df_mode'
 
 
-class ModeSwitcher:
+class ModeSwitcher(DebugHelper):
     """Manages dynamic mode switching for SDR array."""
 
     def __init__(self, sdr_controller, parallel_scanner, df_array):
+        super().__init__(component_name='ModeSwitcher')
+        self.debug_enabled = True
         """Initialize mode switcher.
 
         Args:
@@ -48,10 +48,10 @@ class ModeSwitcher:
             True if switch successful
         """
         if self.current_mode == SwitchMode.DF_MODE:
-            logger.warning('Already in DF mode')
+            self.log_warning('Already in DF mode')
             return False
 
-        logger.info(f'Switching to DF mode for {frequency_hz/1e6:.3f} MHz...')
+        self.log_info(f'Switching to DF mode for {frequency_hz/1e6:.3f} MHz...')
         self.current_mode = SwitchMode.TRANSITIONING
         self.switch_count += 1
 
@@ -61,7 +61,7 @@ class ModeSwitcher:
             time.sleep(0.5)  # Allow threads to stop
 
             # Step 2: Retune all SDRs to target frequency
-            logger.info(f'Retuning all SDRs to {frequency_hz/1e6:.3f} MHz')
+            self.log_info(f'Retuning all SDRs to {frequency_hz/1e6:.3f} MHz')
             for sdr in self.sdr.sdrs:
                 sdr.center_freq = int(frequency_hz)
 
@@ -73,11 +73,11 @@ class ModeSwitcher:
             self.df_frequency = frequency_hz
             self.current_mode = SwitchMode.DF_MODE
 
-            logger.info('Successfully switched to DF mode')
+            self.log_info('Successfully switched to DF mode')
             return True
 
         except Exception as e:
-            logger.error(f'Error switching to DF mode: {e}')
+            self.log_error(f'Error switching to DF mode: {e}')
             self.current_mode = SwitchMode.PARALLEL_SCAN
             return False
 
@@ -88,10 +88,10 @@ class ModeSwitcher:
             True if switch successful
         """
         if self.current_mode == SwitchMode.PARALLEL_SCAN:
-            logger.warning('Already in parallel scan mode')
+            self.log_warning('Already in parallel scan mode')
             return False
 
-        logger.info('Switching back to parallel scan mode...')
+        self.log_info('Switching back to parallel scan mode...')
         self.current_mode = SwitchMode.TRANSITIONING
 
         try:
@@ -106,11 +106,11 @@ class ModeSwitcher:
 
             self.current_mode = SwitchMode.PARALLEL_SCAN
 
-            logger.info('Successfully switched to parallel scan mode')
+            self.log_info('Successfully switched to parallel scan mode')
             return True
 
         except Exception as e:
-            logger.error(f'Error switching to parallel scan: {e}')
+            self.log_error(f'Error switching to parallel scan: {e}')
             return False
 
     def quick_df_check(self, frequency_hz: float, duration_s: float = 2.0) -> Optional[dict]:
@@ -143,7 +143,7 @@ class ModeSwitcher:
             return {'success': True, 'frequency_hz': frequency_hz}
 
         except Exception as e:
-            logger.error(f'Error in quick DF check: {e}')
+            self.log_error(f'Error in quick DF check: {e}')
             # Ensure we return to parallel scan
             if self.current_mode != SwitchMode.PARALLEL_SCAN:
                 self.switch_to_parallel()
@@ -185,7 +185,7 @@ class ModeSwitcher:
 
     def force_parallel_scan(self):
         """Force return to parallel scan mode (emergency/cleanup)."""
-        logger.warning('Force returning to parallel scan mode')
+        self.log_warning('Force returning to parallel scan mode')
 
         try:
             if self.parallel_scanner.running:
@@ -197,4 +197,4 @@ class ModeSwitcher:
             self.df_frequency = None
 
         except Exception as e:
-            logger.error(f'Error force switching to parallel: {e}')
+            self.log_error(f'Error force switching to parallel: {e}')

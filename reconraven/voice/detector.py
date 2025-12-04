@@ -9,11 +9,15 @@ from typing import Optional, Tuple
 import numpy as np
 from scipy import signal
 
+from reconraven.core.debug_helper import DebugHelper
 
-class VoiceDetector:
+
+class VoiceDetector(DebugHelper):
     """Detects voice signals from RF characteristics"""
 
     def __init__(self):
+        super().__init__(component_name='VoiceDetector')
+        self.debug_enabled = True
         # Voice signal characteristics
         self.voice_bandwidths = {
             'NFM': (8000, 16000),  # Narrow FM (ham, public safety)
@@ -181,14 +185,14 @@ if __name__ == '__main__':
         (121.5e6, 'Aviation emergency'),
     ]
 
-    print('\n' + '=' * 70)
-    print('VOICE SIGNAL DETECTION TEST')
-    print('=' * 70)
+    self.log_info('\n' + '=' * 70)
+    self.log_info('VOICE SIGNAL DETECTION TEST')
+    self.log_info('=' * 70)
 
     for freq_hz, description in test_frequencies:
         should_monitor = detector.should_monitor_for_voice(freq_hz)
         mode = detector.get_optimal_voice_mode(freq_hz)
 
-        print(f'\n{freq_hz/1e6:.4f} MHz - {description}')
-        print(f"  Monitor for voice: {'YES' if should_monitor else 'NO'}")
-        print(f'  Optimal mode: {mode}')
+        self.log_info(f'\n{freq_hz/1e6:.4f} MHz - {description}')
+        self.log_info(f"  Monitor for voice: {'YES' if should_monitor else 'NO'}")
+        self.log_info(f'  Optimal mode: {mode}')

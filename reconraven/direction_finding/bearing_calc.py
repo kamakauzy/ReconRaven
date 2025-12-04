@@ -3,19 +3,19 @@ Bearing Calculation Module
 Implements MUSIC algorithm for direction finding.
 """
 
-import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
+from reconraven.core.debug_helper import DebugHelper
 
-logger = logging.getLogger(__name__)
 
-
-class BearingCalculator:
+class BearingCalculator(DebugHelper):
     """Calculates bearings using MUSIC algorithm."""
 
     def __init__(self, array_sync, config: dict = None):
+        super().__init__(component_name='BearingCalculator')
+        self.debug_enabled = True
         """Initialize bearing calculator."""
         self.array_sync = array_sync
         self.config = config or {}
@@ -39,7 +39,7 @@ class BearingCalculator:
             samples = self.array_sync.acquire_coherent_samples(frequency_hz, num_samples)
 
             if len(samples) < 2:
-                logger.error('Insufficient array elements for bearing calculation')
+                self.log_error('Insufficient array elements for bearing calculation')
                 return None
 
             # Calculate covariance matrix
@@ -60,11 +60,11 @@ class BearingCalculator:
                     'timestamp': __import__('time').time(),
                 }
 
-                logger.info(f'Bearing calculated: {bearing:.1f}° (confidence: {confidence:.2f})')
+                self.log_info(f'Bearing calculated: {bearing:.1f}° (confidence: {confidence:.2f})')
                 return result
 
         except Exception as e:
-            logger.error(f'Error calculating bearing: {e}')
+            self.log_error(f'Error calculating bearing: {e}')
 
         return None
 
@@ -131,7 +131,7 @@ class BearingCalculator:
             return float(bearing), float(confidence)
 
         except Exception as e:
-            logger.error(f'Error in MUSIC algorithm: {e}')
+            self.log_error(f'Error in MUSIC algorithm: {e}')
             return None, 0.0
 
     def _steering_vector(
@@ -196,6 +196,6 @@ class BearingCalculator:
                 }
 
         except Exception as e:
-            logger.error(f'Error calculating bearing from samples: {e}')
+            self.log_error(f'Error calculating bearing from samples: {e}')
 
         return None

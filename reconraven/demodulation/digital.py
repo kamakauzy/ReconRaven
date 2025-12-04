@@ -3,14 +3,12 @@ Digital Demodulation Module
 Handles DMR, P25, NXDN, ProVoice, and Fusion using DSD.
 """
 
-import logging
 import subprocess
 import threading
 from enum import Enum
 from typing import Callable, Optional
 
-
-logger = logging.getLogger(__name__)
+from reconraven.core.debug_helper import DebugHelper
 
 
 class DigitalMode(Enum):
@@ -24,10 +22,12 @@ class DigitalMode(Enum):
     AUTO = 'auto'
 
 
-class DigitalDemodulator:
+class DigitalDemodulator(DebugHelper):
     """Demodulates digital signals using DSD."""
 
     def __init__(self, config: dict = None):
+        super().__init__(component_name='DigitalDemodulator')
+        self.debug_enabled = True
         """Initialize digital demodulator."""
         self.config = config or {}
         self.rtl_process: Optional[subprocess.Popen] = None
@@ -52,7 +52,7 @@ class DigitalDemodulator:
             True if started successfully
         """
         if self.is_running:
-            logger.warning('Digital demodulator already running')
+            self.log_warning('Digital demodulator already running')
             return False
 
         try:
@@ -92,16 +92,16 @@ class DigitalDemodulator:
             monitor_thread = threading.Thread(target=self._monitor_output, daemon=True)
             monitor_thread.start()
 
-            logger.info(
+            self.log_info(
                 f'Digital demodulation started: {frequency_hz/1e6:.6f} MHz, mode: {mode.value}'
             )
             return True
 
         except FileNotFoundError as e:
-            logger.error(f'Required tool not found: {e}. Install rtl-sdr and dsd.')
+            self.log_error(f'Required tool not found: {e}. Install rtl-sdr and dsd.')
             return False
         except Exception as e:
-            logger.error(f'Error starting digital demodulation: {e}')
+            self.log_error(f'Error starting digital demodulation: {e}')
             return False
 
     def _monitor_output(self):
@@ -114,13 +114,13 @@ class DigitalDemodulator:
 
                 decoded = line.decode('utf-8', errors='ignore').strip()
                 if decoded:
-                    logger.debug(f'DSD: {decoded}')
+                    self.log_debug(f'DSD: {decoded}')
 
                     if self.data_callback:
                         self.data_callback(decoded)
 
         except Exception as e:
-            logger.error(f'Error monitoring DSD output: {e}')
+            self.log_error(f'Error monitoring DSD output: {e}')
 
     def stop_demodulation(self):
         """Stop demodulation."""

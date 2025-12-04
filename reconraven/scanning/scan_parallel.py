@@ -3,7 +3,6 @@ Parallel Spectrum Scanner Module
 Uses multiple SDRs to scan different frequency bands simultaneously.
 """
 
-import logging
 import queue
 import subprocess
 import threading
@@ -13,8 +12,7 @@ from typing import Any, Dict, List
 
 import numpy as np
 
-
-logger = logging.getLogger(__name__)
+from reconraven.core.debug_helper import DebugHelper
 
 
 @dataclass
@@ -28,10 +26,12 @@ class BandAssignment:
     priority: int = 2
 
 
-class ParallelScanner:
+class ParallelScanner(DebugHelper):
     """Parallel scanner using multiple SDRs for simultaneous band coverage."""
 
     def __init__(self, sdr_controller, config: dict = None):
+        super().__init__(component_name='ParallelScanner')
+        self.debug_enabled = True
         """Initialize parallel scanner.
 
         Args:
@@ -46,7 +46,7 @@ class ParallelScanner:
         self.results_queue = queue.Queue()
         self.scan_threads = []
 
-        logger.info(f'Parallel scanner initialized with {self.num_sdrs} SDRs')
+        self.log_info(f'Parallel scanner initialized with {self.num_sdrs} SDRs')
 
     def _load_band_assignments(self) -> List[BandAssignment]:
         """Load band assignments from configuration.
@@ -93,13 +93,13 @@ class ParallelScanner:
                             assignments.append(assignment)
                             break
 
-        logger.info(f'Loaded {len(assignments)} band assignments across {self.num_sdrs} SDRs')
+        self.log_info(f'Loaded {len(assignments)} band assignments across {self.num_sdrs} SDRs')
         return assignments
 
     def start_parallel_scan(self):
         """Start parallel scanning threads."""
         if self.running:
-            logger.warning('Parallel scan already running')
+            self.log_warning('Parallel scan already running')
             return
 
         self.running = True
@@ -122,11 +122,11 @@ class ParallelScanner:
             thread.start()
             self.scan_threads.append(thread)
 
-        logger.info(f'Started {len(self.scan_threads)} parallel scan threads')
+        self.log_info(f'Started {len(self.scan_threads)} parallel scan threads')
 
     def stop_parallel_scan(self):
         """Stop all parallel scanning threads."""
-        logger.info('Stopping parallel scan threads...')
+        self.log_info('Stopping parallel scan threads...')
         self.running = False
 
         # Wait for threads to finish
@@ -134,7 +134,7 @@ class ParallelScanner:
             thread.join(timeout=5)
 
         self.scan_threads = []
-        logger.info('Parallel scan stopped')
+        self.log_info('Parallel scan stopped')
 
     def _scan_worker(self, sdr_idx: int, bands: List[BandAssignment]):
         """Worker thread for scanning assigned bands on one SDR.
@@ -143,7 +143,7 @@ class ParallelScanner:
             sdr_idx: SDR index
             bands: List of bands to scan
         """
-        logger.info(f'SDR{sdr_idx} worker started with {len(bands)} bands')
+        self.log_info(f'SDR{sdr_idx} worker started with {len(bands)} bands')
 
         while self.running:
             try:
@@ -163,10 +163,10 @@ class ParallelScanner:
                 time.sleep(0.1)
 
             except Exception as e:
-                logger.error(f'Error in SDR{sdr_idx} scan worker: {e}')
+                self.log_error(f'Error in SDR{sdr_idx} scan worker: {e}')
                 time.sleep(1)
 
-        logger.info(f'SDR{sdr_idx} worker stopped')
+        self.log_info(f'SDR{sdr_idx} worker stopped')
 
     def _rtl_power_scan(self, sdr_idx: int, band: BandAssignment) -> List[Dict[str, Any]]:
         """Perform rtl_power scan on a band.
@@ -196,21 +196,21 @@ class ParallelScanner:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=5, check=False)
 
             if result.returncode != 0:
-                logger.debug(f'rtl_power error on SDR{sdr_idx}: {result.stderr}')
+                self.log_debug(f'rtl_power error on SDR{sdr_idx}: {result.stderr}')
                 return []
 
             # Parse rtl_power output
             return self._parse_rtl_power_output(result.stdout, band)
 
         except subprocess.TimeoutExpired:
-            logger.warning(f'rtl_power timeout on SDR{sdr_idx}')
+            self.log_warning(f'rtl_power timeout on SDR{sdr_idx}')
             return []
         except FileNotFoundError:
             # rtl_power not available, fallback to pyrtlsdr
-            logger.debug(f'rtl_power not found, using pyrtlsdr for SDR{sdr_idx}')
+            self.log_debug(f'rtl_power not found, using pyrtlsdr for SDR{sdr_idx}')
             return self._pyrtlsdr_scan(sdr_idx, band)
         except Exception as e:
-            logger.error(f'Error in rtl_power scan: {e}')
+            self.log_error(f'Error in rtl_power scan: {e}')
             return []
 
     def _parse_rtl_power_output(self, output: str, band: BandAssignment) -> List[Dict[str, Any]]:
@@ -259,7 +259,7 @@ class ParallelScanner:
                         )
 
         except Exception as e:
-            logger.error(f'Error parsing rtl_power output: {e}')
+            self.log_error(f'Error parsing rtl_power output: {e}')
 
         return signals
 
@@ -323,7 +323,7 @@ class ParallelScanner:
                         )
 
         except Exception as e:
-            logger.error(f'Error in pyrtlsdr scan: {e}')
+            self.log_error(f'Error in pyrtlsdr scan: {e}')
 
         return signals
 

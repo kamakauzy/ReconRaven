@@ -4,6 +4,11 @@ Signal Correlation Engine
 Detects temporal relationships, patterns, and behavioral profiles
 """
 
+import logging
+
+
+logger = logging.getLogger(__name__)
+
 from collections import defaultdict
 from datetime import datetime
 from typing import Dict, List
@@ -422,90 +427,94 @@ if __name__ == '__main__':
     engine = CorrelationEngine()
 
     if args.correlations:
-        print('\n' + '=' * 70)
-        print('TEMPORAL CORRELATIONS')
-        print('=' * 70)
+        logger.info('\n' + '=' * 70)
+        logger.info('TEMPORAL CORRELATIONS')
+        logger.info('=' * 70)
         results = engine.find_temporal_correlations()
         for i, corr in enumerate(results[:20], 1):  # Top 20
-            print(f"\n{i}. {corr['frequency1_mhz']:.3f} MHz ↔ {corr['frequency2_mhz']:.3f} MHz")
-            print(f"   Pattern: {corr['pattern_type']}")
-            print(f"   Occurrences: {corr['occurrences']}")
-            print(f"   Avg Delay: {corr['avg_delay_sec']:.2f}s (±{corr['std_delay_sec']:.2f}s)")
-            print(f"   Confidence: {corr['confidence']*100:.0f}%")
+            logger.info(
+                f"\n{i}. {corr['frequency1_mhz']:.3f} MHz ↔ {corr['frequency2_mhz']:.3f} MHz"
+            )
+            logger.info(f"   Pattern: {corr['pattern_type']}")
+            logger.info(f"   Occurrences: {corr['occurrences']}")
+            logger.info(
+                f"   Avg Delay: {corr['avg_delay_sec']:.2f}s (±{corr['std_delay_sec']:.2f}s)"
+            )
+            logger.info(f"   Confidence: {corr['confidence']*100:.0f}%")
 
     elif args.sequences:
-        print('\n' + '=' * 70)
-        print('SEQUENTIAL PATTERNS')
-        print('=' * 70)
+        logger.info('\n' + '=' * 70)
+        logger.info('SEQUENTIAL PATTERNS')
+        logger.info('=' * 70)
         results = engine.find_sequential_patterns()
         for i, seq in enumerate(results[:10], 1):
-            print(f"\n{i}. {' → '.join(seq['sequence'])}")
-            print(f"   Occurrences: {seq['occurrences']}")
-            print(f"   Confidence: {seq['confidence']*100:.0f}%")
+            logger.info(f"\n{i}. {' → '.join(seq['sequence'])}")
+            logger.info(f"   Occurrences: {seq['occurrences']}")
+            logger.info(f"   Confidence: {seq['confidence']*100:.0f}%")
 
     elif args.profile:
         freq_hz = args.profile * 1e6
-        print('\n' + '=' * 70)
-        print(f'BEHAVIORAL PROFILE: {args.profile:.3f} MHz')
-        print('=' * 70)
+        logger.info('\n' + '=' * 70)
+        logger.info(f'BEHAVIORAL PROFILE: {args.profile:.3f} MHz')
+        logger.info('=' * 70)
         profile = engine.get_device_behavior_profile(freq_hz)
 
         if 'error' in profile:
-            print(f"\nError: {profile['error']}")
+            logger.info(f"\nError: {profile['error']}")
         else:
-            print(f"\nDevice Type: {profile['device_type_guess']}")
-            print(f"Total Detections: {profile['total_detections']}")
-            print(f"Time Span: {profile['time_span_hours']:.1f} hours")
-            print(f"Transmission Rate: {profile['transmission_rate_per_hour']:.1f} per hour")
+            logger.info(f"\nDevice Type: {profile['device_type_guess']}")
+            logger.info(f"Total Detections: {profile['total_detections']}")
+            logger.info(f"Time Span: {profile['time_span_hours']:.1f} hours")
+            logger.info(f"Transmission Rate: {profile['transmission_rate_per_hour']:.1f} per hour")
 
             if profile['is_periodic']:
-                print('\nPeriodic Transmission:')
-                print(
+                logger.info('\nPeriodic Transmission:')
+                logger.info(
                     f"  Interval: {profile['avg_interval_sec']:.1f}s (±{profile['std_interval_sec']:.1f}s)"
                 )
 
             if profile['burst_count'] > 0:
-                print('\nBurst Activity:')
-                print(f"  Burst Count: {profile['burst_count']}")
-                print(f"  Avg Burst Size: {profile['avg_burst_size']:.1f} transmissions")
+                logger.info('\nBurst Activity:')
+                logger.info(f"  Burst Count: {profile['burst_count']}")
+                logger.info(f"  Avg Burst Size: {profile['avg_burst_size']:.1f} transmissions")
 
             if profile['most_active_hour'] is not None:
-                print(f"\nMost Active: {profile['most_active_hour']:02d}:00")
+                logger.info(f"\nMost Active: {profile['most_active_hour']:02d}:00")
 
     elif args.network:
-        print('\n' + '=' * 70)
-        print('DEVICE NETWORK ANALYSIS')
-        print('=' * 70)
+        logger.info('\n' + '=' * 70)
+        logger.info('DEVICE NETWORK ANALYSIS')
+        logger.info('=' * 70)
         network = engine.build_device_network()
 
-        print(f"\nDevices: {network['summary']['total_devices']}")
-        print(f"Connections: {network['summary']['total_connections']}")
-        print(f"Hubs: {network['summary']['hub_count']}")
+        logger.info(f"\nDevices: {network['summary']['total_devices']}")
+        logger.info(f"Connections: {network['summary']['total_connections']}")
+        logger.info(f"Hubs: {network['summary']['hub_count']}")
 
-        print('\n' + '-' * 70)
-        print('HUB DEVICES (Most Connected)')
-        print('-' * 70)
+        logger.info('\n' + '-' * 70)
+        logger.info('HUB DEVICES (Most Connected)')
+        logger.info('-' * 70)
         hubs = [n for n in network['nodes'] if n['is_hub']]
         for hub in sorted(hubs, key=lambda x: x['detection_count'], reverse=True):
-            print(f"  {hub['frequency_mhz']:.3f} MHz - {hub['name']}")
-            print(f"    Type: {hub['device_type']}")
+            logger.info(f"  {hub['frequency_mhz']:.3f} MHz - {hub['name']}")
+            logger.info(f"    Type: {hub['device_type']}")
 
     elif args.anomalies:
-        print('\n' + '=' * 70)
-        print('BEHAVIORAL ANOMALIES')
-        print('=' * 70)
+        logger.info('\n' + '=' * 70)
+        logger.info('BEHAVIORAL ANOMALIES')
+        logger.info('=' * 70)
         anomalies = engine.detect_behavioral_anomalies()
 
         if not anomalies:
-            print('\nNo anomalies detected. All devices showing normal behavior.')
+            logger.info('\nNo anomalies detected. All devices showing normal behavior.')
         else:
             for anomaly in anomalies:
                 severity_emoji = {'low': '🟡', 'medium': '🟠', 'high': '🔴'}
                 emoji = severity_emoji.get(anomaly['severity'], '⚪')
-                print(
+                logger.info(
                     f"\n{emoji} {anomaly['frequency_mhz']:.3f} MHz - {anomaly['anomaly_type'].upper()}"
                 )
-                print(f"   {anomaly['description']}")
+                logger.info(f"   {anomaly['description']}")
 
     else:
         parser.print_help()

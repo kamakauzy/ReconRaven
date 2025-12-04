@@ -3,7 +3,6 @@ Flask Web Server Module
 Provides browser-based dashboard for SDR platform.
 """
 
-import logging
 import threading
 from typing import Any, Dict
 
@@ -11,14 +10,15 @@ from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 
+from reconraven.core.debug_helper import DebugHelper
 
-logger = logging.getLogger(__name__)
 
-
-class SDRDashboardServer:
+class SDRDashboardServer(DebugHelper):
     """Web dashboard server for SDR platform."""
 
     def __init__(self, config: dict = None):
+        super().__init__(component_name='SDRDashboardServer')
+        self.debug_enabled = True
         """Initialize dashboard server."""
         self.config = config or {}
         self.app = Flask(
@@ -248,13 +248,13 @@ class SDRDashboardServer:
         @self.socketio.on('connect')
         def handle_connect():
             """Handle client connection."""
-            logger.info('Client connected to dashboard')
+            self.log_info('Client connected to dashboard')
             emit('status_update', self.platform_state)
 
         @self.socketio.on('disconnect')
         def handle_disconnect():
             """Handle client disconnection."""
-            logger.info('Client disconnected from dashboard')
+            self.log_info('Client disconnected from dashboard')
 
         @self.socketio.on('request_update')
         def handle_update_request():
@@ -278,7 +278,7 @@ class SDRDashboardServer:
             devices = db.get_identified_signals(limit=15)
             self.platform_state['identified_devices'] = devices
 
-            logger.info(f'[REFRESH] Loaded {len(anomalies)} anomalies, {len(devices)} devices')
+            self.log_info(f'[REFRESH] Loaded {len(anomalies)} anomalies, {len(devices)} devices')
 
             emit('status_update', self.platform_state)
 
@@ -291,7 +291,7 @@ class SDRDashboardServer:
 
             promoted_count = db.auto_promote_devices_to_baseline()
 
-            logger.info(f'Auto-promoted {promoted_count} devices to baseline')
+            self.log_info(f'Auto-promoted {promoted_count} devices to baseline')
             emit(
                 'status_update',
                 {'message': f'Auto-promoted {promoted_count} devices to baseline', 'success': True},
@@ -325,7 +325,7 @@ class SDRDashboardServer:
                     user_promoted=True,  # User explicitly promoted this
                 )
 
-                logger.info(f'Promoted {frequency/1e6:.3f} MHz to baseline')
+                self.log_info(f'Promoted {frequency/1e6:.3f} MHz to baseline')
                 emit(
                     'status_update',
                     {'message': f'Promoted {frequency/1e6:.3f} MHz to baseline', 'success': True},
@@ -335,7 +335,7 @@ class SDRDashboardServer:
         def handle_start_df(data):
             """Start direction finding on a frequency."""
             frequency = data.get('frequency')
-            logger.info(f'DF requested for {frequency/1e6:.3f} MHz')
+            self.log_info(f'DF requested for {frequency/1e6:.3f} MHz')
 
             # In future: trigger actual DF mode
             emit(
@@ -358,7 +358,7 @@ class SDRDashboardServer:
                 emit('analysis_error', {'error': 'No recording file specified'})
                 return
 
-            logger.info(f'On-demand analysis requested for {recording_file}')
+            self.log_info(f'On-demand analysis requested for {recording_file}')
 
             # Notify client that analysis started
             emit('analysis_started', {'recording_file': recording_file})
@@ -395,7 +395,7 @@ class SDRDashboardServer:
 
                     if signal:
                         emit('analysis_complete', signal)
-                        logger.info(f'Analysis complete for {recording_file}')
+                        self.log_info(f'Analysis complete for {recording_file}')
                     else:
                         emit(
                             'analysis_error',
@@ -403,14 +403,14 @@ class SDRDashboardServer:
                         )
                 else:
                     emit('analysis_error', {'error': f'Analysis failed: {result.stderr}'})
-                    logger.error(f'Analysis failed: {result.stderr}')
+                    self.log_error(f'Analysis failed: {result.stderr}')
 
             except subprocess.TimeoutExpired:
                 emit('analysis_error', {'error': 'Analysis timed out (>2 minutes)'})
-                logger.error(f'Analysis timeout for {recording_file}')
+                self.log_error(f'Analysis timeout for {recording_file}')
             except Exception as e:
                 emit('analysis_error', {'error': str(e)})
-                logger.error(f'Analysis exception: {e}')
+                self.log_error(f'Analysis exception: {e}')
 
         @self.socketio.on('ignore_device')
         def handle_ignore_device(data):
@@ -425,7 +425,7 @@ class SDRDashboardServer:
                 return
 
             db.ignore_device(frequency_hz)
-            logger.info(f'Ignored device at {frequency_hz/1e6:.3f} MHz')
+            self.log_info(f'Ignored device at {frequency_hz/1e6:.3f} MHz')
 
             emit(
                 'status_update',
@@ -467,7 +467,7 @@ class SDRDashboardServer:
                 transcripts = db.get_all_transcripts(limit=100)
                 emit('transcripts_update', {'transcripts': transcripts})
             except Exception as e:
-                logger.error(f'Failed to load transcripts: {e}')
+                self.log_error(f'Failed to load transcripts: {e}')
                 emit('transcripts_update', {'transcripts': []})
 
         @self.socketio.on('search_transcripts')
@@ -486,7 +486,7 @@ class SDRDashboardServer:
                 results = db.search_transcripts(keyword, limit=50)
                 emit('transcripts_update', {'transcripts': results})
             except Exception as e:
-                logger.error(f'Failed to search transcripts: {e}')
+                self.log_error(f'Failed to search transcripts: {e}')
                 emit('transcripts_update', {'transcripts': []})
 
         @self.socketio.on('stop_voice_monitor')
@@ -542,7 +542,7 @@ class SDRDashboardServer:
             self.platform_state['device_count'] = stats['identified_devices']
 
         except Exception as e:
-            logger.error(f'[UPDATE_STATE] Error loading from DB: {e}')
+            self.log_error(f'[UPDATE_STATE] Error loading from DB: {e}')
 
         # Broadcast to all connected clients
         self.socketio.emit('status_update', self.platform_state)
@@ -832,7 +832,7 @@ class SDRDashboardServer:
 
     def run(self):
         """Run the web server."""
-        logger.info(f'Starting dashboard server on {self.host}:{self.port}')
+        self.log_info(f'Starting dashboard server on {self.host}:{self.port}')
         self.socketio.run(
             self.app, host=self.host, port=self.port, debug=self.debug, use_reloader=False
         )
@@ -841,7 +841,7 @@ class SDRDashboardServer:
         """Run server in a separate thread."""
         server_thread = threading.Thread(target=self.run, daemon=True)
         server_thread.start()
-        logger.info('Dashboard server started in background')
+        self.log_info('Dashboard server started in background')
         return server_thread
 
 

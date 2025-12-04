@@ -3,7 +3,6 @@ Spectrum Scanner Module
 Performs FFT-based spectrum sweeps and signal detection.
 """
 
-import logging
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
@@ -11,8 +10,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 from scipy import signal
 
-
-logger = logging.getLogger(__name__)
+from reconraven.core.debug_helper import DebugHelper
 
 
 @dataclass
@@ -38,10 +36,12 @@ class SignalHit:
         }
 
 
-class SpectrumScanner:
+class SpectrumScanner(DebugHelper):
     """FFT-based spectrum scanner for signal detection."""
 
     def __init__(self, sdr_controller, config: dict = None):
+        super().__init__(component_name='SpectrumScanner')
+        self.debug_enabled = True
         """Initialize spectrum scanner.
 
         Args:
@@ -63,7 +63,7 @@ class SpectrumScanner:
         self.noise_floor_dbm = -100.0
         self.noise_floor_calibrated = False
 
-        logger.info(f'SpectrumScanner initialized with {self.num_sdrs} SDR(s)')
+        self.log_info(f'SpectrumScanner initialized with {self.num_sdrs} SDR(s)')
 
     def calibrate_noise_floor(self, num_samples: int = 100) -> float:
         """Calibrate noise floor by measuring ambient noise.
@@ -74,7 +74,7 @@ class SpectrumScanner:
         Returns:
             Noise floor in dBm
         """
-        logger.info('Calibrating noise floor...')
+        self.log_info('Calibrating noise floor...')
 
         try:
             power_samples = []
@@ -91,13 +91,13 @@ class SpectrumScanner:
             if power_samples:
                 self.noise_floor_dbm = np.median(power_samples)
                 self.noise_floor_calibrated = True
-                logger.info(f'Noise floor calibrated: {self.noise_floor_dbm:.2f} dBm')
+                self.log_info(f'Noise floor calibrated: {self.noise_floor_dbm:.2f} dBm')
             else:
-                logger.warning('Failed to calibrate noise floor, using default')
+                self.log_warning('Failed to calibrate noise floor, using default')
                 self.noise_floor_dbm = -100.0
 
         except Exception as e:
-            logger.error(f'Error calibrating noise floor: {e}')
+            self.log_error(f'Error calibrating noise floor: {e}')
             self.noise_floor_dbm = -100.0
 
         return self.noise_floor_dbm
@@ -142,7 +142,7 @@ class SpectrumScanner:
         step_hz = step_hz or self.fft_step_hz
         detected_signals = []
 
-        logger.info(f'Scanning {start_hz/1e6:.3f} - {end_hz/1e6:.3f} MHz')
+        self.log_info(f'Scanning {start_hz/1e6:.3f} - {end_hz/1e6:.3f} MHz')
 
         try:
             # Calculate sweep parameters
@@ -179,12 +179,12 @@ class SpectrumScanner:
 
                 if step % 10 == 0:
                     progress = (step / num_steps) * 100
-                    logger.debug(f'Scan progress: {progress:.1f}%')
+                    self.log_debug(f'Scan progress: {progress:.1f}%')
 
         except Exception as e:
-            logger.error(f'Error during frequency scan: {e}')
+            self.log_error(f'Error during frequency scan: {e}')
 
-        logger.info(f'Scan complete: {len(detected_signals)} signals detected')
+        self.log_info(f'Scan complete: {len(detected_signals)} signals detected')
         return detected_signals
 
     def _detect_peaks(self, psd: np.ndarray, center_freq: float) -> List[SignalHit]:
@@ -233,13 +233,13 @@ class SpectrumScanner:
                 )
 
                 hits.append(hit)
-                logger.debug(
+                self.log_debug(
                     f'Signal detected: {hit.frequency_hz/1e6:.6f} MHz, '
                     f'{hit.power_dbm:.1f} dBm, BW: {hit.bandwidth_hz/1e3:.1f} kHz'
                 )
 
         except Exception as e:
-            logger.error(f'Error detecting peaks: {e}')
+            self.log_error(f'Error detecting peaks: {e}')
 
         return hits
 
@@ -301,7 +301,7 @@ class SpectrumScanner:
 
         # If multiple SDRs available, distribute the work
         if self.num_sdrs > 1:
-            logger.info(
+            self.log_info(
                 f'Mobile Multi: Distributing {len(bands)} bands across {self.num_sdrs} SDRs'
             )
             return self._scan_band_list_multi(bands)
@@ -313,10 +313,10 @@ class SpectrumScanner:
             end_hz = band.get('end_hz')
 
             if start_hz is None or end_hz is None:
-                logger.warning(f'Invalid band definition: {band}')
+                self.log_warning(f'Invalid band definition: {band}')
                 continue
 
-            logger.info(f'Scanning band: {band_name}')
+            self.log_info(f'Scanning band: {band_name}')
             hits = self.scan_frequency_range(start_hz, end_hz)
             results[band_name] = hits
 
@@ -356,7 +356,7 @@ class SpectrumScanner:
                 if start_hz is None or end_hz is None:
                     continue
 
-                logger.info(f'SDR{sdr_idx}: Scanning {band_name}')
+                self.log_info(f'SDR{sdr_idx}: Scanning {band_name}')
 
                 # Temporarily tune this SDR
                 original_freq = (
@@ -368,7 +368,7 @@ class SpectrumScanner:
                     hits = self._scan_with_specific_sdr(sdr_idx, start_hz, end_hz)
                     result_queue.put((band_name, hits))
                 except Exception as e:
-                    logger.error(f'SDR{sdr_idx} error scanning {band_name}: {e}')
+                    self.log_error(f'SDR{sdr_idx} error scanning {band_name}: {e}')
                 finally:
                     # Restore original frequency if needed
                     if original_freq and sdr_idx < len(self.sdr.sdrs):
@@ -447,7 +447,7 @@ class SpectrumScanner:
                 detected_signals.extend(hits)
 
         except Exception as e:
-            logger.error(f'Error scanning with SDR{sdr_idx}: {e}')
+            self.log_error(f'Error scanning with SDR{sdr_idx}: {e}')
 
         return detected_signals
 

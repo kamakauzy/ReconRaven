@@ -4,23 +4,22 @@ Voice Traffic Monitor
 Real-time monitoring and recording of voice transmissions (FM/AM/DMR/P25)
 """
 
-import logging
 import os
 import time
 from datetime import datetime
 from typing import List, Optional
 
 from reconraven.core.database import get_db
+from reconraven.core.debug_helper import DebugHelper
 from reconraven.demodulation.analog import AnalogDemodulator, AnalogMode
 
 
-logger = logging.getLogger(__name__)
-
-
-class VoiceMonitor:
+class VoiceMonitor(DebugHelper):
     """Monitors and records voice transmissions"""
 
     def __init__(self, sdr_device_id: int = 0):
+        super().__init__(component_name='VoiceMonitor')
+        self.debug_enabled = True
         self.sdr_device_id = sdr_device_id
         self.db = get_db()
         self.is_monitoring = False
@@ -52,7 +51,7 @@ class VoiceMonitor:
             True if started successfully
         """
         if self.is_monitoring:
-            logger.warning('Already monitoring. Stop current session first.')
+            self.log_warning('Already monitoring. Stop current session first.')
             return False
 
         try:
@@ -79,7 +78,7 @@ class VoiceMonitor:
                 output_file = os.path.join(
                     self.recording_dir, f'voice_{freq_mhz:.3f}MHz_{timestamp}.wav'
                 )
-                logger.info(f'Auto-recording to: {output_file}')
+                self.log_info(f'Auto-recording to: {output_file}')
 
             # Start demodulation
             success = self.demodulator.start_demodulation(
@@ -101,16 +100,16 @@ class VoiceMonitor:
                 device.get('name', f'{freq_mhz:.3f} MHz') if device else f'{freq_mhz:.3f} MHz'
             )
 
-            print(f"\n{'='*70}")
-            print(f'VOICE MONITOR: {device_name}')
-            print(f"{'='*70}")
-            print(f'Frequency: {freq_mhz:.3f} MHz')
-            print(f'Mode: {mode}')
-            print(f"Recording: {'Yes' if auto_record else 'No'}")
+            self.log_info(f"\n{'='*70}")
+            self.log_info(f'VOICE MONITOR: {device_name}')
+            self.log_info(f"{'='*70}")
+            self.log_info(f'Frequency: {freq_mhz:.3f} MHz')
+            self.log_info(f'Mode: {mode}')
+            self.log_info(f"Recording: {'Yes' if auto_record else 'No'}")
             if output_file:
-                print(f'Output: {output_file}')
-            print('\nListening... Press Ctrl+C to stop')
-            print(f"{'='*70}\n")
+                self.log_info(f'Output: {output_file}')
+            self.log_debug('\nListening... Press Ctrl+C to stop')
+            self.log_info(f"{'='*70}\n")
 
             # Run for duration or until interrupted
             if duration_sec:
@@ -123,7 +122,7 @@ class VoiceMonitor:
             return True
 
         except Exception as e:
-            logger.error(f'Error starting voice monitor: {e}')
+            self.log_error(f'Error starting voice monitor: {e}')
             return False
 
     def _audio_callback(self, audio_data: bytes):
@@ -141,7 +140,7 @@ class VoiceMonitor:
             self.demodulator.stop_demodulation()
             self.demodulator = None
 
-        print('\nMonitoring stopped.')
+        self.log_info('\nMonitoring stopped.')
 
     def scan_voice_bands(self, band: str = '2m', dwell_time_sec: int = 5):
         """Scan a band looking for voice activity
@@ -219,7 +218,7 @@ class VoiceMonitor:
         frequencies = voice_freqs.get(band.lower(), [])
 
         if not frequencies:
-            print(f'Unknown band: {band}')
+            self.log_info(f'Unknown band: {band}')
             return
 
         # Add repeater frequencies from database
@@ -244,18 +243,18 @@ class VoiceMonitor:
                         if freq_mhz not in frequencies:
                             frequencies.append(freq_mhz)
 
-        print(f"\n{'='*70}")
-        print(f'VOICE BAND SCAN: {band.upper()}')
-        print(f"{'='*70}")
-        print(f'Frequencies: {len(frequencies)}')
-        print(f'Dwell Time: {dwell_time_sec}s per frequency')
-        print(f'Total Scan Time: {len(frequencies) * dwell_time_sec / 60:.1f} minutes')
-        print(f"{'='*70}\n")
+        self.log_info(f"\n{'='*70}")
+        self.log_info(f'VOICE BAND SCAN: {band.upper()}')
+        self.log_info(f"{'='*70}")
+        self.log_info(f'Frequencies: {len(frequencies)}')
+        self.log_info(f'Dwell Time: {dwell_time_sec}s per frequency')
+        self.log_info(f'Total Scan Time: {len(frequencies) * dwell_time_sec / 60:.1f} minutes')
+        self.log_info(f"{'='*70}\n")
 
         try:
             for freq_mhz in frequencies:
                 freq_hz = freq_mhz * 1e6
-                print(f'[{freq_mhz:.4f} MHz] Listening...')
+                self.log_debug(f'[{freq_mhz:.4f} MHz] Listening...')
 
                 # Start monitoring this frequency
                 self.start_monitoring_frequency(
@@ -271,10 +270,10 @@ class VoiceMonitor:
                 # Stop monitoring
                 self.stop_monitoring()
 
-                print()
+                self.log_info()
 
         except KeyboardInterrupt:
-            print('\n\nScan interrupted.')
+            self.log_info('\n\nScan interrupted.')
             self.stop_monitoring()
 
     def monitor_multiple_frequencies(
@@ -287,18 +286,18 @@ class VoiceMonitor:
             mode: Demodulation mode
             auto_record: Auto-record voice activity
         """
-        print(f"\n{'='*70}")
-        print('MULTI-FREQUENCY VOICE MONITOR')
-        print(f"{'='*70}")
-        print(f'Monitoring {len(frequencies_mhz)} frequencies')
-        print(f'Mode: {mode}')
-        print(f"Recording: {'Enabled' if auto_record else 'Disabled'}")
-        print(f"{'='*70}\n")
+        self.log_info(f"\n{'='*70}")
+        self.log_info('MULTI-FREQUENCY VOICE MONITOR')
+        self.log_info(f"{'='*70}")
+        self.log_info(f'Monitoring {len(frequencies_mhz)} frequencies')
+        self.log_info(f'Mode: {mode}')
+        self.log_info(f"Recording: {'Enabled' if auto_record else 'Disabled'}")
+        self.log_info(f"{'='*70}\n")
 
         for freq_mhz in frequencies_mhz:
-            print(f'  {freq_mhz:.4f} MHz')
+            self.log_info(f'  {freq_mhz:.4f} MHz')
 
-        print('\nPress Ctrl+C to stop\n')
+        self.log_info('\nPress Ctrl+C to stop\n')
 
         try:
             # Rapid scanning approach (switches between freqs)
@@ -321,7 +320,7 @@ class VoiceMonitor:
                     self.stop_monitoring()
 
         except KeyboardInterrupt:
-            print('\n\nMonitoring stopped.')
+            self.log_info('\n\nMonitoring stopped.')
             self.stop_monitoring()
 
 

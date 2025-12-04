@@ -3,8 +3,6 @@ Bearing Map Visualization Module
 Creates compass plots showing signal bearings.
 """
 
-import logging
-
 import matplotlib
 import numpy as np
 
@@ -15,9 +13,6 @@ import io
 from typing import Any, Dict, List, Optional
 
 import matplotlib.pyplot as plt
-
-
-logger = logging.getLogger(__name__)
 
 
 class BearingMapper:
@@ -100,7 +95,7 @@ class BearingMapper:
             if save_path:
                 plt.savefig(save_path, dpi=150, bbox_inches='tight')
                 plt.close(fig)
-                logger.info(f'Compass plot saved to {save_path}')
+                self.log_info(f'Compass plot saved to {save_path}')
                 return save_path
             # Return as base64 for embedding in HTML
             buf = io.BytesIO()
@@ -111,7 +106,7 @@ class BearingMapper:
             return f'data:image/png;base64,{img_base64}'
 
         except Exception as e:
-            logger.error(f'Error creating compass plot: {e}')
+            self.log_error(f'Error creating compass plot: {e}')
             return None
 
     def create_spectrum_plot(
@@ -162,7 +157,7 @@ class BearingMapper:
             return f'data:image/png;base64,{img_base64}'
 
         except Exception as e:
-            logger.error(f'Error creating spectrum plot: {e}')
+            self.log_error(f'Error creating spectrum plot: {e}')
             return None
 
     def create_waterfall(
@@ -218,5 +213,5 @@ class BearingMapper:
             return f'data:image/png;base64,{img_base64}'
 
         except Exception as e:
-            logger.error(f'Error creating waterfall plot: {e}')
+            self.log_error(f'Error creating waterfall plot: {e}')
             return None

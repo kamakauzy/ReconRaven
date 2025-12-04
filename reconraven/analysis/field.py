@@ -4,6 +4,11 @@ Complete Field-Capable Analysis System
 Integrates: Binary decoding, rtl_433, device signatures, manufacturer identification
 """
 
+import logging
+
+
+logger = logging.getLogger(__name__)
+
 import json
 import os
 import sys
@@ -29,16 +34,16 @@ class FieldAnalyzer:
             with open('device_signatures.json') as f:
                 return json.load(f)
         except:
-            print('Warning: Could not load device_signatures.json')
+            logger.info('Warning: Could not load device_signatures.json')
             return {}
 
     def analyze_signal(self, npy_file):
         """Complete analysis of a captured signal"""
-        print('\n' + '#' * 70)
-        print('# ReconRaven - Complete Field Analysis')
-        print('# Offline-capable signal identification')
-        print('#' * 70)
-        print(f'\nFile: {npy_file}\n')
+        logger.info('\n' + '#' * 70)
+        logger.info('# ReconRaven - Complete Field Analysis')
+        logger.info('# Offline-capable signal identification')
+        logger.info('#' * 70)
+        logger.info(f'\nFile: {npy_file}\n')
 
         results = {
             'file': npy_file,
@@ -50,8 +55,8 @@ class FieldAnalyzer:
         }
 
         # Step 1: Binary Decode
-        print('\n[STEP 1] Binary Decoding...')
-        print('-' * 70)
+        logger.info('\n[STEP 1] Binary Decoding...')
+        logger.info('-' * 70)
         samples = np.load(npy_file)
         decoder = BinaryDecoder(samples[: int(2.4e6 * 5)])  # First 5 seconds
 
@@ -70,16 +75,16 @@ class FieldAnalyzer:
             results['binary_decode']['preambles'] = preambles
 
             if preambles:
-                print(f'  Found {len(preambles)} known preamble(s)')
+                logger.info(f'  Found {len(preambles)} known preamble(s)')
                 for p in preambles:
-                    print(f"    {p['pattern']} - {p['description']}")
+                    logger.info(f"    {p['pattern']} - {p['description']}")
         else:
             results['binary_decode'] = {'success': False}
-            print('  Binary decode failed')
+            logger.info('  Binary decode failed')
 
         # Step 2: Signature Matching
-        print('\n[STEP 2] Device Signature Matching...')
-        print('-' * 70)
+        logger.info('\n[STEP 2] Device Signature Matching...')
+        logger.info('-' * 70)
 
         # Extract frequency from filename
         freq = self._extract_frequency(npy_file)
@@ -91,74 +96,74 @@ class FieldAnalyzer:
 
             if match:
                 results['signature_match'] = match
-                print(f"  MATCH: {match['name']}")
-                print(f"  Manufacturer: {match['manufacturer']}")
-                print(f"  Device Type: {match['device_type']}")
-                print(f"  Confidence: {match['confidence']*100:.0f}%")
+                logger.info(f"  MATCH: {match['name']}")
+                logger.info(f"  Manufacturer: {match['manufacturer']}")
+                logger.info(f"  Device Type: {match['device_type']}")
+                logger.info(f"  Confidence: {match['confidence']*100:.0f}%")
 
                 if 'typical_devices' in match:
-                    print('  Typical devices:')
+                    logger.info('  Typical devices:')
                     for dev in match['typical_devices'][:3]:
-                        print(f'    - {dev}')
+                        logger.info(f'    - {dev}')
             else:
-                print('  No signature match found')
+                logger.info('  No signature match found')
 
         # Step 3: rtl_433 Analysis
-        print('\n[STEP 3] rtl_433 Protocol Analysis...')
-        print('-' * 70)
+        logger.info('\n[STEP 3] rtl_433 Protocol Analysis...')
+        logger.info('-' * 70)
 
         if self.rtl433.available:
             rtl_result = self.rtl433.analyze_recording(npy_file)
             results['rtl433_result'] = rtl_result
 
             if rtl_result['success'] and rtl_result['count'] > 0:
-                print(f"  rtl_433 identified {rtl_result['count']} device(s)!")
+                logger.info(f"  rtl_433 identified {rtl_result['count']} device(s)!")
                 for device in rtl_result['devices']:
                     if 'model' in device:
-                        print(f"    Model: {device['model']}")
+                        logger.info(f"    Model: {device['model']}")
                     if 'id' in device:
-                        print(f"    ID: {device['id']}")
+                        logger.info(f"    ID: {device['id']}")
 
                 # Use rtl_433 result as primary identification
                 results['identification'] = 'rtl_433'
                 results['confidence'] = 0.95
             else:
-                print('  rtl_433: No devices recognized')
+                logger.info('  rtl_433: No devices recognized')
 
                 # Use signature match if available
                 if results['signature_match']:
                     results['identification'] = 'signature_match'
                     results['confidence'] = results['signature_match']['confidence']
         else:
-            print('  rtl_433 not available - using signature matching only')
+            logger.info('  rtl_433 not available - using signature matching only')
             if results['signature_match']:
                 results['identification'] = 'signature_match'
                 results['confidence'] = results['signature_match']['confidence']
 
         # Step 4: Final Classification
-        print('\n' + '=' * 70)
-        print('FINAL IDENTIFICATION')
-        print('=' * 70)
+        logger.info('\n' + '=' * 70)
+        logger.info('FINAL IDENTIFICATION')
+        logger.info('=' * 70)
 
         if results['confidence'] >= 0.6:
-            print(f'\nDevice Identified: {self._get_device_name(results)}')
-            print(f"Confidence: {results['confidence']*100:.0f}%")
-            print(f"Method: {results['identification']}")
+            logger.info(f'\nDevice Identified: {self._get_device_name(results)}')
+            logger.info(f"Confidence: {results['confidence']*100:.0f}%")
+            logger.info(f"Method: {results['identification']}")
 
             # Additional details
             if results['signature_match']:
                 sig = results['signature_match']
-                print(f"\nManufacturer: {sig['manufacturer']}")
-                print(f"Type: {sig['device_type']}")
+                logger.info(f"\nManufacturer: {sig['manufacturer']}")
+                logger.info(f"Type: {sig['device_type']}")
                 if 'security' in sig:
-                    print(f"Security: {sig['security']}")
+                    logger.info(f"Security: {sig['security']}")
         else:
-            print('\nDevice: UNKNOWN / PROPRIETARY')
-            print(f"Confidence: {results['confidence']*100:.0f}%")
-            print('\nPossible reasons:')
-            print('  - Custom/proprietary protocol')
-            print('  - Industrial equipment not in database')
-            print('  - New/uncommon device')
+            logger.info('\nDevice: UNKNOWN / PROPRIETARY')
+            logger.info(f"Confidence: {results['confidence']*100:.0f}%")
+            logger.info('\nPossible reasons:')
+            logger.info('  - Custom/proprietary protocol')
+            logger.info('  - Industrial equipment not in database')
+            logger.info('  - New/uncommon device')
 
         # Save results to JSON
         output_file = npy_file.replace('.npy', '_complete_analysis.json')
@@ -167,7 +172,7 @@ class FieldAnalyzer:
             results_json = self._convert_to_json_serializable(results)
             json.dump(results_json, f, indent=2)
 
-        print(f'\nComplete analysis saved: {output_file}')
+        logger.info(f'\nComplete analysis saved: {output_file}')
 
         # Save to database
         self._save_to_database(npy_file, results)
@@ -269,7 +274,7 @@ class FieldAnalyzer:
                     break
 
             if not recording_id:
-                print(f'[DB] Warning: Could not find recording for {filename}')
+                logger.info(f'[DB] Warning: Could not find recording for {filename}')
                 return
 
             # Extract data for database
@@ -304,7 +309,7 @@ class FieldAnalyzer:
             )
             self.db.conn.commit()
 
-            print(f'[DB] Analysis results saved (recording_id={recording_id})')
+            logger.info(f'[DB] Analysis results saved (recording_id={recording_id})')
 
             # Also add/update device (always create, even if unknown)
             device_name = self._get_device_name(results)
@@ -338,10 +343,10 @@ class FieldAnalyzer:
                 # Mark recording as analyzed
                 self.db.mark_recording_analyzed(recording_id, device_id)
 
-                print(f'[DB] Device added/updated: {device_name}')
+                logger.info(f'[DB] Device added/updated: {device_name}')
 
         except Exception as e:
-            print(f'[DB] Error saving to database: {e}')
+            logger.info(f'[DB] Error saving to database: {e}')
             import traceback
 
             traceback.print_exc()
@@ -349,9 +354,9 @@ class FieldAnalyzer:
 
 def main():
     if len(sys.argv) < 2:
-        print('Usage: python field_analyzer.py <recording.npy>')
-        print('\nExample:')
-        print('  python field_analyzer.py recordings/audio/ISM915_925.000MHz_*.npy')
+        logger.info('Usage: python field_analyzer.py <recording.npy>')
+        logger.info('\nExample:')
+        logger.info('  python field_analyzer.py recordings/audio/ISM915_925.000MHz_*.npy')
         sys.exit(1)
 
     analyzer = FieldAnalyzer()

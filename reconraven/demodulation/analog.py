@@ -3,7 +3,6 @@ Analog Demodulation Module
 Handles FM, AM, and SSB demodulation using rtl_fm.
 """
 
-import logging
 import queue
 import subprocess
 import threading
@@ -11,8 +10,7 @@ import wave
 from enum import Enum
 from typing import Callable, Optional
 
-
-logger = logging.getLogger(__name__)
+from reconraven.core.debug_helper import DebugHelper
 
 
 class AnalogMode(Enum):
@@ -25,10 +23,12 @@ class AnalogMode(Enum):
     LSB = 'lsb'
 
 
-class AnalogDemodulator:
+class AnalogDemodulator(DebugHelper):
     """Demodulates analog signals using rtl_fm."""
 
     def __init__(self, config: dict = None):
+        super().__init__(component_name='AnalogDemodulator')
+        self.debug_enabled = True
         """Initialize analog demodulator.
 
         Args:
@@ -59,7 +59,7 @@ class AnalogDemodulator:
             True if started successfully
         """
         if self.is_running:
-            logger.warning('Demodulator already running')
+            self.log_warning('Demodulator already running')
             return False
 
         try:
@@ -87,7 +87,7 @@ class AnalogDemodulator:
             if extra_args:
                 cmd.extend(extra_args)
 
-            logger.info(f"Starting demodulation: {' '.join(cmd)}")
+            self.log_info(f"Starting demodulation: {' '.join(cmd)}")
 
             # Start rtl_fm process
             self.process = subprocess.Popen(
@@ -103,14 +103,14 @@ class AnalogDemodulator:
             )
             audio_thread.start()
 
-            logger.info(f'Demodulation started: {frequency_hz/1e6:.6f} MHz, mode: {mode.value}')
+            self.log_info(f'Demodulation started: {frequency_hz/1e6:.6f} MHz, mode: {mode.value}')
             return True
 
         except FileNotFoundError:
-            logger.error('rtl_fm not found. Please install rtl-sdr tools.')
+            self.log_error('rtl_fm not found. Please install rtl-sdr tools.')
             return False
         except Exception as e:
-            logger.error(f'Error starting demodulation: {e}')
+            self.log_error(f'Error starting demodulation: {e}')
             return False
 
     def _process_audio(self, sample_rate: int, output_file: Optional[str]):
@@ -148,7 +148,7 @@ class AnalogDemodulator:
                             pass
 
                 except Exception as e:
-                    logger.error(f'Error processing audio: {e}')
+                    self.log_error(f'Error processing audio: {e}')
                     break
 
         finally:

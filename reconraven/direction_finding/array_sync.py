@@ -3,19 +3,19 @@ SDR Array Synchronization Module
 Manages phase-coherent sampling for direction finding.
 """
 
-import logging
 from typing import List
 
 import numpy as np
 
+from reconraven.core.debug_helper import DebugHelper
 
-logger = logging.getLogger(__name__)
 
-
-class SDRArraySync:
+class SDRArraySync(DebugHelper):
     """Manages synchronization of multiple SDRs for direction finding."""
 
     def __init__(self, sdr_controller, config: dict = None):
+        super().__init__(component_name='SDRArraySync')
+        self.debug_enabled = True
         """Initialize array synchronization."""
         self.sdr = sdr_controller
         self.config = config or {}
@@ -44,14 +44,14 @@ class SDRArraySync:
                 self.antenna_type = cal.get('antenna_type', 'omnidirectional')
                 self.element_spacing_m = cal.get('element_spacing_m', 0.5)
                 self.is_calibrated = True
-                logger.info(
+                self.log_info(
                     f"Loaded DF calibration: {cal['calibration_method']} from {cal['created_at']}"
                 )
-                logger.info(f'Phase offsets: {self.phase_offsets}')
+                self.log_info(f'Phase offsets: {self.phase_offsets}')
             else:
-                logger.info('No valid calibration found, array needs calibration')
+                self.log_info('No valid calibration found, array needs calibration')
         except Exception as e:
-            logger.warning(f'Could not load calibration: {e}')
+            self.log_warning(f'Could not load calibration: {e}')
 
     def calibrate_phase(
         self,
@@ -71,10 +71,10 @@ class SDRArraySync:
         Returns:
             True if calibration successful
         """
-        logger.info(f'Calibrating array phase at {frequency_hz/1e6:.3f} MHz...')
+        self.log_info(f'Calibrating array phase at {frequency_hz/1e6:.3f} MHz...')
 
         if known_bearing is not None:
-            logger.info(f'Using known bearing: {known_bearing}° for calibration')
+            self.log_info(f'Using known bearing: {known_bearing}° for calibration')
 
         try:
             # Set all SDRs to calibration frequency
@@ -84,7 +84,7 @@ class SDRArraySync:
             samples = self.sdr.read_samples_sync(num_samples)
 
             if len(samples) < self.num_elements:
-                logger.error(f'Expected {self.num_elements} SDRs, got {len(samples)}')
+                self.log_error(f'Expected {self.num_elements} SDRs, got {len(samples)}')
                 return False
 
             # Calculate phase offsets relative to reference element
@@ -105,10 +105,10 @@ class SDRArraySync:
             coherence = self._calculate_coherence(samples)
 
             self.is_calibrated = True
-            logger.info('Phase calibration complete!')
-            logger.info(f'  Phase offsets: {self.phase_offsets}')
-            logger.info(f'  Coherence: {coherence:.3f}')
-            logger.info(f'  SNR: {snr_db:.1f} dB')
+            self.log_info('Phase calibration complete!')
+            self.log_info(f'  Phase offsets: {self.phase_offsets}')
+            self.log_info(f'  Coherence: {coherence:.3f}')
+            self.log_info(f'  SNR: {snr_db:.1f} dB')
 
             # Save to database
             if save_to_db:
@@ -140,14 +140,14 @@ class SDRArraySync:
                         calibration_method=cal_method,
                         notes=notes,
                     )
-                    logger.info('Calibration saved to database')
+                    self.log_info('Calibration saved to database')
                 except Exception as e:
-                    logger.warning(f'Could not save calibration to database: {e}')
+                    self.log_warning(f'Could not save calibration to database: {e}')
 
             return True
 
         except Exception as e:
-            logger.error(f'Error during phase calibration: {e}')
+            self.log_error(f'Error during phase calibration: {e}')
             import traceback
 
             traceback.print_exc()
@@ -255,7 +255,7 @@ class SDRArraySync:
             List of phase-corrected sample arrays
         """
         if not self.is_calibrated:
-            logger.warning('Array not calibrated, results may be inaccurate')
+            self.log_warning('Array not calibrated, results may be inaccurate')
 
         # Set frequency
         self.sdr.set_frequency(int(frequency_hz))

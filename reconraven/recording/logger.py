@@ -13,6 +13,8 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 
+from reconraven.core.debug_helper import DebugHelper
+
 
 try:
     import gpsd
@@ -21,8 +23,6 @@ try:
 except ImportError:
     GPS_AVAILABLE = False
     logging.warning('gpsd not available - GPS features disabled')
-
-logger = logging.getLogger(__name__)
 
 
 class GPSInterface:
@@ -38,9 +38,9 @@ class GPSInterface:
             try:
                 gpsd.connect()
                 self.connected = True
-                logger.info('GPS connected')
+                self.log_info('GPS connected')
             except Exception as e:
-                logger.warning(f'Could not connect to GPS: {e}')
+                self.log_warning(f'Could not connect to GPS: {e}')
 
     def get_position(self) -> Optional[Dict[str, Any]]:
         """Get current GPS position.
@@ -70,7 +70,7 @@ class GPSInterface:
                 return position
 
         except Exception as e:
-            logger.debug(f'Error reading GPS: {e}')
+            self.log_debug(f'Error reading GPS: {e}')
 
         return self.current_position  # Return last known position
 
@@ -91,18 +91,20 @@ class GPSInterface:
         while time.time() - start_time < timeout_s:
             position = self.get_position()
             if position and position['mode'] >= 2:
-                logger.info('GPS fix acquired')
+                self.log_info('GPS fix acquired')
                 return True
             time.sleep(1)
 
-        logger.warning('GPS fix timeout')
+        self.log_warning('GPS fix timeout')
         return False
 
 
-class SignalLogger:
+class SignalLogger(DebugHelper):
     """Records signal data with GPS timestamps."""
 
     def __init__(self, config: dict = None):
+        super().__init__(component_name='SignalLogger')
+        self.debug_enabled = True
         """Initialize signal logger."""
         self.config = config or {}
         self.output_dir = self.config.get('output_dir', './recordings')
@@ -146,11 +148,11 @@ class SignalLogger:
             with open(filepath, 'w') as f:
                 json.dump(log_entry, f, indent=2)
 
-            logger.debug(f'Signal logged to {filepath}')
+            self.log_debug(f'Signal logged to {filepath}')
             return filepath
 
         except Exception as e:
-            logger.error(f'Error logging signal: {e}')
+            self.log_error(f'Error logging signal: {e}')
             return ''
 
     def record_iq_samples(
@@ -198,11 +200,11 @@ class SignalLogger:
             with open(meta_file, 'w') as f:
                 json.dump(metadata, f, indent=2)
 
-            logger.info(f'IQ samples recorded to {filepath}')
+            self.log_info(f'IQ samples recorded to {filepath}')
             return filepath
 
         except Exception as e:
-            logger.error(f'Error recording IQ samples: {e}')
+            self.log_error(f'Error recording IQ samples: {e}')
             return ''
 
     def record_audio(
@@ -247,11 +249,11 @@ class SignalLogger:
             with open(meta_file, 'w') as f:
                 json.dump(metadata, f, indent=2)
 
-            logger.info(f'Audio recorded to {filepath}')
+            self.log_info(f'Audio recorded to {filepath}')
             return filepath
 
         except Exception as e:
-            logger.error(f'Error recording audio: {e}')
+            self.log_error(f'Error recording audio: {e}')
             return ''
 
     def create_session_log(self, session_data: Dict[str, Any]) -> str:
@@ -277,11 +279,11 @@ class SignalLogger:
             with open(filepath, 'w') as f:
                 json.dump(session_log, f, indent=2)
 
-            logger.info(f'Session log created: {filepath}')
+            self.log_info(f'Session log created: {filepath}')
             return filepath
 
         except Exception as e:
-            logger.error(f'Error creating session log: {e}')
+            self.log_error(f'Error creating session log: {e}')
             return ''
 
     def get_gps_position(self) -> Optional[Dict[str, Any]]:

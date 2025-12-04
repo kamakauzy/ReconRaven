@@ -4,6 +4,11 @@ rtl_433 Integration Module
 Bridges ReconRaven with rtl_433 for automatic device identification
 """
 
+import logging
+
+
+logger = logging.getLogger(__name__)
+
 import json
 import os
 import subprocess
@@ -31,7 +36,7 @@ class RTL433Integration:
 
     def convert_npy_to_cu8(self, npy_file, cu8_file):
         """Convert .npy IQ file to .cu8 format for rtl_433"""
-        print(f'Converting {npy_file} to rtl_433 format...')
+        logger.info(f'Converting {npy_file} to rtl_433 format...')
 
         # Load complex IQ samples
         samples = np.load(npy_file)
@@ -53,7 +58,7 @@ class RTL433Integration:
         # Write to file
         iq_interleaved.tofile(cu8_file)
 
-        print(f'Converted: {cu8_file} ({os.path.getsize(cu8_file) / 1024 / 1024:.1f} MB)')
+        logger.info(f'Converted: {cu8_file} ({os.path.getsize(cu8_file) / 1024 / 1024:.1f} MB)')
         return cu8_file
 
     def analyze_recording(self, npy_file, output_json=None):
@@ -70,7 +75,7 @@ class RTL433Integration:
         self.convert_npy_to_cu8(npy_file, cu8_file)
 
         # Run rtl_433
-        print('\nRunning rtl_433 analysis...')
+        logger.info('\nRunning rtl_433 analysis...')
 
         try:
             cmd = [
@@ -101,7 +106,7 @@ class RTL433Integration:
                 os.remove(cu8_file)
 
             if devices:
-                print(f'\nFound {len(devices)} device(s)!')
+                logger.info(f'\nFound {len(devices)} device(s)!')
 
                 # Save results
                 if output_json:
@@ -109,11 +114,11 @@ class RTL433Integration:
                         json.dump(devices, f, indent=2)
 
                 return {'success': True, 'devices': devices, 'count': len(devices)}
-            print('\nNo devices recognized by rtl_433')
-            print('This could mean:')
-            print('  - Unknown/proprietary protocol')
-            print('  - Signal too weak')
-            print('  - Not an ISM device')
+            logger.info('\nNo devices recognized by rtl_433')
+            logger.info('This could mean:')
+            logger.info('  - Unknown/proprietary protocol')
+            logger.info('  - Signal too weak')
+            logger.info('  - Not an ISM device')
 
             return {'success': True, 'devices': [], 'count': 0, 'message': 'No devices recognized'}
 
@@ -124,34 +129,34 @@ class RTL433Integration:
 
     def print_device_info(self, devices):
         """Pretty print device information"""
-        print('\n' + '=' * 70)
-        print('rtl_433 DEVICE IDENTIFICATION')
-        print('=' * 70)
+        logger.info('\n' + '=' * 70)
+        logger.info('rtl_433 DEVICE IDENTIFICATION')
+        logger.info('=' * 70)
 
         for i, device in enumerate(devices, 1):
-            print(f'\nDevice #{i}:')
+            logger.info(f'\nDevice #{i}:')
 
             # Common fields
             if 'model' in device:
-                print(f"  Model: {device['model']}")
+                logger.info(f"  Model: {device['model']}")
             if 'id' in device:
-                print(f"  Device ID: {device['id']}")
+                logger.info(f"  Device ID: {device['id']}")
             if 'channel' in device:
-                print(f"  Channel: {device['channel']}")
+                logger.info(f"  Channel: {device['channel']}")
 
             # Sensor data
             if 'temperature_C' in device:
-                print(f"  Temperature: {device['temperature_C']}C")
+                logger.info(f"  Temperature: {device['temperature_C']}C")
             if 'humidity' in device:
-                print(f"  Humidity: {device['humidity']}%")
+                logger.info(f"  Humidity: {device['humidity']}%")
             if 'pressure_hPa' in device:
-                print(f"  Pressure: {device['pressure_hPa']} hPa")
+                logger.info(f"  Pressure: {device['pressure_hPa']} hPa")
 
             # Signal quality
             if 'rssi' in device:
-                print(f"  RSSI: {device['rssi']} dB")
+                logger.info(f"  RSSI: {device['rssi']} dB")
             if 'snr' in device:
-                print(f"  SNR: {device['snr']} dB")
+                logger.info(f"  SNR: {device['snr']} dB")
 
             # Other data
             for key, value in device.items():
@@ -166,28 +171,28 @@ class RTL433Integration:
                     'snr',
                     'time',
                 ]:
-                    print(f'  {key}: {value}')
+                    logger.info(f'  {key}: {value}')
 
 
 def analyze_file(filepath):
     """Analyze a recording file with rtl_433"""
-    print('\n' + '#' * 70)
-    print('# ReconRaven - rtl_433 Integration')
-    print('# Automatic device identification')
-    print('#' * 70)
+    logger.info('\n' + '#' * 70)
+    logger.info('# ReconRaven - rtl_433 Integration')
+    logger.info('# Automatic device identification')
+    logger.info('#' * 70)
 
     rtl = RTL433Integration()
 
     if not rtl.available:
-        print('\nrtl_433 is not installed!')
-        print('\nTo install:')
-        print('1. Download from: https://github.com/merbanan/rtl_433/releases')
-        print('2. Extract to a folder')
-        print('3. Add to PATH or place in project directory')
-        print('\nFor Windows: Download rtl_433-win-x64.zip')
+        logger.info('\nrtl_433 is not installed!')
+        logger.info('\nTo install:')
+        logger.info('1. Download from: https://github.com/merbanan/rtl_433/releases')
+        logger.info('2. Extract to a folder')
+        logger.info('3. Add to PATH or place in project directory')
+        logger.info('\nFor Windows: Download rtl_433-win-x64.zip')
         return
 
-    print(f'\nAnalyzing: {filepath}')
+    logger.info(f'\nAnalyzing: {filepath}')
 
     result = rtl.analyze_recording(filepath)
 
@@ -199,24 +204,24 @@ def analyze_file(filepath):
             json_output = filepath.replace('.npy', '_rtl433.json')
             with open(json_output, 'w') as f:
                 json.dump(result['devices'], f, indent=2)
-            print(f'\nResults saved to: {json_output}')
+            logger.info(f'\nResults saved to: {json_output}')
         else:
-            print('\nNo devices identified')
-            print('Signal characteristics suggest:')
-            print('  - Proprietary protocol (not in rtl_433 database)')
-            print('  - Industrial equipment')
-            print('  - Custom implementation')
+            logger.info('\nNo devices identified')
+            logger.info('Signal characteristics suggest:')
+            logger.info('  - Proprietary protocol (not in rtl_433 database)')
+            logger.info('  - Industrial equipment')
+            logger.info('  - Custom implementation')
     else:
-        print(f"\nError: {result.get('error', 'Unknown')}")
+        logger.info(f"\nError: {result.get('error', 'Unknown')}")
         if 'install_instructions' in result:
-            print(f"\n{result['install_instructions']}")
+            logger.info(f"\n{result['install_instructions']}")
 
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print('Usage: python rtl433_integration.py <file.npy>')
-        print('\nExample:')
-        print('  python rtl433_integration.py recordings/audio/ISM915_925.000MHz_*.npy')
+        logger.info('Usage: python rtl433_integration.py <file.npy>')
+        logger.info('\nExample:')
+        logger.info('  python rtl433_integration.py recordings/audio/ISM915_925.000MHz_*.npy')
         sys.exit(1)
 
     analyze_file(sys.argv[1])

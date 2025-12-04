@@ -3,15 +3,13 @@ Anomaly Detection Module
 Detects signal anomalies that warrant deeper investigation or DF.
 """
 
-import logging
 import time
 from collections import defaultdict, deque
 from typing import Any, Dict, List
 
 import numpy as np
 
-
-logger = logging.getLogger(__name__)
+from reconraven.core.debug_helper import DebugHelper
 
 
 class SignalTracker:
@@ -82,10 +80,12 @@ class SignalTracker:
                     del self.persistent_signals[freq_key]
 
 
-class AnomalyDetector:
+class AnomalyDetector(DebugHelper):
     """Detects anomalous signals that warrant investigation."""
 
     def __init__(self, config: dict = None):
+        super().__init__(component_name='AnomalyDetector')
+        self.debug_enabled = True
         """Initialize anomaly detector.
 
         Args:
@@ -174,7 +174,7 @@ class AnomalyDetector:
 
                 anomalies.append(anomaly)
 
-                logger.info(
+                self.log_info(
                     f"Anomaly #{self.anomaly_count}: {freq/1e6:.3f} MHz, "
                     f"{power:.1f} dBm, reasons: {', '.join(anomaly_reasons)}"
                 )
