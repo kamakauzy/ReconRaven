@@ -3,6 +3,7 @@ SDR Hardware Controller
 Manages RTL-SDR devices, auto-detects mode, and provides hardware abstraction.
 """
 
+import contextlib
 import logging
 import subprocess
 from enum import Enum
@@ -212,10 +213,8 @@ class SDRController(DebugHelper):
                     sdr.gain = float(self.gain)
             except Exception as e:
                 self.log_warning(f'Could not set gain (using auto): {e}')
-                try:
+                with contextlib.suppress(Exception):
                     sdr.gain = 'auto'
-                except Exception as e:
-                    pass  # Some drivers don't support auto either
 
             self.sdrs = [sdr]
             self.log_info(f'Initialized single SDR: {sdr.sample_rate} Hz, {sdr.center_freq} Hz')

@@ -115,41 +115,63 @@ class AnalogDemodulator(DebugHelper):
 
     def _process_audio(self, sample_rate: int, output_file: Optional[str]):
         """Process audio data from rtl_fm."""
-        wav_file = None
-
         try:
             if output_file:
-                wav_file = wave.open(output_file, 'wb')
-                wav_file.setnchannels(1)
-                wav_file.setsampwidth(2)
-                wav_file.setframerate(sample_rate)
+                with wave.open(output_file, 'wb') as wav_file:
+                    wav_file.setnchannels(1)
+                    wav_file.setsampwidth(2)
+                    wav_file.setframerate(sample_rate)
 
-            chunk_size = 4096
+                    chunk_size = 4096
 
-            while self.is_running and self.process:
-                try:
-                    data = self.process.stdout.read(chunk_size)
-                    if not data:
-                        break
-
-                    if wav_file:
-                        wav_file.writeframes(data)
-
-                    if self.audio_callback:
-                        self.audio_callback(data)
-
-                    try:
-                        self.audio_queue.put_nowait(data)
-                    except queue.Full:
+                    while self.is_running and self.process:
                         try:
-                            self.audio_queue.get_nowait()
-                            self.audio_queue.put_nowait(data)
-                        except Exception:
-                            pass
+                            data = self.process.stdout.read(chunk_size)
+                            if not data:
+                                break
 
-                except Exception as e:
-                    self.log_error(f'Error processing audio: {e}')
-                    break
+                            wav_file.writeframes(data)
+
+                            if self.audio_callback:
+                                self.audio_callback(data)
+
+                            try:
+                                self.audio_queue.put_nowait(data)
+                            except queue.Full:
+                                try:
+                                    self.audio_queue.get_nowait()
+                                    self.audio_queue.put_nowait(data)
+                                except Exception:
+                                    pass
+
+                        except Exception as e:
+                            self.log_error(f'Error processing audio: {e}')
+                            break
+            else:
+                # No output file, just process audio callbacks
+                chunk_size = 4096
+
+                while self.is_running and self.process:
+                    try:
+                        data = self.process.stdout.read(chunk_size)
+                        if not data:
+                            break
+
+                        if self.audio_callback:
+                            self.audio_callback(data)
+
+                        try:
+                            self.audio_queue.put_nowait(data)
+                        except queue.Full:
+                            try:
+                                self.audio_queue.get_nowait()
+                                self.audio_queue.put_nowait(data)
+                            except Exception:
+                                pass
+
+                    except Exception as e:
+                        self.log_error(f'Error processing audio: {e}')
+                        break
 
         finally:
             if wav_file:

@@ -21,6 +21,10 @@ from reconraven.utils.recording_manager import RecordingManager
 from reconraven.web.server import SDRDashboardServer
 
 
+class ScannerError(Exception):
+    """Custom exception for scanner-related errors."""
+
+
 class AdvancedScanner(DebugHelper):
     def __init__(self, dashboard_server=None, num_sdrs=None):
         """
@@ -358,7 +362,7 @@ class AdvancedScanner(DebugHelper):
                     break
 
             if not all_samples:
-                raise Exception('Failed to read any samples')
+                raise ScannerError('Failed to read any samples')
 
             samples = np.concatenate(all_samples)
 
