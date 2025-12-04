@@ -53,3 +53,6 @@ pytest-cov>=4.1.0
 # Type hints
 typing-extensions>=4.8.0
 
+# Development tools
+ruff>=0.8.4
+
