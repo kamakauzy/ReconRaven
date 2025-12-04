@@ -195,11 +195,7 @@ class AnomalyDetector(DebugHelper):
         """
         # Check bandwidth - bursts typically have wider bandwidth
         bandwidth = signal.get('bandwidth_hz', 0)
-        if 10000 < bandwidth < 200000:
-            return True
-
-        # Could add more sophisticated burst detection with sample analysis
-        return False
+        return 10000 < bandwidth < 200000
 
     def _detect_hopping_pattern(self, frequency_hz: float) -> bool:
         """Detect frequency hopping patterns.

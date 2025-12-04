@@ -202,11 +202,8 @@ class FieldAnalyzer:
                         break
 
             # Check modulation
-            if modulation and 'modulation' in sig:
-                if modulation.upper().replace('/', '') in sig['modulation'].upper().replace(
-                    '/', ''
-                ):
-                    score += 0.3
+            if modulation and 'modulation' in sig and modulation.upper().replace('/', '') in sig['modulation'].upper().replace('/', ''):
+                score += 0.3
 
             # Check bit rate
             if bit_rate and 'bit_rate_min' in sig and 'bit_rate_max' in sig:

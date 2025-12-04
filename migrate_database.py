@@ -34,7 +34,7 @@ def migrate_database():
         print('✅ Old database removed')
         print()
     else:
-        print('ℹ️  No existing database found')
+        print('i  No existing database found')
         print()
 
     # Create new database with simplified schema

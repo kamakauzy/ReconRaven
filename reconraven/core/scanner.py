@@ -170,16 +170,16 @@ class AdvancedScanner(DebugHelper):
                         sdr_obj = [None]
                         error_obj = [None]
 
-                        def init_sdr_thread():
+                        def init_sdr_thread(device_idx=i, sdr_container=sdr_obj, error_container=error_obj):
                             try:
-                                sdr = RtlSdr(device_index=i)
+                                sdr = RtlSdr(device_index=device_idx)
                                 sdr.sample_rate = (
                                     2.8e6  # Increased from 2.4 to 2.8 Msps for better coverage
                                 )
                                 sdr.gain = 'auto'
-                                sdr_obj[0] = sdr
+                                sdr_container[0] = sdr
                             except Exception as e:
-                                error_obj[0] = e
+                                error_container[0] = e
 
                         thread = threading.Thread(target=init_sdr_thread)
                         thread.daemon = True
@@ -700,7 +700,7 @@ class AdvancedScanner(DebugHelper):
                 results = {}
                 threads = []
 
-                def scan_chunk(sdr_idx, freqs):
+                def scan_chunk(sdr_idx, freqs, result_dict=results):
                     sdr = self.sdrs[sdr_idx]
                     for freq in freqs:
                         try:
@@ -708,7 +708,7 @@ class AdvancedScanner(DebugHelper):
                             time.sleep(0.01)  # Let SDR settle
                             samples = sdr.read_samples(256 * 1024)
                             power_dbm = 10 * np.log10(np.mean(np.abs(samples) ** 2) + 1e-10)
-                            results[freq] = power_dbm
+                            result_dict[freq] = power_dbm
                         except Exception:
                             pass
 
