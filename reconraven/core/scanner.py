@@ -16,11 +16,12 @@ import numpy as np
 from rtlsdr import RtlSdr
 
 from reconraven.core.database import get_db
+from reconraven.core.debug_helper import DebugHelper
 from reconraven.utils.recording_manager import RecordingManager
 from reconraven.web.server import SDRDashboardServer
 
 
-class AdvancedScanner:
+class AdvancedScanner(DebugHelper):
     def __init__(self, dashboard_server=None, num_sdrs=None):
         """
         Initialize scanner with optional multi-SDR support.
@@ -29,6 +30,10 @@ class AdvancedScanner:
             dashboard_server: Optional dashboard for real-time updates
             num_sdrs: Number of SDRs to use (None = auto-detect, 1 = single mode, 4+ = concurrent mode)
         """
+        # Initialize DebugHelper
+        super().__init__(component_name='AdvancedScanner')
+        self.debug_enabled = True  # Enable debug logging for scanner
+
         self.sdr = None
         self.sdrs = []  # Multiple SDRs for concurrent scanning
         self.num_sdrs = num_sdrs
