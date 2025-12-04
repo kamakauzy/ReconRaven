@@ -398,7 +398,6 @@ class AdvancedScanner(DebugHelper):
             traceback.print_exc()
             with open(log_file, 'a') as f:
                 f.write(f'{timestamp},{freq},{band},{signal_type},error,{e!s}\n')
-            return None  # Return None if recording failed
             return None  # Return None on error
 
     def analyze_recording(self, filepath):

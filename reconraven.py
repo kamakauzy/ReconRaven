@@ -7,9 +7,9 @@ All-in-one tool for scanning, analysis, and database management.
 
 import argparse
 import contextlib
-import os
 import sys
 import time
+from pathlib import Path
 
 import numpy as np
 
@@ -299,7 +299,7 @@ def cmd_analyze(args):
     if args.file:
         files = [args.file]
     elif args.all:
-        files = glob.glob('recordings/audio/*.npy')
+        files = list(Path('recordings/audio').glob('*.npy'))
     else:
         print('ERROR: Specify --file <path> or --all')
         return 1
@@ -312,7 +312,7 @@ def cmd_analyze(args):
 
     for filepath in files:
         print(f"\n{'='*70}")
-        print(f'File: {os.path.basename(filepath)}')
+        print(f'File: {Path(filepath).name}')
         print('=' * 70)
 
         # Run analysis based on type
@@ -472,15 +472,14 @@ def cmd_cleanup(args):
 
     # Show current status
     recordings = db.get_recordings()
-    audio_dir = 'recordings/audio'
+    audio_dir = Path('recordings/audio')
     total_mb = 0
     file_count = 0
 
-    if os.path.exists(audio_dir):
-        for filename in os.listdir(audio_dir):
-            filepath = os.path.join(audio_dir, filename)
-            if os.path.isfile(filepath):
-                total_mb += os.path.getsize(filepath) / (1024 * 1024)
+    if audio_dir.exists():
+        for filepath in audio_dir.iterdir():
+            if filepath.is_file():
+                total_mb += filepath.stat().st_size / (1024 * 1024)
                 file_count += 1
 
     print('\nReconRaven Disk Usage')
@@ -499,10 +498,10 @@ def cmd_cleanup(args):
             band = rec.get('band', '')
             if 'ISM' in band:
                 filename = rec['filename']
-                filepath = os.path.join(audio_dir, filename)
-                if os.path.exists(filepath) and filename.endswith('.npy'):
-                    size_mb = os.path.getsize(filepath) / (1024 * 1024)
-                    os.remove(filepath)
+                filepath = audio_dir / filename
+                if filepath.exists() and filename.endswith('.npy'):
+                    size_mb = filepath.stat().st_size / (1024 * 1024)
+                    filepath.unlink()
                     saved_mb += size_mb
                     deleted += 1
                     if deleted % 10 == 0:
@@ -525,10 +524,10 @@ def cmd_cleanup(args):
                 captured = datetime.fromisoformat(rec['captured_at'])
                 if captured < cutoff:
                     filename = rec['filename']
-                    filepath = os.path.join(audio_dir, filename)
-                    if os.path.exists(filepath):
-                        size_mb = os.path.getsize(filepath) / (1024 * 1024)
-                        os.remove(filepath)
+                    filepath = audio_dir / filename
+                    if filepath.exists():
+                        size_mb = filepath.stat().st_size / (1024 * 1024)
+                        filepath.unlink()
                         saved_mb += size_mb
                         deleted += 1
 
@@ -548,16 +547,16 @@ def cmd_cleanup(args):
             if band in ['2m', '70cm']:
                 filename = rec['filename']
                 if filename.endswith('.npy'):
-                    filepath = os.path.join(audio_dir, filename)
-                    if os.path.exists(filepath):
+                    filepath = audio_dir / filename
+                    if filepath.exists():
                         print(f'  Converting: {filename}')
-                        wav_file = manager.demodulate_to_wav(filepath)
+                        wav_file = manager.demodulate_to_wav(str(filepath))
                         if wav_file:
-                            npy_size = os.path.getsize(filepath) / (1024 * 1024)
-                            os.remove(filepath)
+                            npy_size = filepath.stat().st_size / (1024 * 1024)
+                            filepath.unlink()
                             saved_mb += npy_size
                             converted += 1
-                            db.update_recording_audio(rec['id'], os.path.basename(wav_file))
+                            db.update_recording_audio(rec['id'], Path(wav_file).name)
 
         print(f'\n[SUCCESS] Converted {converted} voice recordings, freed {saved_mb:.1f} MB')
 
@@ -572,7 +571,7 @@ def cmd_test(args):
     # Import test modules
     import sys
 
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'tests'))
+    sys.path.insert(0, str(Path(__file__).parent / 'tests'))
 
     try:
         from test_hardware import (

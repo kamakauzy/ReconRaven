@@ -4,13 +4,13 @@ Advanced Scanner with Demodulation & Recording
 Can decode analog signals (FM/AM) and record ham/433 MHz traffic
 """
 
-import os
 import signal
 import sys
 import threading
 import time
 from collections import defaultdict
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 from rtlsdr import RtlSdr
@@ -47,10 +47,10 @@ class AdvancedScanner:
         self.voice_transcriber = None  # Lazy load when needed
 
         # Output directories
-        self.output_dir = 'recordings'
-        os.makedirs(self.output_dir, exist_ok=True)
-        os.makedirs(f'{self.output_dir}/audio', exist_ok=True)
-        os.makedirs(f'{self.output_dir}/logs', exist_ok=True)
+        self.output_dir = Path('recordings')
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        (self.output_dir / 'audio').mkdir(parents=True, exist_ok=True)
+        (self.output_dir / 'logs').mkdir(parents=True, exist_ok=True)
 
         # Register cleanup handlers
         import atexit
@@ -360,14 +360,15 @@ class AdvancedScanner:
             # Save as numpy array
             np.save(iq_file, samples)
 
-            size = os.path.getsize(iq_file) / (1024 * 1024)  # MB
+            iq_path = Path(iq_file)
+            size = iq_path.stat().st_size / (1024 * 1024)  # MB
             print(f'SUCCESS! IQ recording saved: {iq_file}')
             print(f'File size: {size:.1f} MB')
             print('To replay: Use GQRX, URH, or Inspectrum')
 
             # Add to database
             try:
-                filename = os.path.basename(iq_file)
+                filename = iq_path.name
                 self.db.add_recording(
                     filename=filename, freq=freq, band=band, duration=duration, file_size_mb=size
                 )
@@ -383,7 +384,7 @@ class AdvancedScanner:
             with open(log_file, 'a') as f:
                 f.write(f'{timestamp},{freq},{band},{signal_type},iq_complete,{size:.1f}MB\n')
 
-            return os.path.basename(iq_file)  # Return filename
+            return iq_path.name  # Return filename
 
         except Exception as e:
             print(f'RECORDING ERROR: {e}')
@@ -392,7 +393,6 @@ class AdvancedScanner:
             traceback.print_exc()
             with open(log_file, 'a') as f:
                 f.write(f'{timestamp},{freq},{band},{signal_type},error,{e!s}\n')
-            return None  # Return None if recording failed
             return None  # Return None on error
 
     def analyze_recording(self, filepath):

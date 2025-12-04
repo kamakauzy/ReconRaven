@@ -4,15 +4,15 @@ Database Migration Script
 Backs up old database and creates new simplified schema
 """
 
-import os
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
+from pathlib import Path
 
 
 def migrate_database():
     """Migrate to simplified database schema"""
 
-    db_file = 'reconraven.db'
+    db_file = Path('reconraven.db')
 
     print('=' * 70)
     print('ReconRaven Database Migration')
@@ -20,9 +20,9 @@ def migrate_database():
     print()
 
     # Check if database exists
-    if os.path.exists(db_file):
+    if db_file.exists():
         # Backup old database
-        backup_file = f'reconraven_backup_{datetime.now().strftime("%Y%m%d_%H%M%S")}.db'
+        backup_file = f'reconraven_backup_{datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")}.db'
         print(f'📦 Backing up existing database to: {backup_file}')
         shutil.copy2(db_file, backup_file)
         print('✅ Backup created successfully')
@@ -30,7 +30,7 @@ def migrate_database():
 
         # Remove old database
         print(f'🗑️  Removing old database: {db_file}')
-        os.remove(db_file)
+        db_file.unlink()
         print('✅ Old database removed')
         print()
     else:
