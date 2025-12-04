@@ -208,4 +208,3 @@ class DebugHelper:
     def log_emergency(self, message: str, is_process: bool = False, **kwargs):
         """Log EMERGENCY message"""
         self._log(LogLevel.EMERGENCY, message, is_process=is_process, **kwargs)
-

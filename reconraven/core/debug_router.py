@@ -75,4 +75,3 @@ def get_debug_router() -> DebugRouter:
     if _debug_router_instance is None:
         _debug_router_instance = DebugRouter()
     return _debug_router_instance
-

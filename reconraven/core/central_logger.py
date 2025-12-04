@@ -231,4 +231,3 @@ def get_central_logger() -> CentralLogger:
     if _central_logger_instance is None:
         _central_logger_instance = CentralLogger()
     return _central_logger_instance
-
