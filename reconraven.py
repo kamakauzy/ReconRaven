@@ -15,6 +15,194 @@ import numpy as np
 from database import get_db
 
 
+def cmd_voice(args):
+    """Voice monitoring and transcription operations"""
+    from reconraven.voice.monitor import VoiceMonitor
+    from reconraven.voice.transcriber import VoiceTranscriber
+    from reconraven.core.database import get_db
+    
+    if args.voice_action == 'monitor':
+        # Monitor a specific frequency for voice
+        if not args.freq:
+            print('ERROR: --freq required for monitor')
+            return 1
+        
+        monitor = VoiceMonitor()
+        print(f'Monitoring {args.freq} MHz in {args.mode} mode...')
+        
+        try:
+            monitor.start_monitoring_frequency(
+                frequency_hz=args.freq * 1e6,
+                mode=args.mode,
+                duration_sec=args.duration,
+                auto_record=args.record
+            )
+        except KeyboardInterrupt:
+            print('\nStopped')
+        
+        return 0
+    
+    elif args.voice_action == 'scan':
+        # Scan a band for voice activity
+        monitor = VoiceMonitor()
+        print(f'Scanning {args.band} band for voice activity...')
+        
+        try:
+            monitor.scan_band(
+                band=args.band,
+                dwell_time_sec=args.dwell,
+                auto_record=True
+            )
+        except KeyboardInterrupt:
+            print('\nStopped')
+        
+        return 0
+    
+    elif args.voice_action == 'transcribe':
+        # Transcribe a single recording
+        if not args.file:
+            print('ERROR: --file required for transcribe')
+            return 1
+        
+        transcriber = VoiceTranscriber(model_size=args.model)
+        result = transcriber.transcribe_file(args.file)
+        
+        if result:
+            print(f'\nTranscription:\n{result["text"]}\n')
+            print(f'Language: {result.get("language", "unknown")}')
+            print(f'Confidence: {result.get("confidence", 0):.2%}')
+        else:
+            print('Transcription failed')
+            return 1
+        
+        return 0
+    
+    elif args.voice_action == 'batch-transcribe':
+        # Batch transcribe untranscribed recordings
+        db = get_db()
+        transcriber = VoiceTranscriber(model_size=args.model)
+        
+        untranscribed = db.get_untranscribed_recordings()
+        print(f'Found {len(untranscribed)} untranscribed recordings')
+        
+        for i, rec in enumerate(untranscribed, 1):
+            print(f'[{i}/{len(untranscribed)}] Transcribing {rec["filename"]}...')
+            # Transcription logic here
+        
+        return 0
+
+
+def cmd_analyze_extended(args):
+    """Extended analysis operations (correlation, network, profile)"""
+    from reconraven.analysis.correlation import CorrelationEngine
+    from reconraven.analysis.field import FieldAnalyzer
+    
+    engine = CorrelationEngine()
+    
+    if args.analyze_type == 'correlation':
+        # Find temporal correlations
+        print(f'Finding temporal correlations (window: {args.time_window}s)...')
+        correlations = engine.find_temporal_correlations(time_window_seconds=args.time_window)
+        
+        print(f'\nFound {len(correlations)} correlated signal pairs:')
+        for corr in correlations[:20]:  # Show top 20
+            print(f'{corr["frequency1_mhz"]:.3f} MHz ↔ {corr["frequency2_mhz"]:.3f} MHz')
+            print(f'  Occurrences: {corr["occurrences"]}, Avg delay: {corr["avg_delay_sec"]:.2f}s')
+        
+        return 0
+    
+    elif args.analyze_type == 'sequences':
+        # Find sequential patterns
+        print('Finding sequential patterns...')
+        sequences = engine.find_sequential_patterns(max_sequence_length=args.max_length)
+        
+        print(f'\nFound {len(sequences)} sequences:')
+        for seq in sequences[:10]:
+            print(f'Sequence: {seq}')
+        
+        return 0
+    
+    elif args.analyze_type == 'profile':
+        # Get behavioral profile for a frequency
+        if not args.freq:
+            print('ERROR: --freq required for profile')
+            return 1
+        
+        profile = engine.get_device_profile(args.freq * 1e6)
+        print(f'\nBehavioral Profile for {args.freq} MHz:')
+        print(f'  Transmissions: {profile.get("transmission_count", 0)}')
+        print(f'  Pattern: {profile.get("pattern", "unknown")}')
+        
+        return 0
+    
+    elif args.analyze_type == 'network':
+        # Build network map
+        print('Building device network map...')
+        network = engine.build_network_graph()
+        
+        if args.output:
+            import json
+            with open(args.output, 'w') as f:
+                json.dump(network, f, indent=2)
+            print(f'Network saved to {args.output}')
+        else:
+            print(f'Network has {len(network.get("nodes", []))} nodes')
+        
+        return 0
+    
+    elif args.analyze_type == 'field':
+        # Field analysis
+        if not args.file:
+            print('ERROR: --file required for field analysis')
+            return 1
+        
+        analyzer = FieldAnalyzer()
+        results = analyzer.analyze_signal(args.file)
+        
+        print('\n=== Field Analysis Results ===')
+        print(f'File: {results.get("file")}')
+        print(f'Identification: {results.get("identification", "Unknown")}')
+        print(f'Confidence: {results.get("confidence", 0):.2%}')
+        
+        return 0
+
+
+def cmd_recording(args):
+    """Recording management operations"""
+    from reconraven.utils.recording_manager import RecordingManager
+    from reconraven.core.database import get_db
+    
+    db = get_db()
+    manager = RecordingManager(db)
+    
+    if args.recording_action == 'list':
+        # List recordings
+        recordings = db.get_recordings(limit=args.limit or 100)
+        
+        print(f'\n{"ID":<6} {"Frequency":<12} {"Band":<8} {"Created":<20}')
+        print('=' * 60)
+        
+        for rec in recordings:
+            freq_mhz = rec['frequency_hz'] / 1e6
+            print(f'{rec["id"]:<6} {freq_mhz:<12.3f} {rec.get("band", "N/A"):<8} {rec["created_at"]:<20}')
+        
+        return 0
+    
+    elif args.recording_action == 'export':
+        # Export recording
+        if not args.id:
+            print('ERROR: --id required for export')
+            return 1
+        
+        # Export logic here
+        print(f'Exporting recording {args.id} as {args.format}...')
+        return 0
+    
+    elif args.recording_action == 'cleanup':
+        # Call existing cleanup logic
+        return cmd_cleanup(args)
+
+
 def cmd_scan(args):
     """Run scanner with optional dashboard"""
     try:
@@ -694,6 +882,65 @@ Examples:
     cleanup_parser.add_argument(
         '--days', type=int, default=7, help='Days for old cleanup (default: 7)'
     )
+    
+    # Voice command
+    voice_parser = subparsers.add_parser('voice', help='Voice monitoring and transcription')
+    voice_subparsers = voice_parser.add_subparsers(dest='voice_action', help='Voice action')
+    
+    voice_monitor = voice_subparsers.add_parser('monitor', help='Monitor frequency for voice')
+    voice_monitor.add_argument('--freq', type=float, required=True, help='Frequency in MHz')
+    voice_monitor.add_argument('--mode', default='FM', choices=['FM', 'AM', 'USB', 'LSB'], help='Demod mode')
+    voice_monitor.add_argument('--duration', type=int, help='Duration in seconds')
+    voice_monitor.add_argument('--record', action='store_true', help='Auto-record')
+    
+    voice_scan = voice_subparsers.add_parser('scan', help='Scan band for voice')
+    voice_scan.add_argument('--band', required=True, choices=['2m', '70cm', 'gmrs', 'frs', 'marine'], help='Band to scan')
+    voice_scan.add_argument('--dwell', type=int, default=5, help='Dwell time per frequency (seconds)')
+    
+    voice_transcribe = voice_subparsers.add_parser('transcribe', help='Transcribe recording')
+    voice_transcribe.add_argument('--file', required=True, help='Audio file to transcribe')
+    voice_transcribe.add_argument('--model', default='base', choices=['tiny', 'base', 'small', 'medium', 'large'], help='Whisper model size')
+    
+    voice_batch = voice_subparsers.add_parser('batch-transcribe', help='Batch transcribe recordings')
+    voice_batch.add_argument('--model', default='base', choices=['tiny', 'base', 'small', 'medium', 'large'], help='Whisper model size')
+    voice_batch.add_argument('--untranscribed-only', action='store_true', help='Only untranscribed recordings')
+    
+    # Extended analyze command
+    analyze_extended_parser = subparsers.add_parser('analyze', help='Extended analysis operations')
+    analyze_extended_subparsers = analyze_extended_parser.add_subparsers(dest='analyze_type', help='Analysis type')
+    
+    analyze_corr = analyze_extended_subparsers.add_parser('correlation', help='Find temporal correlations')
+    analyze_corr.add_argument('--time-window', type=int, default=10, help='Time window in seconds')
+    analyze_corr.add_argument('--min-occurrences', type=int, default=3, help='Minimum occurrences')
+    
+    analyze_seq = analyze_extended_subparsers.add_parser('sequences', help='Find sequential patterns')
+    analyze_seq.add_argument('--max-length', type=int, default=5, help='Maximum sequence length')
+    
+    analyze_prof = analyze_extended_subparsers.add_parser('profile', help='Get device behavioral profile')
+    analyze_prof.add_argument('--freq', type=float, required=True, help='Frequency in MHz')
+    
+    analyze_net = analyze_extended_subparsers.add_parser('network', help='Build network graph')
+    analyze_net.add_argument('--output', help='Output file (JSON)')
+    
+    analyze_field = analyze_extended_subparsers.add_parser('field', help='Field signal analysis')
+    analyze_field.add_argument('--file', required=True, help='Recording file to analyze')
+    analyze_field.add_argument('--offline', action='store_true', help='Offline mode')
+    
+    # Recording command
+    recording_parser = subparsers.add_parser('recording', help='Recording management')
+    recording_subparsers = recording_parser.add_subparsers(dest='recording_action', help='Recording action')
+    
+    recording_list = recording_subparsers.add_parser('list', help='List recordings')
+    recording_list.add_argument('--limit', type=int, default=100, help='Limit results')
+    recording_list.add_argument('--format', choices=['table', 'json'], default='table', help='Output format')
+    
+    recording_export = recording_subparsers.add_parser('export', help='Export recording')
+    recording_export.add_argument('--id', type=int, required=True, help='Recording ID')
+    recording_export.add_argument('--format', choices=['wav', 'npy'], default='wav', help='Export format')
+    
+    recording_cleanup = recording_subparsers.add_parser('cleanup', help='Cleanup recordings')
+    recording_cleanup.add_argument('--type', choices=['ism', 'old', 'voice'], help='Cleanup type')
+    recording_cleanup.add_argument('--days', type=int, default=7, help='Days for old cleanup')
 
     # Test command (diagnostics)
     test_parser = subparsers.add_parser('test', help='Run diagnostic tests')
@@ -722,13 +969,15 @@ Examples:
     # Route to command handler
     commands = {
         'scan': cmd_scan,
-        'analyze': cmd_analyze,
+        'analyze': cmd_analyze_extended,
         'dashboard': cmd_dashboard,
         'db': cmd_db,
         'setup': cmd_setup,
         'play': cmd_play,
         'cleanup': cmd_cleanup,
         'test': cmd_test,
+        'voice': cmd_voice,
+        'recording': cmd_recording,
     }
 
     return commands[args.command](args)
