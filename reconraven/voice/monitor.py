@@ -4,9 +4,9 @@ Voice Traffic Monitor
 Real-time monitoring and recording of voice transmissions (FM/AM/DMR/P25)
 """
 
-import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 from reconraven.core.database import get_db
@@ -26,7 +26,7 @@ class VoiceMonitor(DebugHelper):
         self.current_frequency = None
         self.demodulator = None
         self.recording_dir = 'recordings/voice'
-        os.makedirs(self.recording_dir, exist_ok=True)
+        Path(self.recording_dir).mkdir(parents=True, exist_ok=True)
 
         # Voice-optimized squelch/detection
         self.squelch_threshold_dbm = -80  # Typical voice signal
@@ -73,11 +73,9 @@ class VoiceMonitor(DebugHelper):
             # Setup output file if auto-recording
             output_file = None
             if auto_record:
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
                 freq_mhz = frequency_hz / 1e6
-                output_file = os.path.join(
-                    self.recording_dir, f'voice_{freq_mhz:.3f}MHz_{timestamp}.wav'
-                )
+                output_file = str(Path(self.recording_dir) / f'voice_{freq_mhz:.3f}MHz_{timestamp}.wav')
                 self.log_info(f'Auto-recording to: {output_file}')
 
             # Start demodulation

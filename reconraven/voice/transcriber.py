@@ -6,9 +6,8 @@ Uses OpenAI Whisper for speech-to-text transcription
 
 import json
 import logging
-import os
 import wave
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -100,7 +99,7 @@ class VoiceTranscriber(DebugHelper):
                 'language': result.get('language', 'unknown'),
                 'confidence': confidence,
                 'duration': duration,
-                'transcribed_at': datetime.now().isoformat(),
+                'transcribed_at': datetime.now(timezone.utc).isoformat(),
             }
 
             print(f"Transcription complete: '{transcript['text'][:100]}...'")
@@ -321,9 +320,8 @@ if __name__ == '__main__':
 
     elif args.batch:
         # Batch transcription
-        import glob
 
-        audio_files = glob.glob(os.path.join(args.batch, '*.wav'))
+        audio_files = list(Path(args.batch).glob('*.wav'))
 
         print(f'\nFound {len(audio_files)} audio files')
         print(f'Using model: {args.model}')

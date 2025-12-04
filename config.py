@@ -63,8 +63,8 @@ class Config:
             else:
                 logger.warning(f'Configuration file not found: {filepath}')
                 return {}
-        except Exception as e:
-            logger.exception(f'Error loading {filepath}: {e}')
+        except Exception:
+            logger.exception(f'Error loading {filepath}')
             return {}
 
     def get_scan_bands(self) -> list[dict[str, Any]]:

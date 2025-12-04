@@ -7,7 +7,8 @@ Also handles voice signal transcription
 
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
+from pathlib import Path
 
 import numpy as np
 from scipy import signal
@@ -52,7 +53,7 @@ class RecordingManager:
     def demodulate_to_wav(self, npy_filepath):
         """Convert IQ .npy to demodulated WAV audio"""
         try:
-            print(f'[WAV] Converting {os.path.basename(npy_filepath)} to audio...')
+            print(f'[WAV] Converting {Path(npy_filepath).name} to audio...')
 
             # Load IQ samples
             samples = np.load(npy_filepath)
@@ -81,8 +82,8 @@ class RecordingManager:
             wavfile.write(wav_filepath, 48000, audio_downsampled.astype(np.int16))
 
             # Get file sizes
-            npy_size_mb = os.path.getsize(npy_filepath) / (1024 * 1024)
-            wav_size_mb = os.path.getsize(wav_filepath) / (1024 * 1024)
+            npy_size_mb = Path(npy_filepath).stat().st_size / (1024 * 1024)
+            wav_size_mb = Path(wav_filepath).stat().st_size / (1024 * 1024)
 
             print(
                 f'[WAV] Success! {npy_size_mb:.1f}MB → {wav_size_mb:.1f}MB (saved {npy_size_mb - wav_size_mb:.1f}MB)'
@@ -105,7 +106,7 @@ class RecordingManager:
                 return
 
             filepath = f"recordings/audio/{recording['filename']}"
-            if not os.path.exists(filepath):
+            if not Path(filepath).exists():
                 return
 
             freq = recording['frequency_hz']
@@ -115,8 +116,8 @@ class RecordingManager:
 
             if decision is False:
                 # ISM band - delete immediately
-                size_mb = os.path.getsize(filepath) / (1024 * 1024)
-                os.remove(filepath)
+                size_mb = Path(filepath).stat().st_size / (1024 * 1024)
+                Path(filepath).unlink()
                 logger.info(
                     f"Deleted {recording['filename']} ({size_mb:.1f}MB) - ISM band, no replay value"
                 )
@@ -126,14 +127,14 @@ class RecordingManager:
                 wav_file = self.demodulate_to_wav(filepath)
                 if wav_file:
                     # Update database with WAV filename
-                    self.db.update_recording_audio(recording_id, os.path.basename(wav_file))
+                    self.db.update_recording_audio(recording_id, Path(wav_file).name)
 
                     # AUTO-TRANSCRIBE VOICE SIGNALS
                     self.transcribe_voice_recording(recording_id, wav_file)
 
                     # Delete the large .npy file
-                    npy_size_mb = os.path.getsize(filepath) / (1024 * 1024)
-                    os.remove(filepath)
+                    npy_size_mb = Path(filepath).stat().st_size / (1024 * 1024)
+                    Path(filepath).unlink()
                     logger.info(f'Converted to WAV and deleted .npy ({npy_size_mb:.1f}MB saved)')
                 else:
                     logger.warning('WAV conversion failed, keeping .npy for manual review')
@@ -159,7 +160,7 @@ class RecordingManager:
                 logger.warning('Transcriber not available, skipping transcription')
                 return
 
-            logger.info(f'Transcribing {os.path.basename(wav_filepath)}...')
+            logger.info(f'Transcribing {Path(wav_filepath).name}...')
             result = transcriber.transcribe_file(wav_filepath)
 
             if 'error' in result:
@@ -201,12 +202,12 @@ def cleanup_old_recordings(db, days_old=7):
         from datetime import timedelta
 
         captured = datetime.fromisoformat(rec['captured_at'])
-        if datetime.now() - captured > timedelta(days=days_old):
+        if datetime.now(timezone.utc) - captured > timedelta(days=days_old):
             # Old and unanalyzed - probably not important
             filepath = f"recordings/audio/{rec['filename']}"
             if os.path.exists(filepath):
-                size_mb = os.path.getsize(filepath) / (1024 * 1024)
-                os.remove(filepath)
+                size_mb = Path(filepath).stat().st_size / (1024 * 1024)
+                Path(filepath).unlink()
                 saved_mb += size_mb
                 cleaned += 1
 

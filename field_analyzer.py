@@ -5,8 +5,8 @@ Integrates: Binary decoding, rtl_433, device signatures, manufacturer identifica
 """
 
 import json
-import os
 import sys
+from pathlib import Path
 
 import numpy as np
 
@@ -259,7 +259,7 @@ class FieldAnalyzer:
         """Save analysis results to database"""
         try:
             # Get recording ID from filename
-            filename = os.path.basename(npy_file)
+            filename = Path(npy_file).name
             recordings = self.db.get_recordings()
             recording_id = None
 

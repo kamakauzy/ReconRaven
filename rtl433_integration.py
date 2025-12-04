@@ -5,9 +5,9 @@ Bridges ReconRaven with rtl_433 for automatic device identification
 """
 
 import json
-import os
 import subprocess
 import sys
+from pathlib import Path
 
 import numpy as np
 
@@ -53,7 +53,7 @@ class RTL433Integration:
         # Write to file
         iq_interleaved.tofile(cu8_file)
 
-        print(f'Converted: {cu8_file} ({os.path.getsize(cu8_file) / 1024 / 1024:.1f} MB)')
+        print(f'Converted: {cu8_file} ({Path(cu8_file).stat().st_size / 1024 / 1024:.1f} MB)')
         return cu8_file
 
     def analyze_recording(self, npy_file, output_json=None):
@@ -97,8 +97,8 @@ class RTL433Integration:
                         pass
 
             # Clean up .cu8 file
-            if os.path.exists(cu8_file):
-                os.remove(cu8_file)
+            if Path(cu8_file).exists():
+                Path(cu8_file).unlink()
 
             if devices:
                 print(f'\nFound {len(devices)} device(s)!')

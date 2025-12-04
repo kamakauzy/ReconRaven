@@ -6,9 +6,9 @@ Uses OpenAI Whisper for speech-to-text transcription
 
 import json
 import logging
-import os
 import wave
-from datetime import datetime
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 
@@ -70,7 +70,7 @@ class VoiceTranscriber:
         if not self.whisper:
             return {'error': 'Whisper not installed'}
 
-        if not os.path.exists(audio_file):
+        if not Path(audio_file).exists():
             return {'error': f'File not found: {audio_file}'}
 
         try:
@@ -98,7 +98,7 @@ class VoiceTranscriber:
                 'language': result.get('language', 'unknown'),
                 'confidence': confidence,
                 'duration': duration,
-                'transcribed_at': datetime.now().isoformat(),
+                'transcribed_at': datetime.now(timezone.utc).isoformat(),
             }
 
             logger.info(f"Transcription complete: '{transcript['text'][:100]}...'")
@@ -128,7 +128,7 @@ class VoiceTranscriber:
             if progress_callback:
                 progress_callback(i, total, audio_file)
 
-            filename = os.path.basename(audio_file)
+            filename = Path(audio_file).name
             results[filename] = self.transcribe_file(audio_file)
 
         return results
@@ -321,16 +321,15 @@ if __name__ == '__main__':
 
     elif args.batch:
         # Batch transcription
-        import glob
 
-        audio_files = glob.glob(os.path.join(args.batch, '*.wav'))
+        audio_files = [str(p) for p in Path(args.batch).glob('*.wav')]
 
         print(f'\nFound {len(audio_files)} audio files')
         print(f'Using model: {args.model}')
         print('Starting batch transcription...\n')
 
         def progress(current, total, filename):
-            print(f'[{current}/{total}] {os.path.basename(filename)}')
+            print(f'[{current}/{total}] {Path(filename).name}')
 
         results = transcriber.transcribe_batch(audio_files, progress_callback=progress)
 

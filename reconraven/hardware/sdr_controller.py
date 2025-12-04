@@ -88,15 +88,15 @@ def detect_sdr_devices() -> int:
             logger.info(f'Detected {count} RTL-SDR device(s) via pyrtlsdr')
             return count
 
-        except Exception as e:
-            logger.exception(f'Error detecting SDR devices: {e}')
+        except Exception:
+            logger.exception('Error detecting SDR devices')
             return 0
 
     except subprocess.TimeoutExpired:
         logger.exception('Timeout detecting SDR devices')
         return 0
-    except Exception as e:
-        logger.exception(f'Error detecting SDR devices: {e}')
+    except Exception:
+        logger.exception('Error detecting SDR devices')
         return 0
 
 

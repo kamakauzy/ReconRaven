@@ -5,10 +5,10 @@ Records IQ samples, audio, and metadata with GPS timestamps.
 
 import json
 import logging
-import os
 import time
 import wave
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Optional
 
 import numpy as np
@@ -111,7 +111,7 @@ class SignalLogger(DebugHelper):
         self.gps = GPSInterface(self.config.get('gps', {}))
 
         # Create output directory
-        os.makedirs(self.output_dir, exist_ok=True)
+        Path(self.output_dir).mkdir(parents=True, exist_ok=True)
 
     def log_signal_detection(
         self, signal_hit, bearing: Optional[dict] = None, metadata: Optional[dict] = None
@@ -128,7 +128,7 @@ class SignalLogger(DebugHelper):
         """
         timestamp = datetime.now(timezone.utc)
         filename = f"signal_{timestamp.strftime('%Y%m%d_%H%M%S')}.json"
-        filepath = os.path.join(self.output_dir, filename)
+        filepath = Path(self.output_dir) / filename
 
         # Get GPS position
         gps_data = self.gps.get_position()
@@ -175,7 +175,7 @@ class SignalLogger(DebugHelper):
         """
         timestamp = datetime.now(timezone.utc)
         filename = f"iq_{int(frequency_hz/1e6)}MHz_{timestamp.strftime('%Y%m%d_%H%M%S')}.dat"
-        filepath = os.path.join(self.output_dir, filename)
+        filepath = Path(self.output_dir) / filename
 
         try:
             # Limit samples if duration specified
@@ -225,7 +225,7 @@ class SignalLogger(DebugHelper):
         filename = (
             f"audio_{int(frequency_hz/1e6)}MHz_{mode}_{timestamp.strftime('%Y%m%d_%H%M%S')}.wav"
         )
-        filepath = os.path.join(self.output_dir, filename)
+        filepath = Path(self.output_dir) / filename
 
         try:
             # Write WAV file
@@ -267,7 +267,7 @@ class SignalLogger(DebugHelper):
         """
         timestamp = datetime.now(timezone.utc)
         filename = f"session_{timestamp.strftime('%Y%m%d_%H%M%S')}.json"
-        filepath = os.path.join(self.output_dir, filename)
+        filepath = Path(self.output_dir) / filename
 
         try:
             session_log = {

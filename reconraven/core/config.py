@@ -4,7 +4,6 @@ Loads YAML configuration files and provides centralized access.
 """
 
 import logging
-import os
 from pathlib import Path
 from typing import Any, Optional
 
@@ -14,10 +13,10 @@ import yaml
 logger = logging.getLogger(__name__)
 
 # Default configuration paths
-CONFIG_DIR = os.path.join(Path(__file__).parent, 'config')
-BANDS_CONFIG = os.path.join(CONFIG_DIR, 'bands.yaml')
-DEMOD_CONFIG = os.path.join(CONFIG_DIR, 'demod_config.yaml')
-HARDWARE_CONFIG = os.path.join(CONFIG_DIR, 'hardware.yaml')
+CONFIG_DIR = Path(__file__).parent / 'config'
+BANDS_CONFIG = CONFIG_DIR / 'bands.yaml'
+DEMOD_CONFIG = CONFIG_DIR / 'demod_config.yaml'
+HARDWARE_CONFIG = CONFIG_DIR / 'hardware.yaml'
 
 
 class Config:
@@ -37,9 +36,9 @@ class Config:
 
     def load_all(self):
         """Load all configuration files."""
-        self.bands = self._load_yaml(os.path.join(self.config_dir, 'bands.yaml'))
-        self.demod_params = self._load_yaml(os.path.join(self.config_dir, 'demod_config.yaml'))
-        self.hardware_config = self._load_yaml(os.path.join(self.config_dir, 'hardware.yaml'))
+        self.bands = self._load_yaml(self.config_dir / 'bands.yaml')
+        self.demod_params = self._load_yaml(self.config_dir / 'demod_config.yaml')
+        self.hardware_config = self._load_yaml(self.config_dir / 'hardware.yaml')
         logger.info('Configuration loaded successfully')
 
     def _load_yaml(self, filepath: str) -> dict[str, Any]:
@@ -60,8 +59,8 @@ class Config:
             else:
                 logger.warning(f'Configuration file not found: {filepath}')
                 return {}
-        except Exception as e:
-            logger.exception(f'Error loading {filepath}: {e}')
+        except Exception:
+            logger.exception(f'Error loading {filepath}')
             return {}
 
     def get_scan_bands(self) -> list[dict[str, Any]]:

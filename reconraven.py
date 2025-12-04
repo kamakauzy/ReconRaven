@@ -36,8 +36,7 @@ def cmd_voice(args):
                 frequency_hz=args.freq * 1e6,
                 mode=args.mode,
                 duration_sec=args.duration,
-                auto_record=args.record,
-            )
+                auto_record=args.record)
         except KeyboardInterrupt:
             print('\nStopped')
 
@@ -511,9 +510,9 @@ def cmd_cleanup(args):
         )
 
     elif args.type == 'old':
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
 
-        cutoff = datetime.now() - timedelta(days=args.days or 7)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=args.days or 7)
 
         deleted = 0
         saved_mb = 0
@@ -573,11 +572,7 @@ def cmd_test(args):
     sys.path.insert(0, str(Path(__file__).parent / 'tests'))
 
     try:
-        from test_hardware import (
-            test_multi_sdr_initialization,
-            test_sdr_detection,
-            test_sdr_initialization,
-        )
+        from test_hardware import test_sdr_detection, test_sdr_initialization
         from test_rf_environment import test_band_scan, test_frequency_monitoring, test_noise_floor
     except ImportError as e:
         print(f'ERROR: Could not import test modules: {e}')
@@ -712,8 +707,7 @@ def cmd_df_calibrate(args):
             frequency_hz=cal_freq_hz,
             num_samples=20000,
             known_bearing=known_bearing,
-            save_to_db=True,
-        )
+            save_to_db=True)
 
         if success:
             print('\n' + '=' * 70)
@@ -822,8 +816,7 @@ Examples:
 
   # Setup location
   reconraven.py setup --state AL --city Huntsville
-        """,
-    )
+        """)
 
     subparsers = parser.add_subparsers(dest='command', help='Command to run')
 
@@ -841,8 +834,7 @@ Examples:
         '--type',
         default='all',
         choices=['all', 'ism', 'remote', 'protocol', 'fingerprint'],
-        help='Analysis type',
-    )
+        help='Analysis type')
 
     # Dashboard command
     dash_parser = subparsers.add_parser('dashboard', help='Start web dashboard')
@@ -853,8 +845,7 @@ Examples:
     db_parser.add_argument(
         'action',
         choices=['stats', 'devices', 'anomalies', 'promote', 'import', 'export'],
-        help='Database action',
-    )
+        help='Database action')
     db_parser.add_argument('--limit', type=int, help='Limit for list queries')
     db_parser.add_argument('--output', help='Output file for export')
 
@@ -877,8 +868,7 @@ Examples:
     cleanup_parser.add_argument(
         '--type',
         choices=['ism', 'old', 'voice'],
-        help='Cleanup type: ism=delete ISM recordings, old=delete old unanalyzed, voice=convert to WAV',
-    )
+        help='Cleanup type: ism=delete ISM recordings, old=delete old unanalyzed, voice=convert to WAV')
     cleanup_parser.add_argument(
         '--days', type=int, default=7, help='Days for old cleanup (default: 7)'
     )
@@ -900,8 +890,7 @@ Examples:
         '--band',
         required=True,
         choices=['2m', '70cm', 'gmrs', 'frs', 'marine'],
-        help='Band to scan',
-    )
+        help='Band to scan')
     voice_scan.add_argument(
         '--dwell', type=int, default=5, help='Dwell time per frequency (seconds)'
     )
@@ -912,8 +901,7 @@ Examples:
         '--model',
         default='base',
         choices=['tiny', 'base', 'small', 'medium', 'large'],
-        help='Whisper model size',
-    )
+        help='Whisper model size')
 
     voice_batch = voice_subparsers.add_parser(
         'batch-transcribe', help='Batch transcribe recordings'
@@ -922,8 +910,7 @@ Examples:
         '--model',
         default='base',
         choices=['tiny', 'base', 'small', 'medium', 'large'],
-        help='Whisper model size',
-    )
+        help='Whisper model size')
     voice_batch.add_argument(
         '--untranscribed-only', action='store_true', help='Only untranscribed recordings'
     )
@@ -984,8 +971,7 @@ Examples:
     test_parser.add_argument(
         'mode',
         choices=['sdr', 'rf', 'noise', 'freq', 'df-cal'],
-        help='Test mode: sdr=detect SDRs, rf=scan band, noise=check noise floor, freq=test specific frequency, df-cal=calibrate DF array',
-    )
+        help='Test mode: sdr=detect SDRs, rf=scan band, noise=check noise floor, freq=test specific frequency, df-cal=calibrate DF array')
     test_parser.add_argument('--freq', type=float, help='Frequency in MHz (for freq/df-cal mode)')
     test_parser.add_argument(
         '--band', choices=['2m', '70cm', '433', '915'], help='Band to scan (for rf mode)'
@@ -994,8 +980,7 @@ Examples:
     test_parser.add_argument(
         '--bearing',
         type=float,
-        help='Known bearing in degrees (for df-cal with reference transmitter)',
-    )
+        help='Known bearing in degrees (for df-cal with reference transmitter)')
 
     args = parser.parse_args()
 

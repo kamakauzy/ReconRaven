@@ -9,7 +9,7 @@ import sys
 import threading
 import time
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -302,7 +302,7 @@ class AdvancedScanner:
 
     def record_signal(self, freq, duration=3):
         """Record raw IQ samples"""
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
         band = self.get_band_name(freq)
         signal_type = self.signal_types.get(band, 'FM')
 
@@ -571,7 +571,7 @@ class AdvancedScanner:
                                 'power_dbm': sig['power'],
                                 'baseline_power_dbm': sig['baseline'],
                                 'delta_db': sig['delta'],
-                                'detected_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                'detected_at': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
                                 'filename': recording_file,
                             }
 

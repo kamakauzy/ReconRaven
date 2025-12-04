@@ -156,19 +156,17 @@ class SDRDashboardServer(DebugHelper):
         @self.app.route('/api/voice-recordings')
         def get_voice_recordings():
             """Get list of voice recordings."""
-            import glob
-            import os
 
             recordings_dir = 'recordings/voice'
             if not Path(recordings_dir).exists():
                 return jsonify({'recordings': []})
 
-            files = glob.glob(os.path.join(recordings_dir, '*.wav'))
+            files = list(Path(recordings_dir).glob('*.wav'))
             recordings = []
 
             for filepath in files:
                 filename = Path(filepath).name
-                stat = os.stat(filepath)
+                stat = Path(filepath).stat()
                 recordings.append(
                     {
                         'filename': filename,
@@ -236,11 +234,10 @@ class SDRDashboardServer(DebugHelper):
         @self.app.route('/recordings/audio/<path:filename>')
         def serve_audio(filename):
             """Serve audio files for playback."""
-            import os
 
             from flask import send_from_directory
 
-            audio_dir = os.path.join(Path.cwd(), 'recordings', 'audio')
+            audio_dir = Path.cwd() / 'recordings' / 'audio'
             return send_from_directory(audio_dir, filename)
 
     def _setup_socketio(self):
@@ -347,7 +344,6 @@ class SDRDashboardServer(DebugHelper):
         @self.socketio.on('analyze_signal')
         def handle_analyze_signal(data):
             """Trigger on-demand signal analysis."""
-            import os
             import subprocess
 
             from database import get_db
@@ -366,7 +362,7 @@ class SDRDashboardServer(DebugHelper):
 
             # Run field_analyzer.py in subprocess
             try:
-                npy_path = os.path.join('recordings', 'audio', recording_file)
+                npy_path = Path('recordings') / 'audio' / recording_file
                 if not Path(npy_path).exists():
                     emit('analysis_error', {'error': f'Recording file not found: {npy_path}'})
                     return
