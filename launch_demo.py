@@ -8,7 +8,7 @@ import sys
 
 sys.path.insert(0, '/home/brad/ReconRaven')
 
-from web.server import SDRDashboardServer
+from reconraven.web.server import SDRDashboardServer
 
 
 if __name__ == '__main__':

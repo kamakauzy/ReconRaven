@@ -6,7 +6,6 @@ Part of ReconRaven's centralized logging infrastructure.
 
 import logging
 import sys
-from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
 from typing import Optional

@@ -14,10 +14,10 @@ from datetime import datetime
 
 import numpy as np
 from rtlsdr import RtlSdr
-from web.server import SDRDashboardServer
 
-from database import get_db
-from recording_manager import RecordingManager
+from reconraven.core.database import get_db
+from reconraven.utils.recording_manager import RecordingManager
+from reconraven.web.server import SDRDashboardServer
 
 
 class AdvancedScanner:
@@ -41,7 +41,7 @@ class AdvancedScanner:
         self.recording_manager = RecordingManager(self.db)
 
         # Voice detection and transcription
-        from voice_detector import VoiceDetector
+        from reconraven.voice.detector import VoiceDetector
 
         self.voice_detector = VoiceDetector()
         self.voice_transcriber = None  # Lazy load when needed

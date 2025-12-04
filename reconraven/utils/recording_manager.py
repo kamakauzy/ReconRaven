@@ -27,7 +27,7 @@ class RecordingManager:
         """Lazy load voice transcriber"""
         if self.voice_transcriber is None:
             try:
-                from voice_transcriber import VoiceTranscriber
+                from reconraven.voice.transcriber import VoiceTranscriber
 
                 self.voice_transcriber = VoiceTranscriber(model_size='base')
             except Exception as e:
@@ -215,7 +215,7 @@ def cleanup_old_recordings(db, days_old=7):
 
 
 if __name__ == '__main__':
-    from database import get_db
+    from reconraven.core.database import get_db
 
     db = get_db()
 

@@ -7,8 +7,8 @@ Transcribe all untranscribed voice recordings in the database
 import logging
 from pathlib import Path
 
-from database import get_db
-from voice_transcriber import VoiceTranscriber
+from reconraven.core.database import get_db
+from reconraven.voice.transcriber import VoiceTranscriber
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

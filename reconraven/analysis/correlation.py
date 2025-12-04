@@ -10,7 +10,7 @@ from typing import Dict, List
 
 import numpy as np
 
-from database import get_db
+from reconraven.core.database import get_db
 
 
 class CorrelationEngine:

@@ -10,9 +10,8 @@ import time
 from datetime import datetime
 from typing import List, Optional
 
-from demodulation.analog import AnalogDemodulator, AnalogMode
-
-from database import get_db
+from reconraven.core.database import get_db
+from reconraven.demodulation.analog import AnalogDemodulator, AnalogMode
 
 
 logger = logging.getLogger(__name__)

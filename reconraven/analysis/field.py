@@ -10,9 +10,9 @@ import sys
 
 import numpy as np
 
-from binary_decoder import BinaryDecoder
-from database import get_db
-from rtl433_integration import RTL433Integration
+from reconraven.analysis.binary import BinaryDecoder
+from reconraven.analysis.rtl433 import RTL433Integration
+from reconraven.core.database import get_db
 
 
 class FieldAnalyzer:

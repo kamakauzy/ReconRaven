@@ -23,7 +23,7 @@ def cmd_scan(args):
         # Kill any existing dashboard processes (but not ourselves!)
         import psutil
 
-        from advanced_scanner import AdvancedScanner
+        from reconraven.core.scanner import AdvancedScanner
 
         current_pid = os.getpid()
         for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
@@ -74,7 +74,7 @@ def cmd_scan(args):
     # Start dashboard AFTER SDRs are fully initialized
     dashboard = None
     if args.dashboard:
-        from web.server import SDRDashboardServer
+        from reconraven.web.server import SDRDashboardServer
 
         print('Starting dashboard...')
         # Dashboard cleanup already done above
@@ -148,7 +148,7 @@ def cmd_dashboard(args):
     """Start web dashboard"""
     # Kill any existing dashboard processes
     import psutil
-    from web.server import SDRDashboardServer
+    from reconraven.web.server import SDRDashboardServer
 
     for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
         try:
@@ -343,7 +343,7 @@ def cmd_cleanup(args):
         print(f'\n[SUCCESS] Deleted {deleted} old recordings, freed {saved_mb:.1f} MB')
 
     elif args.type == 'voice':
-        from recording_manager import RecordingManager
+        from reconraven.utils.recording_manager import RecordingManager
 
         manager = RecordingManager(db)
 
@@ -531,7 +531,7 @@ def cmd_df_calibrate(args):
             print('=' * 70)
 
             # Get calibration from database
-            from database import get_db
+            from reconraven.core.database import get_db
 
             db = get_db()
             cal = db.get_active_df_calibration()
