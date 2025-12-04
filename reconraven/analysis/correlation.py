@@ -5,16 +5,15 @@ Detects temporal relationships, patterns, and behavioral profiles
 """
 
 import logging
-
-
-logger = logging.getLogger(__name__)
-
 from collections import defaultdict
 from datetime import datetime
 
 import numpy as np
 
 from reconraven.core.database import get_db
+
+
+logger = logging.getLogger(__name__)
 
 
 class CorrelationEngine:

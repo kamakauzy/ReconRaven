@@ -4,17 +4,16 @@ rtl_433 Integration Module
 Bridges ReconRaven with rtl_433 for automatic device identification
 """
 
+import json
 import logging
+import subprocess
+import sys
 from pathlib import Path
+
+import numpy as np
 
 
 logger = logging.getLogger(__name__)
-
-import json
-import subprocess
-import sys
-
-import numpy as np
 
 
 class RTL433Integration:

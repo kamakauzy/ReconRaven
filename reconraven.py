@@ -292,7 +292,6 @@ def cmd_scan(args):
 
 def cmd_analyze(args):
     """Analyze captured signals"""
-    import glob
     import subprocess
 
     # Get files to analyze

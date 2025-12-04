@@ -5,14 +5,13 @@ Extracts clean binary data from IQ samples for protocol analysis
 """
 
 import logging
-
-
-logger = logging.getLogger(__name__)
-
 import sys
 
 import numpy as np
 from scipy import signal
+
+
+logger = logging.getLogger(__name__)
 
 
 class BinaryDecoder:

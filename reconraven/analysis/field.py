@@ -4,20 +4,19 @@ Complete Field-Capable Analysis System
 Integrates: Binary decoding, rtl_433, device signatures, manufacturer identification
 """
 
-import logging
-from pathlib import Path
-
-
-logger = logging.getLogger(__name__)
-
 import json
+import logging
 import sys
+from pathlib import Path
 
 import numpy as np
 
 from reconraven.analysis.binary import BinaryDecoder
 from reconraven.analysis.rtl433 import RTL433Integration
 from reconraven.core.database import get_db
+
+
+logger = logging.getLogger(__name__)
 
 
 class FieldAnalyzer:
