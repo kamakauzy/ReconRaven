@@ -104,11 +104,12 @@ You'll need one of these configurations:
 
 ## Quick Start
 
-**IMPORTANT: Read `docs/RF_SETUP_GUIDE.md` BEFORE running the scanner!**
+**IMPORTANT Documentation:**
+- **Raspberry Pi Deployment:** `docs/RASPBERRY_PI_DEPLOYMENT.md` - **START HERE FOR PI BUILDS!**
+- **RF Environment Setup:** `docs/RF_SETUP_GUIDE.md` - Critical for all deployments
+- **Direction Finding:** `docs/DF_SETUP_GUIDE.md` - For 4-SDR DF array
 
-Proper RF environment setup is critical. SDRs must be physically separated from computers and interference sources or you'll only see noise.
-
-### Installation
+### PC/Laptop Installation (Development/Testing)
 
 ```bash
 # Clone the repo
