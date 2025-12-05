@@ -4,6 +4,70 @@ Complete guide for deploying ReconRaven on Raspberry Pi 5 with touchscreen.
 
 ---
 
+## ⚡ Quick Deployment (Recommended!)
+
+**New automated deployment process - saves 4+ hours!**
+
+### Prerequisites
+
+Run preparation script on your laptop BEFORE Pi arrives:
+
+```bash
+cd ReconRaven
+python3 scripts/prepare_pi_deployment.py
+```
+
+This downloads everything needed (~5-8 GB):
+- Whisper AI models
+- Location database for your state
+- Pre-generated API keys
+- Optimized Python requirements
+- Test data
+
+Creates `pi_deployment_kit/` folder ready to copy to Pi.
+
+### On the Pi
+
+After flashing SD card and first boot:
+
+**Option 1: Copy kit to SD card before boot**
+```bash
+# On laptop with SD card mounted:
+./scripts/pack_for_pi.sh /media/user/boot
+
+# Then boot Pi, and on Pi:
+cp -r /boot/pi_deployment_kit ~/
+cd ~/pi_deployment_kit/scripts
+bash pi_quick_setup.sh
+```
+
+**Option 2: Transfer via USB drive**
+```bash
+# Copy to USB drive, plug into Pi, then:
+cp -r /media/pi/USB_DRIVE/pi_deployment_kit ~/
+cd ~/pi_deployment_kit/scripts
+bash pi_quick_setup.sh
+```
+
+The setup script will:
+- Install all system dependencies (15 min)
+- Create Python venv (2 min)
+- Install Python packages (20 min)
+- Import Whisper models (1 min)
+- Set up location database (1 min)
+- Configure services (2 min)
+- Run validation tests (4 min)
+
+**Total time:** ~45 minutes mostly unattended!
+
+After completion, reboot and you're ready to scan!
+
+---
+
+## Manual Deployment (Classic Method)
+
+If you prefer step-by-step manual installation, follow the sections below.
+
 ## Table of Contents
 
 1. [Hardware Assembly](#hardware-assembly)
