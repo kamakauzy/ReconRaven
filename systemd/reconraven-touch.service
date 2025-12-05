@@ -1,0 +1,17 @@
+[Unit]
+Description=ReconRaven Touchscreen UI
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/ReconRaven
+Environment="DISPLAY=:0"
+Environment="KIVY_BCM_DISPMANX_ID=0"
+ExecStart=/usr/bin/python3 /home/pi/ReconRaven/touch_app/main.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=graphical.target
+

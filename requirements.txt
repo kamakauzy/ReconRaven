@@ -46,6 +46,15 @@ openai-whisper>=20231117
 colorlog>=6.7.0
 python-dateutil>=2.8.0
 
+# API & Authentication
+PyJWT>=2.8.0
+flask-restful>=0.3.10
+requests>=2.31.0
+
+# Touchscreen UI
+kivy>=2.3.0
+kivymd>=1.2.0
+
 # Testing (optional)
 pytest>=7.4.0
 pytest-cov>=4.1.0
