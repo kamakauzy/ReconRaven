@@ -126,8 +126,6 @@ ignore = [
     "ARG001",  # unused-function-argument (Flask/Kivy required signatures)
     "ARG002",  # unused-method-argument (Flask/Kivy required signatures)
     "ARG005",  # unused-lambda-argument (Kivy callbacks)
-    "F841",    # unused-variable (TODO stubs, will implement later)
-    "ERA001",  # commented-out-code (TODO comments for implementation)
     "RUF012",  # mutable-class-default (intentional in some cases)
 ]
 

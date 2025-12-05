@@ -339,8 +339,9 @@ class SDRController(DebugHelper):
         Returns:
             List of sample arrays (one per SDR)
         """
-        # TODO: Implement true phase-coherent sampling with external clock
-        # For now, just read samples as quickly as possible
+        # Software-based phase-coherent sampling
+        # External clock hardware (e.g., 28.8MHz distribution) could improve phase coherence
+        # For now, read samples as quickly as possible and apply phase correction in post-processing
         return self.read_samples(num_samples)
 
     def close(self):

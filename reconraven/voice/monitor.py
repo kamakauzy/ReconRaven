@@ -75,7 +75,9 @@ class VoiceMonitor(DebugHelper):
             if auto_record:
                 timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
                 freq_mhz = frequency_hz / 1e6
-                output_file = str(Path(self.recording_dir) / f'voice_{freq_mhz:.3f}MHz_{timestamp}.wav')
+                output_file = str(
+                    Path(self.recording_dir) / f'voice_{freq_mhz:.3f}MHz_{timestamp}.wav'
+                )
                 self.log_info(f'Auto-recording to: {output_file}')
 
             # Start demodulation

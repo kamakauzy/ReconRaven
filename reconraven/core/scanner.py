@@ -174,7 +174,9 @@ class AdvancedScanner(DebugHelper):
                         sdr_obj = [None]
                         error_obj = [None]
 
-                        def init_sdr_thread(device_idx=i, sdr_container=sdr_obj, error_container=error_obj):
+                        def init_sdr_thread(
+                            device_idx=i, sdr_container=sdr_obj, error_container=error_obj
+                        ):
                             try:
                                 sdr = RtlSdr(device_index=device_idx)
                                 sdr.sample_rate = (
@@ -580,7 +582,9 @@ class AdvancedScanner(DebugHelper):
                                 'power_dbm': sig['power'],
                                 'baseline_power_dbm': sig['baseline'],
                                 'delta_db': sig['delta'],
-                                'detected_at': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
+                                'detected_at': datetime.now(timezone.utc).strftime(
+                                    '%Y-%m-%d %H:%M:%S'
+                                ),
                                 'filename': recording_file,
                             }
 

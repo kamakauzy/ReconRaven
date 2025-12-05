@@ -11,8 +11,10 @@ Pushes real-time events:
 
 from datetime import datetime, timezone
 
-from flask import Blueprint
-from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask import Blueprint, request
+from flask_socketio import SocketIO, disconnect, emit, join_room, leave_room
+
+from api.auth import auth
 
 
 # Will be initialized by main app
@@ -26,19 +28,41 @@ def init_socketio(app):
     """Initialize SocketIO with Flask app."""
     global socketio
     socketio = SocketIO(
-        app,
-        cors_allowed_origins='*',  # TODO: Restrict in production
-        async_mode='threading',
-        logger=False,
-        engineio_logger=False
+        app, cors_allowed_origins='*', async_mode='threading', logger=False, engineio_logger=False
     )
 
     # Register event handlers
     @socketio.on('connect', namespace='/api/v1/ws')
     def handle_connect():
         """Client connected to WebSocket."""
-        # TODO: Verify auth token
-        emit('connected', {'message': 'Connected to ReconRaven API', 'timestamp': datetime.now(timezone.utc).isoformat()})
+        # Verify auth token from query params or headers
+        token = None
+
+        # Try to get token from query parameters
+        if request.args.get('token'):
+            token = request.args.get('token')
+        # Or from Authorization header
+        elif request.headers.get('Authorization'):
+            auth_header = request.headers.get('Authorization')
+            if auth_header.startswith('Bearer '):
+                token = auth_header[7:]
+
+        # Verify token
+        if token:
+            jwt_data = auth.verify_jwt(token)
+            if jwt_data:
+                emit(
+                    'connected',
+                    {
+                        'message': 'Connected to ReconRaven API',
+                        'timestamp': datetime.now(timezone.utc).isoformat(),
+                    },
+                )
+                return
+
+        # If we reach here, auth failed
+        emit('error', {'message': 'Authentication required'})
+        disconnect()
 
     @socketio.on('disconnect', namespace='/api/v1/ws')
     def handle_disconnect():
@@ -71,10 +95,10 @@ def emit_anomaly_detected(anomaly_data: dict):
             {
                 'type': 'anomaly_detected',
                 'timestamp': datetime.now(timezone.utc).isoformat(),
-                'data': anomaly_data
+                'data': anomaly_data,
             },
             namespace='/api/v1/ws',
-            room='anomalies'
+            room='anomalies',
         )
 
 
@@ -86,10 +110,10 @@ def emit_scan_progress(progress_data: dict):
             {
                 'type': 'scan_progress',
                 'timestamp': datetime.now(timezone.utc).isoformat(),
-                'data': progress_data
+                'data': progress_data,
             },
             namespace='/api/v1/ws',
-            room='scan'
+            room='scan',
         )
 
 
@@ -101,10 +125,10 @@ def emit_transcription_complete(transcript_data: dict):
             {
                 'type': 'transcription_complete',
                 'timestamp': datetime.now(timezone.utc).isoformat(),
-                'data': transcript_data
+                'data': transcript_data,
             },
             namespace='/api/v1/ws',
-            room='transcripts'
+            room='transcripts',
         )
 
 
@@ -116,9 +140,8 @@ def emit_device_identified(device_data: dict):
             {
                 'type': 'device_identified',
                 'timestamp': datetime.now(timezone.utc).isoformat(),
-                'data': device_data
+                'data': device_data,
             },
             namespace='/api/v1/ws',
-            room='devices'
+            room='devices',
         )
-

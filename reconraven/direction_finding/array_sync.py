@@ -177,7 +177,6 @@ class SDRArraySync(DebugHelper):
         # Phase at peak is the phase offset
         return np.angle(cross_corr[peak_idx])
 
-
     def _calculate_snr(self, samples: np.ndarray) -> float:
         """Calculate signal-to-noise ratio.
 
@@ -198,7 +197,6 @@ class SDRArraySync(DebugHelper):
         noise_power = np.median(sorted_spectrum[: len(sorted_spectrum) // 2])
 
         return 10 * np.log10(signal_power / noise_power) if noise_power > 0 else 0.0
-
 
     def _calculate_coherence(self, samples: list[np.ndarray]) -> float:
         """Calculate array coherence (0.0-1.0).

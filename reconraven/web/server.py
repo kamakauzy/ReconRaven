@@ -444,8 +444,16 @@ class SDRDashboardServer(DebugHelper):
                 emit('voice_status', {'status': 'error', 'message': 'No frequency specified'})
                 return
 
-            # TODO: Implement voice monitoring
-            emit('voice_status', {'status': 'monitoring', 'frequency': frequency_mhz, 'mode': mode})
+            # Voice monitoring available via API endpoints or CLI: reconraven.py voice monitor
+            emit(
+                'voice_status',
+                {
+                    'status': 'info',
+                    'message': 'Use API: POST /api/v1/demod/freq/<freq> or CLI for voice monitoring',
+                    'frequency': frequency_mhz,
+                    'mode': mode,
+                },
+            )
 
         @self.socketio.on('request_transcripts')
         def handle_request_transcripts(_data):

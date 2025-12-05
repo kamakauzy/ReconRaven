@@ -19,8 +19,9 @@ class FrequencyMatcher(DebugHelper):
         self.detector = LocationDetector()
         self.noaa = NOAAStations()
 
-    def identify_frequency(self, frequency: float, user_lat: float | None = None,
-                          user_lon: float | None = None) -> dict | None:
+    def identify_frequency(
+        self, frequency: float, user_lat: float | None = None, user_lon: float | None = None
+    ) -> dict | None:
         """Identify a frequency based on location context.
 
         Args:
@@ -38,11 +39,11 @@ class FrequencyMatcher(DebugHelper):
                 user_lat = last_location['latitude']
                 user_lon = last_location['longitude']
             else:
-                self.log_warning("No user location available, identification may be incomplete")
+                self.log_warning('No user location available, identification may be incomplete')
 
         # Check if it's a NOAA frequency
         if self.noaa.is_noaa_frequency(frequency):
-            self.log_info(f"{frequency} MHz identified as NOAA Weather Radio")
+            self.log_info(f'{frequency} MHz identified as NOAA Weather Radio')
             noaa_matches = self.db.find_frequency(frequency)
             noaa_matches = [m for m in noaa_matches if m['type'] == 'noaa']
             if noaa_matches:
@@ -50,14 +51,14 @@ class FrequencyMatcher(DebugHelper):
                     'frequency': frequency,
                     'type': 'NOAA Weather Radio',
                     'confidence': 1.0,
-                    'details': noaa_matches[0]
+                    'details': noaa_matches[0],
                 }
 
         # Search database for exact matches
         matches = self.db.find_frequency(frequency, tolerance=0.005)
 
         if not matches:
-            self.log_debug(f"No matches found for {frequency} MHz")
+            self.log_debug(f'No matches found for {frequency} MHz')
             return None
 
         # If we have location, filter by proximity
@@ -65,7 +66,7 @@ class FrequencyMatcher(DebugHelper):
             matches = self._filter_by_proximity(matches, user_lat, user_lon, max_distance_km=100)
 
         if not matches:
-            self.log_debug(f"No nearby matches for {frequency} MHz")
+            self.log_debug(f'No nearby matches for {frequency} MHz')
             return None
 
         # Return best match (first one for now, could add confidence scoring)
@@ -75,14 +76,17 @@ class FrequencyMatcher(DebugHelper):
             'frequency': frequency,
             'type': best_match['type'],
             'confidence': 0.9,  # High confidence if in range
-            'details': best_match
+            'details': best_match,
         }
 
-        self.log_info(f"{frequency} MHz identified as {best_match['type']}: {best_match.get('callsign') or best_match.get('description')}")
+        self.log_info(
+            f"{frequency} MHz identified as {best_match['type']}: {best_match.get('callsign') or best_match.get('description')}"
+        )
         return identification
 
-    def _filter_by_proximity(self, matches: list[dict], user_lat: float, user_lon: float,
-                           max_distance_km: float = 100) -> list[dict]:
+    def _filter_by_proximity(
+        self, matches: list[dict], user_lat: float, user_lon: float, max_distance_km: float = 100
+    ) -> list[dict]:
         """Filter matches by proximity to user.
 
         Uses simple distance calculation to filter out far-away matches.
@@ -101,7 +105,7 @@ class FrequencyMatcher(DebugHelper):
             # Simple distance calculation (Haversine approximation)
             lat_diff = abs(user_lat - match_lat)
             lon_diff = abs(user_lon - match_lon)
-            distance_km = ((lat_diff ** 2 + lon_diff ** 2) ** 0.5) * 111.0  # Rough approximation
+            distance_km = ((lat_diff**2 + lon_diff**2) ** 0.5) * 111.0  # Rough approximation
 
             if distance_km <= max_distance_km:
                 match['distance_km'] = round(distance_km, 1)
@@ -124,10 +128,10 @@ class FrequencyMatcher(DebugHelper):
         # Get user location
         last_location = self.db.get_last_location()
         if not last_location:
-            self.log_warning("No user location available")
+            self.log_warning('No user location available')
             location = self.detector.auto_detect()
             if not location:
-                self.log_error("Failed to detect location")
+                self.log_error('Failed to detect location')
                 return []
             last_location = location
 
@@ -137,6 +141,5 @@ class FrequencyMatcher(DebugHelper):
         # Get nearby frequencies from database
         nearby = self.db.find_nearby_frequencies(user_lat, user_lon, radius_km)
 
-        self.log_info(f"Found {len(nearby)} frequencies within {radius_km} km")
+        self.log_info(f'Found {len(nearby)} frequencies within {radius_km} km')
         return nearby
-

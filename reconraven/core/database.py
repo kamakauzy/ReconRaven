@@ -243,7 +243,11 @@ class ReconRavenDB:
         return [dict(row) for row in cursor.fetchall()]
 
     def update_signal_device(
-        self, signal_id: int, device_name: str, device_type: Optional[str] = None, manufacturer: Optional[str] = None
+        self,
+        signal_id: int,
+        device_name: str,
+        device_type: Optional[str] = None,
+        manufacturer: Optional[str] = None,
     ):
         """Add device identification to a signal"""
         cursor = self.conn.cursor()
@@ -446,6 +450,41 @@ class ReconRavenDB:
 
     # ========== LEGACY COMPATIBILITY ==========
 
+    def get_anomaly_count(self) -> int:
+        """Get count of anomalies (for API endpoints)"""
+        cursor = self.conn.cursor()
+        cursor.execute(
+            'SELECT COUNT(*) as count FROM signals WHERE is_anomaly = 1 AND is_baseline = 0'
+        )
+        return cursor.fetchone()['count']
+
+    def get_baseline_count(self) -> int:
+        """Get count of baseline frequencies (for API endpoints)"""
+        cursor = self.conn.cursor()
+        cursor.execute('SELECT COUNT(*) as count FROM baseline')
+        return cursor.fetchone()['count']
+
+    def get_detection_count(self) -> int:
+        """Get total count of all signal detections (for API endpoints)"""
+        cursor = self.conn.cursor()
+        cursor.execute('SELECT COUNT(*) as count FROM signals')
+        return cursor.fetchone()['count']
+
+    def get_recent_anomalies(self, limit: int = 50) -> list[dict]:
+        """Get recent anomalies with timestamp field (for API compatibility)"""
+        anomalies = self.get_anomalies(limit=limit)
+        # Rename detected_at to timestamp for API compatibility
+        for anomaly in anomalies:
+            anomaly['timestamp'] = anomaly.get('detected_at', '')
+            if 'power_dbm' in anomaly:
+                anomaly['power'] = anomaly['power_dbm']
+        return anomalies
+
+    def get_transcript_count(self) -> int:
+        """Get count of transcripts (placeholder until transcript table added)"""
+        # Transcripts not yet implemented in simplified schema
+        return 0
+
     def get_devices(self) -> list[dict]:
         """Get unique identified devices (for backwards compat)"""
         cursor = self.conn.cursor()
@@ -468,7 +507,7 @@ class ReconRavenDB:
         return [dict(row) for row in cursor.fetchall()]
 
     def get_all_transcripts(self) -> list[dict]:
-        """Get all transcripts (stub for compatibility)"""
+        """Get all transcripts"""
         # Transcripts not supported in simplified schema yet
         return []
 

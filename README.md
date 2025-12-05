@@ -797,7 +797,7 @@ python reconraven.py db promote
 **High disk usage:**
 - IQ files are 366MB per 10 seconds
 - Delete old recordings: `rm recordings/audio/*.npy`
-- Or implement auto-cleanup (TODO for next version)
+- Use cleanup command: `python reconraven.py cleanup --type ism` or `--type old`
 
 ---
 

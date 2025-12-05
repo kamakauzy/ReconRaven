@@ -4,7 +4,6 @@ Fetches ham radio repeater data from RepeaterBook's public API.
 https://www.repeaterbook.com/wiki/doku.php?id=api
 """
 
-
 import requests
 
 from reconraven.core.debug_helper import DebugHelper
@@ -29,13 +28,10 @@ class RepeaterBookClient(DebugHelper):
         Returns:
             List of repeater dictionaries
         """
-        self.log_info(f"Fetching repeaters for state: {state_code}")
+        self.log_info(f'Fetching repeaters for state: {state_code}')
 
         try:
-            params = {
-                'state': state_code.upper(),
-                'country': 'United States'
-            }
+            params = {'state': state_code.upper(), 'country': 'United States'}
 
             response = requests.get(self.BASE_URL, params=params, timeout=30)
             response.raise_for_status()
@@ -43,11 +39,11 @@ class RepeaterBookClient(DebugHelper):
             data = response.json()
             repeaters = data.get('results', [])
 
-            self.log_info(f"Fetched {len(repeaters)} repeaters for {state_code}")
+            self.log_info(f'Fetched {len(repeaters)} repeaters for {state_code}')
             return repeaters
 
         except requests.RequestException as e:
-            self.log_error(f"Failed to fetch repeaters: {e}")
+            self.log_error(f'Failed to fetch repeaters: {e}')
             return []
 
     def fetch_by_location(self, lat: float, lon: float, radius_miles: int = 50) -> list[dict]:
@@ -61,14 +57,10 @@ class RepeaterBookClient(DebugHelper):
         Returns:
             List of repeater dictionaries
         """
-        self.log_info(f"Fetching repeaters near ({lat}, {lon}) within {radius_miles} miles")
+        self.log_info(f'Fetching repeaters near ({lat}, {lon}) within {radius_miles} miles')
 
         try:
-            params = {
-                'lat': lat,
-                'long': lon,
-                'distance': radius_miles
-            }
+            params = {'lat': lat, 'long': lon, 'distance': radius_miles}
 
             response = requests.get(self.BASE_URL, params=params, timeout=30)
             response.raise_for_status()
@@ -76,11 +68,11 @@ class RepeaterBookClient(DebugHelper):
             data = response.json()
             repeaters = data.get('results', [])
 
-            self.log_info(f"Fetched {len(repeaters)} nearby repeaters")
+            self.log_info(f'Fetched {len(repeaters)} nearby repeaters')
             return repeaters
 
         except requests.RequestException as e:
-            self.log_error(f"Failed to fetch repeaters: {e}")
+            self.log_error(f'Failed to fetch repeaters: {e}')
             return []
 
     def import_to_database(self, repeaters: list[dict]):
@@ -128,15 +120,15 @@ class RepeaterBookClient(DebugHelper):
                     range_km=None,  # Not provided by API
                     use_type=rep.get('Use', rep.get('use')),
                     notes=rep.get('Notes', rep.get('notes')),
-                    source='RepeaterBook'
+                    source='RepeaterBook',
                 )
                 imported += 1
 
             except (ValueError, KeyError, TypeError) as e:
-                self.log_warning(f"Failed to import repeater: {e}")
+                self.log_warning(f'Failed to import repeater: {e}')
                 continue
 
-        self.log_info(f"Imported {imported} repeaters to database")
+        self.log_info(f'Imported {imported} repeaters to database')
         return imported
 
     def setup_state(self, state_code: str) -> int:
@@ -164,4 +156,3 @@ class RepeaterBookClient(DebugHelper):
         """
         repeaters = self.fetch_by_location(lat, lon, radius_miles)
         return self.import_to_database(repeaters)
-

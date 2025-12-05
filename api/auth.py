@@ -41,7 +41,7 @@ class APIAuth:
             'jwt_expiry_hours': 24,
             'rate_limit_per_second': 10,
             'allowed_origins': ['http://localhost:5000'],
-            'created': datetime.now(timezone.utc).isoformat()
+            'created': datetime.now(timezone.utc).isoformat(),
         }
 
         # Save config
@@ -54,8 +54,8 @@ class APIAuth:
         with key_file.open('w') as f:
             f.write(f"API Key (save this - won't be shown again):\n{api_key}\n")
 
-        print(f"[API] Generated new API key: {api_key}")
-        print(f"[API] Saved to: {key_file}")
+        print(f'[API] Generated new API key: {api_key}')
+        print(f'[API] Saved to: {key_file}')
 
         return config
 
@@ -72,7 +72,7 @@ class APIAuth:
             'exp': datetime.now(timezone.utc) + timedelta(hours=self.jwt_expiry_hours),
             'iat': datetime.now(timezone.utc),
             'sub': 'reconraven_client',
-            'data': user_data or {}
+            'data': user_data or {},
         }
         return jwt.encode(payload, self.jwt_secret, algorithm='HS256')
 
@@ -87,6 +87,7 @@ class APIAuth:
 
     def require_auth(self, f):
         """Decorator to require API key or valid JWT."""
+
         @wraps(f)
         def decorated(*args, **kwargs):
             # Check for API key in header
@@ -103,11 +104,12 @@ class APIAuth:
                     request.jwt_payload = payload
                     return f(*args, **kwargs)
 
-            return jsonify({'error': 'Unauthorized', 'message': 'Valid API key or JWT required'}), 401
+            return jsonify(
+                {'error': 'Unauthorized', 'message': 'Valid API key or JWT required'}
+            ), 401
 
         return decorated
 
 
 # Global instance
 auth = APIAuth()
-

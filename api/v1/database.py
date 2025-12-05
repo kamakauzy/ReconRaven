@@ -7,10 +7,12 @@ GET  /api/v1/db/export            - Export data
 GET  /api/v1/db/stats             - Database statistics
 """
 
+import csv
+import io
 from datetime import datetime, timezone
 from pathlib import Path
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, Response, jsonify, request
 
 from api.auth import auth
 from reconraven.core.database import get_db
@@ -33,7 +35,7 @@ def search_transcripts():
         since (str): ISO timestamp - only transcripts after this
     """
     try:
-        query = request.args.get('query', '')
+        query = request.args.get('query', '').lower()
         language = request.args.get('language')
         band = request.args.get('band')
         min_confidence = request.args.get('min_confidence', type=float)
@@ -41,21 +43,50 @@ def search_transcripts():
         since = request.args.get('since')
 
         db = get_db()
+        transcripts = db.get_all_transcripts()
 
-        # TODO: Implement full-text search in database
-        # For now, return placeholder
-        transcripts = []
+        # Apply text search filter
+        if query:
+            transcripts = [t for t in transcripts if query in t.get('text', '').lower()]
 
-        return jsonify({
-            'count': len(transcripts),
-            'query': query,
-            'filters': {
-                'language': language,
-                'band': band,
-                'min_confidence': min_confidence
-            },
-            'transcripts': transcripts
-        }), 200
+        # Apply language filter
+        if language:
+            transcripts = [
+                t for t in transcripts if t.get('language', '').upper() == language.upper()
+            ]
+
+        # Apply band filter
+        if band:
+            transcripts = [t for t in transcripts if t.get('band') == band]
+
+        # Apply confidence filter
+        if min_confidence is not None:
+            transcripts = [t for t in transcripts if t.get('confidence', 0) >= min_confidence]
+
+        # Apply time filter
+        if since:
+            since_dt = datetime.fromisoformat(since.replace('Z', '+00:00'))
+            transcripts = [
+                t
+                for t in transcripts
+                if datetime.fromisoformat(t.get('created_at', '').replace('Z', '+00:00')) > since_dt
+            ]
+
+        # Limit results
+        transcripts = transcripts[:limit]
+
+        return jsonify(
+            {
+                'count': len(transcripts),
+                'query': query,
+                'filters': {
+                    'language': language,
+                    'band': band,
+                    'min_confidence': min_confidence,
+                },
+                'transcripts': transcripts,
+            }
+        ), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -88,10 +119,7 @@ def list_devices():
 
         devices = devices[:limit]
 
-        return jsonify({
-            'count': len(devices),
-            'devices': devices
-        }), 200
+        return jsonify({'count': len(devices), 'devices': devices}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -119,15 +147,29 @@ def promote_device():
 
         db = get_db()
 
-        # TODO: Implement device promotion
-        # db.promote_device_to_baseline(frequency or device_id)
+        # If device_id provided, look up the frequency
+        if device_id and not frequency:
+            signals = db.get_all_signals()
+            signal = next((s for s in signals if s.get('id') == device_id), None)
+            if signal:
+                frequency = signal['frequency_hz']
+            else:
+                return jsonify({'error': f'Device ID {device_id} not found'}), 404
 
-        return jsonify({
-            'status': 'success',
-            'frequency': frequency,
-            'device_id': device_id,
-            'message': 'Device promoted to baseline'
-        }), 200
+        if frequency:
+            # Promote to baseline
+            db.promote_to_baseline(frequency)
+
+            return jsonify(
+                {
+                    'status': 'success',
+                    'frequency': frequency,
+                    'device_id': device_id,
+                    'message': 'Device promoted to baseline',
+                }
+            ), 200
+
+        return jsonify({'error': 'Could not determine frequency'}), 400
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -148,22 +190,113 @@ def export_data():
 
         db = get_db()
 
-        # TODO: Implement actual export
-        # For now, return sample data
+        # Gather data based on type
+        export_data = {
+            'exported_at': datetime.now(timezone.utc).isoformat(),
+            'type': data_type,
+        }
 
+        if data_type in ('devices', 'all'):
+            export_data['devices'] = db.get_devices()
+
+        if data_type in ('transcripts', 'all'):
+            export_data['transcripts'] = db.get_all_transcripts()
+
+        if data_type in ('anomalies', 'all'):
+            export_data['anomalies'] = db.get_anomalies(limit=1000)
+
+        if data_type == 'all':
+            export_data['baseline'] = db.get_all_baseline()
+            export_data['statistics'] = db.get_statistics()
+
+        # Format output
         if fmt == 'json':
-            export_data = {
-                'exported_at': datetime.now(timezone.utc).isoformat(),
-                'type': data_type,
-                'data': {}
-            }
             return jsonify(export_data), 200
+
         if fmt == 'csv':
-            # TODO: Generate CSV
-            return jsonify({'error': 'CSV export not yet implemented'}), 501
+            # Generate CSV for the primary data type
+            output = io.StringIO()
+            writer = csv.writer(output)
+
+            if data_type == 'devices' and export_data.get('devices'):
+                devices = export_data['devices']
+                if devices:
+                    # Write header
+                    writer.writerow(devices[0].keys())
+                    # Write rows
+                    for device in devices:
+                        writer.writerow(device.values())
+            elif data_type == 'anomalies' and export_data.get('anomalies'):
+                anomalies = export_data['anomalies']
+                if anomalies:
+                    writer.writerow(anomalies[0].keys())
+                    for anomaly in anomalies:
+                        writer.writerow(anomaly.values())
+            else:
+                # For 'all' or transcripts, fall back to JSON
+                return jsonify({'error': 'CSV format only supported for devices or anomalies'}), 400
+
+            csv_data = output.getvalue()
+            return Response(
+                csv_data,
+                mimetype='text/csv',
+                headers={'Content-Disposition': f'attachment; filename=reconraven_{data_type}.csv'},
+            )
+
         if fmt == 'txt':
-            # TODO: Generate text report
-            return jsonify({'error': 'TXT export not yet implemented'}), 501
+            # Generate text report
+            lines = []
+            lines.append('=' * 70)
+            lines.append('RECONRAVEN EXPORT REPORT')
+            lines.append('=' * 70)
+            lines.append(f'Exported: {export_data["exported_at"]}')
+            lines.append(f'Type: {data_type}')
+            lines.append('')
+
+            if data_type in ('devices', 'all') and export_data.get('devices'):
+                lines.append('IDENTIFIED DEVICES')
+                lines.append('-' * 70)
+                for dev in export_data['devices']:
+                    lines.append(
+                        f"{dev.get('frequency_hz', 0)/1e6:.3f} MHz - {dev.get('name', 'Unknown')}"
+                    )
+                    lines.append(
+                        f"  Type: {dev.get('device_type', 'N/A')} | "
+                        f"Manufacturer: {dev.get('manufacturer', 'N/A')} | "
+                        f"Confidence: {dev.get('confidence', 0)*100:.0f}%"
+                    )
+                    lines.append('')
+
+            if data_type in ('anomalies', 'all') and export_data.get('anomalies'):
+                lines.append('ANOMALIES')
+                lines.append('-' * 70)
+                for anom in export_data['anomalies'][:50]:  # Limit to 50 in text
+                    lines.append(
+                        f"{anom.get('frequency_hz', 0)/1e6:.3f} MHz - "
+                        f"{anom.get('power_dbm', 0):.1f} dBm - "
+                        f"{anom.get('detected_at', 'N/A')}"
+                    )
+                lines.append('')
+
+            if data_type == 'all' and export_data.get('statistics'):
+                lines.append('STATISTICS')
+                lines.append('-' * 70)
+                stats = export_data['statistics']
+                for key, value in stats.items():
+                    lines.append(f'{key}: {value}')
+                lines.append('')
+
+            lines.append('=' * 70)
+            lines.append('END OF REPORT')
+            lines.append('=' * 70)
+
+            text_data = '\n'.join(lines)
+            return Response(
+                text_data,
+                mimetype='text/plain',
+                headers={'Content-Disposition': f'attachment; filename=reconraven_{data_type}.txt'},
+            )
+
         return jsonify({'error': f'Unsupported format: {fmt}'}), 400
 
     except Exception as e:
@@ -190,17 +323,16 @@ def get_stats():
             'total_detections': db.get_detection_count(),
             'anomalies': db.get_anomaly_count(),
             'identified_devices': len(db.get_devices()),
-            'transcripts': 0,  # TODO: Add transcript count
+            'transcripts': db.get_transcript_count(),
             'recordings_count': len(recording_files),
             'storage': {
                 'database_mb': round(db_size_mb, 2),
                 'recordings_mb': round(recordings_size_mb, 2),
-                'total_mb': round(db_size_mb + recordings_size_mb, 2)
-            }
+                'total_mb': round(db_size_mb + recordings_size_mb, 2),
+            },
         }
 
         return jsonify(stats), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
