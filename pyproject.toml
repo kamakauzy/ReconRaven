@@ -113,8 +113,15 @@ ignore = [
     "Q000",    # conflicts with formatter (single quotes)
     "Q003",    # conflicts with formatter
     "TRY003",  # long messages in exceptions
+    "TRY300",  # try-consider-else (style preference, not a bug)
+    "TRY301",  # raise-within-try (unavoidable in error handling)
+    "PLR0911", # too-many-return-statements (complexity, not a bug)
+    "PLR0912", # too-many-branches (complexity, not a bug)
     "PLR0913", # too many arguments
+    "PLR0915", # too-many-statements (complexity, not a bug)
     "PLR2004", # magic value comparison
+    "PLW0603", # global-statement (correct for singletons)
+    "PLW0602", # global-variable-not-assigned (correct for read-only globals)
     "PTH123",  # pathlib open (legacy code uses open())
 ]
 
