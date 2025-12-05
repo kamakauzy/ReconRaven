@@ -6,6 +6,7 @@ SQLite database schema for storing frequency data with geographic information.
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 
 class LocationFrequencyDB:
@@ -148,7 +149,7 @@ class LocationFrequencyDB:
         cursor = self.conn.cursor()
         cursor.execute('''
             INSERT OR REPLACE INTO repeaters
-            (frequency, offset, tone, callsign, location, city, state, 
+            (frequency, offset, tone, callsign, location, city, state,
              latitude, longitude, range_km, use_type, notes, source, added_date)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
@@ -216,11 +217,11 @@ class LocationFrequencyDB:
 
     def find_frequency(self, frequency: float, tolerance: float = 0.005) -> list[dict]:
         """Find all known uses of a frequency (±tolerance MHz).
-        
+
         Args:
             frequency: Frequency in MHz
             tolerance: Tolerance in MHz (default 5 kHz)
-        
+
         Returns:
             List of matches from all tables
         """
@@ -269,7 +270,7 @@ class LocationFrequencyDB:
 
     def find_nearby_frequencies(self, lat: float, lon: float, radius_km: float = 50) -> list[dict]:
         """Find all frequencies within radius of location.
-        
+
         Uses Haversine formula approximation for distance.
         """
         matches = []
@@ -309,8 +310,8 @@ class LocationFrequencyDB:
 
         return matches
 
-    def save_user_location(self, lat: float, lon: float, city: str = None,
-                          state: str = None, country: str = None, source: str = 'manual'):
+    def save_user_location(self, lat: float, lon: float, city: Optional[str] = None,
+                          state: Optional[str] = None, country: Optional[str] = None, source: str = 'manual'):
         """Save user's current location."""
         cursor = self.conn.cursor()
         cursor.execute('''

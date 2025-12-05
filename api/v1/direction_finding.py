@@ -18,7 +18,7 @@ bp = Blueprint('direction_finding', __name__, url_prefix='/api/v1/df')
 @auth.require_auth
 def get_bearing(anomaly_id: int):
     """Calculate bearing for a specific anomaly.
-    
+
     Requires 4-SDR coherent array in DF mode.
     """
     try:
@@ -47,7 +47,7 @@ def get_bearing(anomaly_id: int):
 @auth.require_auth
 def calibrate_array():
     """Calibrate DF array with known source.
-    
+
     Body params:
         frequency (float): Calibration frequency
         known_bearing (float): Actual bearing of source (degrees)

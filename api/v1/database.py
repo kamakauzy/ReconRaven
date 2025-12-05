@@ -23,7 +23,7 @@ bp = Blueprint('database', __name__, url_prefix='/api/v1/db')
 @auth.require_auth
 def search_transcripts():
     """Search voice transcripts.
-    
+
     Query params:
         query (str): Search text
         language (str): Filter by language code (EN, ES, etc.)
@@ -65,7 +65,7 @@ def search_transcripts():
 @auth.require_auth
 def list_devices():
     """List all identified devices.
-    
+
     Query params:
         min_confidence (float): Minimum confidence score
         in_baseline (bool): Only baseline devices
@@ -101,7 +101,7 @@ def list_devices():
 @auth.require_auth
 def promote_device():
     """Promote identified device to baseline.
-    
+
     Body params:
         frequency (float): Device frequency
         device_id (int): Device ID (alternative to frequency)
@@ -137,7 +137,7 @@ def promote_device():
 @auth.require_auth
 def export_data():
     """Export database data.
-    
+
     Query params:
         format (str): Export format (json, csv, txt)
         type (str): Data type (devices, transcripts, anomalies, all)

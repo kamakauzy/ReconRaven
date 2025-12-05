@@ -17,7 +17,7 @@ bp = Blueprint('demodulation', __name__, url_prefix='/api/v1')
 @auth.require_auth
 def demodulate_frequency(freq: float):
     """Demodulate a specific frequency.
-    
+
     Query params:
         mode (str): Demodulation mode (FM, AM, USB, LSB, DMR, P25, etc.)
         duration (int): Recording duration in seconds (default 10)
@@ -52,7 +52,7 @@ def demodulate_frequency(freq: float):
 @auth.require_auth
 def decode_binary():
     """Decode binary protocol from signal data.
-    
+
     Body params:
         signal_data (list): Raw signal samples
         protocol (str): Protocol hint (OOK, ASK, FSK, auto)

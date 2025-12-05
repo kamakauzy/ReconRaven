@@ -21,7 +21,7 @@ class LocationDetector(DebugHelper):
 
     def detect_from_gps(self) -> dict | None:
         """Detect location from GPS hardware.
-        
+
         Returns:
             dict with lat, lon, altitude, or None if GPS unavailable
         """
@@ -52,9 +52,9 @@ class LocationDetector(DebugHelper):
 
     def detect_from_ip(self) -> dict | None:
         """Detect location from IP address (fallback).
-        
+
         Uses ip-api.com (free, no API key needed).
-        
+
         Returns:
             dict with lat, lon, city, state, country
         """
@@ -89,7 +89,7 @@ class LocationDetector(DebugHelper):
 
     def auto_detect(self) -> dict | None:
         """Auto-detect location (GPS first, then IP fallback).
-        
+
         Returns:
             Location dict or None if all methods fail
         """
@@ -119,11 +119,11 @@ class LocationDetector(DebugHelper):
 
     def get_state_code_from_coordinates(self, lat: float, lon: float) -> str | None:
         """Get state code from coordinates using reverse geocoding.
-        
+
         Args:
             lat: Latitude
             lon: Longitude
-        
+
         Returns:
             Two-letter state code or None
         """

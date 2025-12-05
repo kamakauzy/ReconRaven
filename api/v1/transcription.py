@@ -17,7 +17,7 @@ bp = Blueprint('transcription', __name__, url_prefix='/api/v1/transcribe')
 @auth.require_auth
 def transcribe_recording(recording_id: int):
     """Transcribe a specific recording.
-    
+
     Body params:
         model (str): Whisper model (tiny, base, small, medium, large)
         language (str): Force specific language (optional, auto-detect default)
@@ -62,7 +62,7 @@ def transcribe_recording(recording_id: int):
 @auth.require_auth
 def transcribe_batch():
     """Batch transcribe all untranscribed recordings.
-    
+
     Body params:
         model (str): Whisper model (default: base)
         max_count (int): Max recordings to process (default: all)

@@ -123,6 +123,12 @@ ignore = [
     "PLW0603", # global-statement (correct for singletons)
     "PLW0602", # global-variable-not-assigned (correct for read-only globals)
     "PTH123",  # pathlib open (legacy code uses open())
+    "ARG001",  # unused-function-argument (Flask/Kivy required signatures)
+    "ARG002",  # unused-method-argument (Flask/Kivy required signatures)
+    "ARG005",  # unused-lambda-argument (Kivy callbacks)
+    "F841",    # unused-variable (TODO stubs, will implement later)
+    "ERA001",  # commented-out-code (TODO comments for implementation)
+    "RUF012",  # mutable-class-default (intentional in some cases)
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -131,6 +137,8 @@ ignore = [
 # CLI can use print statements for user output
 "reconraven.py" = ["T201"]
 "reconraven/cli.py" = ["T201"]
+# Touch app can use print for debugging (no logger in UI context)
+"touch_app/**/*.py" = ["T201"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["reconraven"]

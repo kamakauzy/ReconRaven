@@ -22,12 +22,12 @@ class FrequencyMatcher(DebugHelper):
     def identify_frequency(self, frequency: float, user_lat: float | None = None,
                           user_lon: float | None = None) -> dict | None:
         """Identify a frequency based on location context.
-        
+
         Args:
             frequency: Frequency in MHz
             user_lat: User latitude (optional, will auto-detect)
             user_lon: User longitude (optional, will auto-detect)
-        
+
         Returns:
             Identification dict or None if unknown
         """
@@ -84,7 +84,7 @@ class FrequencyMatcher(DebugHelper):
     def _filter_by_proximity(self, matches: list[dict], user_lat: float, user_lon: float,
                            max_distance_km: float = 100) -> list[dict]:
         """Filter matches by proximity to user.
-        
+
         Uses simple distance calculation to filter out far-away matches.
         """
         filtered = []
@@ -114,10 +114,10 @@ class FrequencyMatcher(DebugHelper):
 
     def get_nearby_frequencies(self, radius_km: float = 50) -> list[dict]:
         """Get all known frequencies near user's location.
-        
+
         Args:
             radius_km: Search radius in kilometers
-        
+
         Returns:
             List of frequencies with details
         """

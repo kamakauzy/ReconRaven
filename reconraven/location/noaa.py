@@ -86,16 +86,13 @@ class NOAAStations(DebugHelper):
 
     def is_noaa_frequency(self, freq: float, tolerance: float = 0.005) -> bool:
         """Check if frequency is a NOAA weather radio frequency.
-        
+
         Args:
             freq: Frequency in MHz
             tolerance: Tolerance in MHz
-        
+
         Returns:
             True if frequency matches a NOAA channel
         """
-        for noaa_freq in self.NOAA_FREQUENCIES:
-            if abs(freq - noaa_freq) <= tolerance:
-                return True
-        return False
+        return any(abs(freq - noaa_freq) <= tolerance for noaa_freq in self.NOAA_FREQUENCIES)
 

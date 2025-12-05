@@ -22,10 +22,10 @@ class RepeaterBookClient(DebugHelper):
 
     def fetch_by_state(self, state_code: str) -> list[dict]:
         """Fetch all repeaters for a state.
-        
+
         Args:
             state_code: Two-letter state code (e.g., 'AL', 'CA')
-        
+
         Returns:
             List of repeater dictionaries
         """
@@ -52,12 +52,12 @@ class RepeaterBookClient(DebugHelper):
 
     def fetch_by_location(self, lat: float, lon: float, radius_miles: int = 50) -> list[dict]:
         """Fetch repeaters within radius of location.
-        
+
         Args:
             lat: Latitude
             lon: Longitude
             radius_miles: Search radius in miles
-        
+
         Returns:
             List of repeater dictionaries
         """
@@ -85,7 +85,7 @@ class RepeaterBookClient(DebugHelper):
 
     def import_to_database(self, repeaters: list[dict]):
         """Import repeaters into location database.
-        
+
         Args:
             repeaters: List of repeaters from API
         """
@@ -141,10 +141,10 @@ class RepeaterBookClient(DebugHelper):
 
     def setup_state(self, state_code: str) -> int:
         """One-shot setup: fetch and import repeaters for a state.
-        
+
         Args:
             state_code: Two-letter state code
-        
+
         Returns:
             Number of repeaters imported
         """
@@ -153,12 +153,12 @@ class RepeaterBookClient(DebugHelper):
 
     def setup_location(self, lat: float, lon: float, radius_miles: int = 50) -> int:
         """One-shot setup: fetch and import repeaters for a location.
-        
+
         Args:
             lat: Latitude
             lon: Longitude
             radius_miles: Search radius
-        
+
         Returns:
             Number of repeaters imported
         """

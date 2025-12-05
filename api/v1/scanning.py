@@ -46,7 +46,7 @@ def get_status():
 @auth.require_auth
 def start_scan():
     """Start scanning with optional parameters.
-    
+
     Body params:
         bands (list): Band names to scan (e.g. ['2m', '70cm'])
         rebuild_baseline (bool): Rebuild baseline before scanning
@@ -95,7 +95,7 @@ def stop_scan():
 @auth.require_auth
 def get_anomalies():
     """Get recent anomalies with filters.
-    
+
     Query params:
         limit (int): Max results (default 50)
         since (str): ISO timestamp - only anomalies after this
