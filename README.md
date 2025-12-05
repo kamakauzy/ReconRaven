@@ -1,6 +1,6 @@
 # ReconRaven
 
-![Banner](visualization/static/img/rr.png)
+![Banner](reconraven/visualization/static/img/rr.png)
 
 ## ⚠️ **ALPHA SOFTWARE - UNDER ACTIVE DEVELOPMENT** ⚠️
 
@@ -37,6 +37,9 @@ ReconRaven is a dual-mode SDR platform that works as both a mobile scanning rig 
 - Multi-band scanning (2m, 70cm, 433MHz, 915MHz ISM)
 - Automatic anomaly detection and recording
 - Multi-protocol demodulation (FM/AM/DMR/P25/NXDN/ProVoice/Fusion)
+- **REST API with WebSocket support** - Remote control and monitoring
+- **Kivy touchscreen UI** - Optimized for 7" displays (800x480)
+- **Location-aware frequency database** - Auto-identify repeaters/NOAA by GPS
 - **Voice signal auto-detection and transcription (Whisper AI)**
 - **Automatic speech-to-text for all voice transmissions**
 - **Full-text search across all transcripts**
@@ -248,6 +251,59 @@ Open `http://localhost:5000` in your browser to access:
 - Auto-refresh every 10 seconds
 - Direction finding bearings (if in DF mode with 4 SDRs)
 - GPS position tracking
+
+---
+
+## REST API & Remote Control
+
+ReconRaven includes a full REST API for remote control and integration.
+
+**Start the API server:**
+
+```bash
+cd api
+python3 server.py
+# API: http://localhost:5001/api/v1/
+# WebSocket: ws://localhost:5001/api/v1/ws
+```
+
+**Quick API test:**
+
+```bash
+# Get API key
+curl http://localhost:5001/api/v1/auth/key
+
+# Health check
+curl http://localhost:5001/api/v1/health
+
+# Get scan status (requires API key)
+curl -H "X-API-Key: YOUR_KEY" http://localhost:5001/api/v1/scan/status
+
+# Start scanning
+curl -X POST -H "X-API-Key: YOUR_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{"bands": ["2m", "70cm"]}' \
+     http://localhost:5001/api/v1/scan/start
+```
+
+**Available endpoints:**
+
+- `/api/v1/scan/*` - Scanning control (start, stop, status, anomalies)
+- `/api/v1/demod/*` - Demodulation and decoding
+- `/api/v1/df/*` - Direction finding
+- `/api/v1/db/*` - Database queries (transcripts, devices, export)
+- `/api/v1/transcribe/*` - Transcription control
+- `/api/v1/ws` - WebSocket for real-time updates
+
+**Full API documentation:** `api/API_DOCUMENTATION.md`
+
+**Touchscreen UI:** For Pi deployments with 7" display, use the Kivy touch app:
+
+```bash
+python3 touch_app/main.py
+# Optimized for 800x480 touchscreens
+# Auto-starts on Pi with systemd
+```
 
 ---
 
@@ -805,18 +861,33 @@ Demodulation happens automatically when strong voice signals are detected.
 
 ```
 ReconRaven/
-├── reconraven.py          # Unified CLI (use this)
-├── advanced_scanner.py    # Core scanning engine
-├── database.py            # SQLite interface
-├── hardware/              # SDR control
-├── scanning/              # Spectrum & anomaly detection
-├── demodulation/          # Protocol decoders
-├── direction_finding/     # DF algorithms
-├── web/                   # Flask dashboard
-├── visualization/         # Dashboard UI
-├── config/                # YAML configs
-├── examples/              # Usage examples
-└── _archived_scripts/     # Old single-purpose scripts
+├── reconraven.py              # Unified CLI
+├── reconraven/                # Main package
+│   ├── core/                  # Scanner, database, config
+│   ├── hardware/              # SDR control
+│   ├── scanning/              # Spectrum & anomaly detection
+│   ├── demodulation/          # Protocol decoders
+│   ├── direction_finding/     # DF algorithms
+│   ├── voice/                 # Voice detection & transcription
+│   ├── analysis/              # Signal analysis tools
+│   ├── recording/             # Recording management
+│   ├── location/              # Location-aware frequency DB
+│   ├── visualization/         # Web dashboard
+│   ├── web/                   # Flask server
+│   └── utils/                 # Utilities
+├── api/                       # REST API server
+│   ├── server.py              # Main API server
+│   ├── auth.py                # Authentication
+│   └── v1/                    # API v1 endpoints
+├── touch_app/                 # Kivy touchscreen UI
+│   ├── main.py                # Touch app entry
+│   ├── api_client.py          # API client
+│   └── screens/               # UI screens
+├── scripts/                   # Deployment & automation
+├── config/                    # YAML configurations
+├── docs/                      # Documentation
+├── systemd/                   # Service files
+└── tests/                     # Test suite
 ```
 
 ### Testing Without Hardware
